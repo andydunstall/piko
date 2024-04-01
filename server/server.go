@@ -14,6 +14,7 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
@@ -25,8 +26,9 @@ import (
 // /pico is reserved for upstream listeners and management, then all other
 // routes will be proxied.
 type Server struct {
-	httpServer *http.Server
-	router     *gin.Engine
+	httpServer        *http.Server
+	router            *gin.Engine
+	websocketUpgrader *websocket.Upgrader
 
 	addr string
 
@@ -53,10 +55,11 @@ func NewServer(
 			Addr:    addr,
 			Handler: router,
 		},
-		router:   router,
-		addr:     addr,
-		registry: registry,
-		logger:   logger.WithSubsystem("server.http"),
+		websocketUpgrader: &websocket.Upgrader{},
+		router:            router,
+		addr:              addr,
+		registry:          registry,
+		logger:            logger.WithSubsystem("server.http"),
 	}
 	s.registerRoutes()
 	return s
@@ -107,7 +110,13 @@ func (s *Server) proxy(c *gin.Context) {
 
 // upstream handles WebSocket connections from upstream listeners.
 func (s *Server) upstream(c *gin.Context) {
-	c.Status(http.StatusNotImplemented)
+	wsConn, err := s.websocketUpgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		// Upgrade replies to the client so nothing else to do.
+		s.logger.Warn("failed to upgrade websocket", zap.Error(err))
+		return
+	}
+	defer wsConn.Close()
 }
 
 func (s *Server) health(c *gin.Context) {
