@@ -1,0 +1,25 @@
+run:
+  timeout: 5m
+  modules-download-mode: readonly
+  build-tags:
+    - integration
+
+linters:
+  enable:
+    - errcheck
+    - gofmt
+    - goimports
+    - govet
+    - staticcheck
+    - revive
+
+issues:
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  exclude:
+    - "exported (type|method|function|const|var) (.+) should have comment(.+)or be unexported"
+    - "Error return value of .(.*Close|.*Shutdown). is not checked"
+    - "package-comments: should have a package comment"
+    - "var-naming: (.+)"
+    - "empty-block: this block is empty, you can remove it"
