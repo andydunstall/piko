@@ -21,12 +21,15 @@ The minimum level to log can be configured with `--log.level`.
 Each log record has a `subsystem` field indicating where in the system the
 log occured.
 
-Subsystem fields can contain segments separated by periods. Such as
-`rpc`, `rpc.conn`, `rpc.handler`, ...
-
 All logs can be enabled for a subsystem using `--log.subsystems`, which
-overrides `--log.level` for the configured subsystems. Each entry matches
-the given subsystem and any subsystems that match the given prefix.
+overrides `--log.level` for the configured subsystems. Such as
+`--log.subsystems server.http,metrics,proxy.forwarder`.
 
-Such as `--log.subsystems rpc,metrics` will match logs with subsystem `rpc`,
-`metrics`, `rpc.conn`, `metrics.prometheus`, ...
+Subsystem fields can contain segments separated by periods. Such as
+`server`, `server.http`, `server.http.route`, ... This is used to separate
+types of logs so you don't have to enable all logs for a given subsystem.
+
+`--log.subsystems` enables any subsystem whose starting segments match the
+given filter. Such as `--log.subsystems server` will match logs with subsystem
+`server`, `server.http`, `server.http.route`..., though
+`--log.subsystems server.http.route` will only match `server.http.route`.
