@@ -1,13 +1,19 @@
 package server
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/pico/server"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 func NewCommand() *cobra.Command {
@@ -32,6 +38,9 @@ Examples:
 
 	var conf config.Config
 
+	cmd.Flags().StringVar(&conf.Server.Addr, "server.addr", ":8080", "server listen address")
+	cmd.Flags().IntVar(&conf.Server.GracePeriodSeconds, "server.grace-period-seconds", 30, "terminate graceful shutdown period in seconds")
+
 	cmd.Flags().StringVar(&conf.Log.Level, "log.level", "info", "log level")
 	cmd.Flags().StringSliceVar(&conf.Log.Subsystems, "log.subsystems", nil, "enable debug logs for logs the the given subsystems")
 
@@ -55,4 +64,49 @@ Examples:
 
 func run(conf *config.Config, logger *log.Logger) {
 	logger.Info("starting pico server", zap.Any("conf", conf))
+
+	server := server.NewServer(
+		conf.Server.Addr,
+	)
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.Go(func() error {
+		logger.Info("starting http server", zap.String("addr", conf.Server.Addr))
+
+		if err := server.Serve(); err != nil {
+			return fmt.Errorf("serve: %w", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		<-ctx.Done()
+
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Duration(conf.Server.GracePeriodSeconds)*time.Second,
+		)
+		defer cancel()
+
+		if err := server.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
+		}
+		return nil
+	})
+
+	sig := <-c
+	logger.Info("shutdown signal", zap.String("signal", sig.String()))
+	cancel()
+
+	if err := g.Wait(); err != nil {
+		logger.Error("failed to run server", zap.Error(err))
+		os.Exit(1)
+	}
+
+	logger.Info("shutdown complete")
 }
