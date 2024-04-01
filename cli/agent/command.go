@@ -6,13 +6,19 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
+	"strings"
+	"syscall"
 
+	"github.com/andydunstall/pico/agent"
 	"github.com/andydunstall/pico/agent/config"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 func NewCommand() *cobra.Command {
@@ -47,6 +53,8 @@ Examples:
 
 	var conf config.Config
 
+	cmd.Flags().StringSliceVar(&conf.Listeners, "listeners", nil, "command separated listeners to register, with format '<endpoint ID>/<forward addr>'")
+
 	cmd.Flags().StringVar(&conf.Log.Level, "log.level", "info", "log level")
 	cmd.Flags().StringSliceVar(&conf.Log.Subsystems, "log.subsystems", nil, "enable debug logs for logs the the given subsystems")
 
@@ -70,4 +78,34 @@ Examples:
 
 func run(conf *config.Config, logger *log.Logger) {
 	logger.Info("starting pico agent", zap.Any("conf", conf))
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	g, ctx := errgroup.WithContext(ctx)
+
+	for _, l := range conf.Listeners {
+		// Already verified format in Config.Validate.
+		elems := strings.Split(l, "/")
+		endpointID := elems[0]
+		forwardAddr := elems[1]
+
+		listener := agent.NewListener(endpointID, forwardAddr, logger)
+		g.Go(func() error {
+			return listener.Run(ctx)
+		})
+	}
+
+	sig := <-c
+	logger.Info("received shutdown signal", zap.String("signal", sig.String()))
+	cancel()
+
+	if err := g.Wait(); err != nil {
+		logger.Error("failed to run agent", zap.Error(err))
+		os.Exit(1)
+	}
+
+	logger.Info("shutdown complete")
 }
