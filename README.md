@@ -124,7 +124,7 @@ listener with endpoint ID `my-endpoint-123` and forwards requests to
 
 See `pico agent -h` for the available configuration options.
 
-### Send Request
+### Send a Request
 As described above, Pico routes requests using the endpoint ID in either the
 `Host` header or `x-pico-endpoint` (where `x-pico-endpoint` takes precedence).
 
@@ -137,7 +137,9 @@ Such as to send a HTTP request to your service at `localhost:3000` via endpoint
 
 ## Docs
 See [docs](./docs) for details on deploying and managing Pico, plus details on
-the Pico architecture.
+the Pico architecture:
+- Deploy
+  - [Observability](./docs/deploy/observability.md)
 
 ## Limitations
 > :warning: Pico is still a proof of concept so is not yet suitable for
