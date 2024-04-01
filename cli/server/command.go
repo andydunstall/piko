@@ -16,6 +16,7 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server"
 	"github.com/andydunstall/pico/server/config"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -70,8 +71,10 @@ Examples:
 func run(conf *config.Config, logger *log.Logger) {
 	logger.Info("starting pico server", zap.Any("conf", conf))
 
+	registry := prometheus.NewRegistry()
 	server := server.NewServer(
 		conf.Server.Addr,
+		registry,
 		logger,
 	)
 

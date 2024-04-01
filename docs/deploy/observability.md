@@ -33,3 +33,14 @@ types of logs so you don't have to enable all logs for a given subsystem.
 given filter. Such as `--log.subsystems server` will match logs with subsystem
 `server`, `server.http`, `server.http.route`..., though
 `--log.subsystems server.http.route` will only match `server.http.route`.
+
+## Metrics
+Both the Pico server and agent expose Prometheus metrics at /pico/v1/metrics.
+
+### Available Metrics
+| Metric                             | Type      | Labels        | Description                                        |
+| ---------------------------------- | --------- | ------------- | -------------------------------------------------- |
+| pico_http_requests_total           | Counter   | status        | Pico management API HTTP requests                  |
+| pico_http_request_latency_seconds  | Histogram | status        | Pico management API HTTP request latency histogram |
+| proxy_http_requests_total          | Counter   | status        | Proxy HTTP requests                                |
+| proxy_http_request_latency_seconds | Histogram | status        | Proxy HTTP request latency histogram               |
