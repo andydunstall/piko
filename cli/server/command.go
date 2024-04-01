@@ -78,10 +78,9 @@ func run(conf *config.Config, logger *log.Logger) {
 		logger,
 	)
 
-	c := make(chan os.Signal, 1)
-	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
-
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(
+		context.Background(), syscall.SIGINT, syscall.SIGTERM,
+	)
 	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)
@@ -94,6 +93,8 @@ func run(conf *config.Config, logger *log.Logger) {
 	g.Go(func() error {
 		<-ctx.Done()
 
+		logger.Info("starting shutdown")
+
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
 			time.Duration(conf.Server.GracePeriodSeconds)*time.Second,
@@ -105,10 +106,6 @@ func run(conf *config.Config, logger *log.Logger) {
 		}
 		return nil
 	})
-
-	sig := <-c
-	logger.Info("shutdown signal", zap.String("signal", sig.String()))
-	cancel()
 
 	if err := g.Wait(); err != nil {
 		logger.Error("failed to run server", zap.Error(err))

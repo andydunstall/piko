@@ -83,7 +83,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) registerRoutes() {
 	pico := s.router.Group("/pico/v1")
-	pico.GET("/upstream", s.upstream)
+	pico.GET("/listener/:endpointID", s.listener)
 	pico.GET("/health", s.health)
 
 	if s.registry != nil {
@@ -108,8 +108,10 @@ func (s *Server) proxy(c *gin.Context) {
 	c.Status(http.StatusNotImplemented)
 }
 
-// upstream handles WebSocket connections from upstream listeners.
-func (s *Server) upstream(c *gin.Context) {
+// listener handles WebSocket connections from upstream listeners.
+func (s *Server) listener(c *gin.Context) {
+	endpointID := c.Param("endpointID")
+
 	wsConn, err := s.websocketUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		// Upgrade replies to the client so nothing else to do.
@@ -117,6 +119,11 @@ func (s *Server) upstream(c *gin.Context) {
 		return
 	}
 	defer wsConn.Close()
+
+	s.logger.Debug(
+		"upstream listener connected",
+		zap.String("endpoint-id", endpointID),
+	)
 }
 
 func (s *Server) health(c *gin.Context) {

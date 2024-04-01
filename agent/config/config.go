@@ -7,8 +7,24 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 )
+
+type ServerConfig struct {
+	// URL is the server URL.
+	URL string `json:"url"`
+}
+
+func (c *ServerConfig) Validate() error {
+	if c.URL == "" {
+		return fmt.Errorf("missing url")
+	}
+	if _, err := url.Parse(c.URL); err != nil {
+		return fmt.Errorf("invalid url: %w", err)
+	}
+	return nil
+}
 
 type LogConfig struct {
 	Level string `json:"level"`
@@ -31,6 +47,8 @@ type Config struct {
 	// as 'd3934d4f/localhost:3000'.
 	Listeners []string `json:"listeners"`
 
+	Server ServerConfig `json:"server"`
+
 	Log LogConfig `json:"log"`
 }
 
@@ -44,6 +62,9 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	if err := c.Server.Validate(); err != nil {
+		return fmt.Errorf("server: %w", err)
+	}
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)
 	}
