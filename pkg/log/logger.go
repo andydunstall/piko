@@ -64,7 +64,14 @@ func NewLogger(lvl string, enabledSubsystems []string) (*Logger, error) {
 
 // WithSubsystem creates a new logger with the given subsystem.
 func (l *Logger) WithSubsystem(s string) *Logger {
-	return nil
+	if s == l.subsystem {
+		return l
+	}
+
+	clone := l.clone()
+	clone.subsystem = s
+	clone.subsystemEnabled = subsystemMatch(s, clone.enabledSubsystems)
+	return clone
 }
 
 // With creates a new logger with the given fields.

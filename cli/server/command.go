@@ -67,6 +67,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	server := server.NewServer(
 		conf.Server.Addr,
+		logger,
 	)
 
 	c := make(chan os.Signal, 1)
@@ -77,8 +78,6 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	g, ctx := errgroup.WithContext(ctx)
 	g.Go(func() error {
-		logger.Info("starting http server", zap.String("addr", conf.Server.Addr))
-
 		if err := server.Serve(); err != nil {
 			return fmt.Errorf("serve: %w", err)
 		}
