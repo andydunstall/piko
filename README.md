@@ -18,6 +18,7 @@ endpoint ID.
 ![overview](assets/images/overview.png)
 
 - [Design Goals](#design-goals)
+- [Components](#components)
 - [Getting Started](#getting-started)
 - [Docs](#docs)
 - [Limitations](#limitations)
@@ -47,52 +48,92 @@ Upstream listeners may register any endpoint ID dynamically at runtime, without
 any static configuration. When multiple listeners register with the same
 endpoint ID, Pico will load balance requests among those listeners.
 
+## Components
+### Server
+The Pico server is responsible for proxying requests from downstream clients to
+registered upstream listeners.
+
+Upstreams register one or more listeners with the server via an outbound-only
+connection. Each listener is identified by an endpoint ID.
+
+See [docs](docs/deploy/server.md).
+
+#### Routing
+Incoming HTTP requests include the endpoint ID to route to in either the `Host`
+header or an `x-pico-endpoint` header, then Pico load balances requests among
+registered listeners with that endpoint ID.
+
+When the `Host` header is used, the server must be configured with a wildcard
+DNS entry, where the bottom-level domain contains the endpoint ID. Such as if
+you host Pico at `pico.example.com`, you can then send requests to
+`<endpoint ID>.pico.example.com`.
+
+Alternatively if an `x-pico-endpoint` header is included, it takes precedence
+over the `Host` header, such as you could send a request to `pico.example.com`
+with header `x-pico-endpoint: <endpoint ID>`. This means you don't have to
+setup a wildcard DNS entry, though it does mean Pico isn't transparent to the
+client.
+
+### Agent
+The Pico agent is a CLI that runs alongside your upstream service that
+registers one or more listeners.
+
+The agent will connect to a Pico server, register the configured listeners,
+then forwards incoming requests to your upstream service.
+
+Such as if you have a service running at `localhost:3000`, you can register
+endpoint `my-endpoint` that forwards requests to that local service.
+
+Alternatively you can use an SDK where you register listeners directly in your
+application, rather than requiring an external process.
+
+See [docs](docs/deploy/agent.md).
+
+### SDK
+The Pico SDK is an alternatively to running the Pico agent, where you register
+listeners directly in your application.
+
+> :warning: The Go SDK is still in progress...
+
+See [docs](docs/deploy/sdk.md).
+
 ## Getting Started
-Pico contains a server and agent.
+This section describes how to run both the Pico server and agent locally. In
+production you'd host the server remotely though this is still useful to demo
+Pico.
 
-The Pico server is responsible for accepting connections from both upstream
-listeners and downstream clients. It then routes requests to the registered
-listener.
+Start by either downloading the `pico` binary from the releases page, or to
+build Pico directly you can clone the repo and run `make pico` (which requires
+Go 1.21 or later).
 
-Pico agent registers listeners with the Pico server then forwards requests from
-Pico to your service.
-
-Pico server should always be routable by both the upstream listeners and
-downstream clients. It should also be hosted as a cluster of nodes for fault
-tolerance. The Pico agent should be hosted alongside your service and must not
-be routable by downstream clients.
-
-### Build
-To run Pico, either download from the releases page or build locally with
-`make pico`, which will output `build/pico`. You must have Go 1.21 or later
-installed.
-
-### Running Locally
-To get started quickly you can run both the Pico server and Pico agent locally.
-
-Start a Pico server with `pico server`, which runs at `localhost:8080` by
+### Server
+Start the server with `pico server`, which will run at `localhost:8080` by
 default.
 
+See `pico server -h` for the available configuration options.
+
+### Agent
 Next start a service you would like to route requests to, such as
-`python3 -m http.server 3000` to create a simple HTTP server listening on port
-`3000`.
+`python3 -m http.server 3000` to start a simple HTTP file server listening on
+port `3000`.
 
-Finally start the Pico agent with `pico agent my-endpoint-123 localhost:3000`
-which will register a listener with the server for endpoint `my-endpoint-123`
-and forward requests to `localhost:3000`.
+Next you can start Pico agent with
+`pico agent --listener my-endpoint-123/localhost:3000` which registers a
+listener with endpoint ID `my-endpoint-123` and forwards requests to
+`localhost:3000`.
 
-You can then send requests to Pico which will be routed to the local service.
-In production you can configure Pico to use the request `Host` header to route
-requests, such as `my-endpoint-123.mypico.com`, though that requires setting up
-wildcard DNS. Alternatively you can simply use the `x-pico-endpoint` header
-whose value includes the endpoint ID, such as
-`curl http://localhost:8080 -H "x-pico-endpoint: my-endpoint-123"`.
+See `pico agent -h` for the available configuration options.
 
-See `pico server -h` and `pico agent -h` for full configuration options.
+### Send Request
+As described above, Pico routes requests using the endpoint ID in either the
+`Host` header or `x-pico-endpoint` (where `x-pico-endpoint` takes precedence).
 
-### Running In Production
-See [docs/hosting](docs/hosting) for details on running Pico in
-production.
+Since using a `Host` header requires setting up a wildcard DNS entry, the
+simplest option when running locally is to set the `x-pico-endpoint` header.
+
+Such as to send a HTTP request to your service at `localhost:3000` via endpoint
+`my-endpoint-123`, use
+`curl -H "x-pico-endpoint: my-endpoint-123" http://localhost:8080`.
 
 ## Docs
 See [docs](./docs) for details on deploying and managing Pico, plus details on
