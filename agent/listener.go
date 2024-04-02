@@ -20,6 +20,8 @@ type Listener struct {
 	endpointID  string
 	forwardAddr string
 
+	rpcServer *rpcServer
+
 	conf *config.Config
 
 	logger *log.Logger
@@ -29,6 +31,7 @@ func NewListener(endpointID string, forwardAddr string, conf *config.Config, log
 	return &Listener{
 		endpointID:  endpointID,
 		forwardAddr: forwardAddr,
+		rpcServer:   newRPCServer(),
 		conf:        conf,
 		logger:      logger.WithSubsystem("listener"),
 	}
@@ -45,8 +48,7 @@ func (l *Listener) Run(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("dial: %s, %w", l.serverURL(), err)
 	}
-	// TODO(andydunstall): Add RPC handler.
-	stream := rpc.NewStream(conn, l.logger)
+	stream := rpc.NewStream(conn, l.rpcServer.Handler(), l.logger)
 	defer stream.Close()
 
 	l.logger.Debug("connected to server", zap.String("url", l.serverURL()))

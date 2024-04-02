@@ -30,6 +30,7 @@ import (
 // routes will be proxied.
 type Server struct {
 	httpServer        *http.Server
+	rpcServer         *rpcServer
 	router            *gin.Engine
 	websocketUpgrader *websocket.Upgrader
 
@@ -67,6 +68,7 @@ func NewServer(
 			Addr:    addr,
 			Handler: router,
 		},
+		rpcServer:         newRPCServer(),
 		websocketUpgrader: &websocket.Upgrader{},
 
 		shutdownCtx:    shutdownCtx,
@@ -136,7 +138,11 @@ func (s *Server) listener(c *gin.Context) {
 		s.logger.Warn("failed to upgrade websocket", zap.Error(err))
 		return
 	}
-	stream := rpc.NewStream(conn.NewWebsocketConn(wsConn), s.logger)
+	stream := rpc.NewStream(
+		conn.NewWebsocketConn(wsConn),
+		s.rpcServer.Handler(),
+		s.logger,
+	)
 	defer stream.Close()
 
 	s.logger.Debug(

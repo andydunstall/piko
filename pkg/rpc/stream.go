@@ -31,7 +31,8 @@ type message struct {
 // Incoming RPC requests are handled in their own goroutine to avoid blocking
 // the stream.
 type Stream struct {
-	conn conn.Conn
+	conn    conn.Conn
+	handler *Handler
 
 	// nextMessageID is the ID of the next RPC message to send.
 	nextMessageID *atomic.Uint64
@@ -54,15 +55,16 @@ type Stream struct {
 
 // NewStream creates an RPC stream on top of the given message-oriented
 // connection.
-func NewStream(conn conn.Conn, logger *log.Logger) *Stream {
+func NewStream(conn conn.Conn, handler *Handler, logger *log.Logger) *Stream {
 	stream := &Stream{
-		conn:          conn,
-		nextMessageID: atomic.NewUint64(0),
-		writeCh:       make(chan *message, 64),
+		conn:             conn,
+		handler:          handler,
+		nextMessageID:    atomic.NewUint64(0),
+		writeCh:          make(chan *message, 64),
 		responseHandlers: make(map[uint64]chan<- *message),
-		shutdownCh:    make(chan struct{}),
-		shutdown:      atomic.NewBool(false),
-		logger:        logger.WithSubsystem("rpc"),
+		shutdownCh:       make(chan struct{}),
+		shutdown:         atomic.NewBool(false),
+		logger:           logger.WithSubsystem("rpc"),
 	}
 	go stream.reader()
 	go stream.writer()
@@ -140,12 +142,14 @@ func (s *Stream) reader() {
 
 		if header.Flags.Response() {
 			s.handleResponse(&message{
-				Header: &header,
+				Header:  &header,
 				Payload: payload,
 			})
 		} else {
-			s.handleRequest(&message{
-				Header: &header,
+			// Spawn a new goroutine for each request to avoid blocking
+			// the read loop.
+			go s.handleRequest(&message{
+				Header:  &header,
 				Payload: payload,
 			})
 		}
@@ -221,8 +225,52 @@ func (s *Stream) closeStream(err error) error {
 }
 
 func (s *Stream) handleRequest(m *message) {
-	m.Header.Flags.SetResponse()
-	s.writeCh <- m
+	handlerFunc, ok := s.handler.Find(m.Header.RPCType)
+	if !ok {
+		// If no handler is found, send a 'not supported' error to the client.
+		s.logger.Warn(
+			"rpc type not supported",
+			zap.String("type", m.Header.RPCType.String()),
+			zap.Uint64("message_id", m.Header.ID),
+		)
+
+		var flags flags
+		flags.SetResponse()
+		flags.SetErrNotSupported()
+		msg := &message{
+			Header: &header{
+				RPCType: m.Header.RPCType,
+				ID:      m.Header.ID,
+				Flags:   flags,
+			},
+		}
+		select {
+		case s.writeCh <- msg:
+			return
+		case <-s.shutdownCh:
+			return
+		}
+	}
+
+	resp := handlerFunc(m.Payload)
+
+	var flags flags
+	flags.SetResponse()
+	msg := &message{
+		Header: &header{
+			RPCType: m.Header.RPCType,
+			ID:      m.Header.ID,
+			Flags:   flags,
+		},
+		Payload: resp,
+	}
+
+	select {
+	case s.writeCh <- msg:
+		return
+	case <-s.shutdownCh:
+		return
+	}
 }
 
 func (s *Stream) handleResponse(m *message) {
