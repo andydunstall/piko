@@ -11,7 +11,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/pico/pkg/rpc"
+	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -30,15 +33,21 @@ type Server struct {
 	router            *gin.Engine
 	websocketUpgrader *websocket.Upgrader
 
+	shutdownCtx    context.Context
+	shutdownCancel func()
+
 	addr string
 
 	registry *prometheus.Registry
-	logger   *log.Logger
+
+	conf   *config.Config
+	logger *log.Logger
 }
 
 func NewServer(
 	addr string,
 	registry *prometheus.Registry,
+	conf *config.Config,
 	logger *log.Logger,
 ) *Server {
 	router := gin.New()
@@ -50,16 +59,23 @@ func NewServer(
 		router.Use(middleware.NewMetrics(registry))
 	}
 
+	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
+
 	s := &Server{
+		router: router,
 		httpServer: &http.Server{
 			Addr:    addr,
 			Handler: router,
 		},
 		websocketUpgrader: &websocket.Upgrader{},
-		router:            router,
-		addr:              addr,
-		registry:          registry,
-		logger:            logger.WithSubsystem("server.http"),
+
+		shutdownCtx:    shutdownCtx,
+		shutdownCancel: shutdownCancel,
+
+		addr:     addr,
+		registry: registry,
+		conf:     conf,
+		logger:   logger.WithSubsystem("server.http"),
 	}
 	s.registerRoutes()
 	return s
@@ -77,7 +93,9 @@ func (s *Server) Serve() error {
 // Shutdown attempts to gracefully shutdown the server by closing open
 // WebSockets and waiting for pending requests to complete.
 func (s *Server) Shutdown(ctx context.Context) error {
-	// TODO(andydunstall): Must handle shutting down hijacked connections.
+	// Shutdown listeners.
+	s.shutdownCancel()
+
 	return s.httpServer.Shutdown(ctx)
 }
 
@@ -118,12 +136,18 @@ func (s *Server) listener(c *gin.Context) {
 		s.logger.Warn("failed to upgrade websocket", zap.Error(err))
 		return
 	}
-	defer wsConn.Close()
+	stream := rpc.NewStream(conn.NewWebsocketConn(wsConn))
+	defer stream.Close()
 
 	s.logger.Debug(
 		"upstream listener connected",
 		zap.String("endpoint-id", endpointID),
 	)
+
+	listener := newListener(endpointID, stream, s.conf.Upstream, s.logger)
+	if err := listener.Monitor(s.shutdownCtx); err != nil {
+		s.logger.Warn("listener unexpectly disconnected", zap.Error(err))
+	}
 }
 
 func (s *Server) health(c *gin.Context) {

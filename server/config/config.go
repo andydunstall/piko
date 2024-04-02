@@ -21,6 +21,21 @@ func (c *ServerConfig) Validate() error {
 	return nil
 }
 
+type UpstreamConfig struct {
+	HeartbeatIntervalSeconds int `json:"heartbeat_interval_seconds"`
+	HeartbeatTimeoutSeconds  int `json:"heartbeat_timeout_seconds"`
+}
+
+func (c *UpstreamConfig) Validate() error {
+	if c.HeartbeatIntervalSeconds == 0 {
+		return fmt.Errorf("missing heartbeat interval")
+	}
+	if c.HeartbeatTimeoutSeconds == 0 {
+		return fmt.Errorf("missing heartbeat timeout")
+	}
+	return nil
+}
+
 type LogConfig struct {
 	Level string `json:"level"`
 	// Subsystems enables debug logging on logs the given subsystems (which
@@ -36,13 +51,17 @@ func (c *LogConfig) Validate() error {
 }
 
 type Config struct {
-	Server ServerConfig `json:"server"`
-	Log    LogConfig    `json:"log"`
+	Server   ServerConfig   `json:"server"`
+	Upstream UpstreamConfig `json:"upstream"`
+	Log      LogConfig      `json:"log"`
 }
 
 func (c *Config) Validate() error {
 	if err := c.Server.Validate(); err != nil {
 		return fmt.Errorf("server: %w", err)
+	}
+	if err := c.Upstream.Validate(); err != nil {
+		return fmt.Errorf("upstream: %w", err)
 	}
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)

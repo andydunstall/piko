@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/andydunstall/pico/agent/config"
+	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/gorilla/websocket"
+	"github.com/andydunstall/pico/pkg/rpc"
 	"go.uber.org/zap"
 )
 
@@ -39,6 +41,72 @@ func (l *Listener) Run(ctx context.Context) error {
 		zap.String("forward-addr", l.forwardAddr),
 	)
 
+	conn, err := conn.DialWebsocket(ctx, l.serverURL())
+	if err != nil {
+		return fmt.Errorf("dial: %s, %w", l.serverURL(), err)
+	}
+	// TODO(andydunstall): Add RPC handler.
+	stream := rpc.NewStream(conn)
+	defer stream.Close()
+
+	l.logger.Debug("connected to server", zap.String("url", l.serverURL()))
+
+	if err := l.monitorConnection(ctx, stream); err != nil {
+		l.logger.Warn("disconnected", zap.Error(err))
+		// TODO(andydunstall): Reconnect. Add metrics for reconnects.
+		return err
+	}
+
+	return nil
+}
+
+// monitorConnection sends periodic heartbeats to ensure the connection
+// to the server is ok.
+//
+// Returns an error if the connection is broken, or nil if ctx is cancelled.
+func (l *Listener) monitorConnection(ctx context.Context, stream *rpc.Stream) error {
+	ticker := time.NewTicker(
+		time.Duration(l.conf.Server.HeartbeatIntervalSeconds) * time.Second,
+	)
+	defer ticker.Stop()
+
+	for {
+		if err := l.heartbeat(ctx, stream); err != nil {
+			return fmt.Errorf("heartbeat: %w", err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+		}
+	}
+}
+
+func (l *Listener) heartbeat(ctx context.Context, stream *rpc.Stream) error {
+	heartbeatCtx, cancel := context.WithTimeout(
+		ctx,
+		time.Duration(l.conf.Server.HeartbeatTimeoutSeconds)*time.Second,
+	)
+	defer cancel()
+
+	ts := time.Now()
+	_, err := stream.RPC(heartbeatCtx, rpc.TypeHeartbeat, nil)
+	if err != nil {
+		// If ctx was cancelled the listener is being closed so return
+		// nil.
+		if ctx.Err() != nil {
+			return nil
+		}
+		return fmt.Errorf("rpc: %w", err)
+	}
+
+	l.logger.Debug("heartbeat ok", zap.Duration("rtt", time.Since(ts)))
+
+	return nil
+}
+
+func (l *Listener) serverURL() string {
 	// Already verified URL in Config.Validate.
 	url, _ := url.Parse(l.conf.Server.URL)
 	url.Path = "/pico/v1/listener/" + l.endpointID
@@ -49,15 +117,5 @@ func (l *Listener) Run(ctx context.Context) error {
 		url.Scheme = "wss"
 	}
 
-	wsConn, _, err := websocket.DefaultDialer.DialContext(
-		ctx, url.String(), nil,
-	)
-	if err != nil {
-		return fmt.Errorf("dial: %s, %w", url.String(), err)
-	}
-	defer wsConn.Close()
-
-	l.logger.Debug("connected to server", zap.String("url", url.String()))
-
-	return nil
+	return url.String()
 }

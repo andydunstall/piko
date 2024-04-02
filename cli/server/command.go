@@ -47,6 +47,9 @@ Examples:
 	cmd.Flags().StringVar(&conf.Server.Addr, "server.addr", ":8080", "server listen address")
 	cmd.Flags().IntVar(&conf.Server.GracePeriodSeconds, "server.grace-period-seconds", 30, "terminate graceful shutdown period in seconds")
 
+	cmd.Flags().IntVar(&conf.Upstream.HeartbeatIntervalSeconds, "upstream.heartbeat-interval-seconds", 10, "Heartbeat interval in seconds")
+	cmd.Flags().IntVar(&conf.Upstream.HeartbeatTimeoutSeconds, "upstream.heartbeat-timeout-seconds", 10, "Heartbeat timeout in seconds")
+
 	cmd.Flags().StringVar(&conf.Log.Level, "log.level", "info", "log level")
 	cmd.Flags().StringSliceVar(&conf.Log.Subsystems, "log.subsystems", nil, "enable debug logs for logs the the given subsystems")
 
@@ -75,6 +78,7 @@ func run(conf *config.Config, logger *log.Logger) {
 	server := server.NewServer(
 		conf.Server.Addr,
 		registry,
+		conf,
 		logger,
 	)
 

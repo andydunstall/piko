@@ -13,7 +13,9 @@ import (
 
 type ServerConfig struct {
 	// URL is the server URL.
-	URL string `json:"url"`
+	URL                      string `json:"url"`
+	HeartbeatIntervalSeconds int    `json:"heartbeat_interval_seconds"`
+	HeartbeatTimeoutSeconds  int    `json:"heartbeat_timeout_seconds"`
 }
 
 func (c *ServerConfig) Validate() error {
@@ -22,6 +24,12 @@ func (c *ServerConfig) Validate() error {
 	}
 	if _, err := url.Parse(c.URL); err != nil {
 		return fmt.Errorf("invalid url: %w", err)
+	}
+	if c.HeartbeatIntervalSeconds == 0 {
+		return fmt.Errorf("missing heartbeat interval")
+	}
+	if c.HeartbeatTimeoutSeconds == 0 {
+		return fmt.Errorf("missing heartbeat timeout")
 	}
 	return nil
 }
