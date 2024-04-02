@@ -24,7 +24,7 @@ func newListener(endpointID string, stream *rpc.Stream, conf config.UpstreamConf
 		endpointID: endpointID,
 		stream:     stream,
 		conf:       conf,
-		logger:     logger,
+		logger:     logger.WithSubsystem("listener"),
 	}
 }
 

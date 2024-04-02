@@ -136,7 +136,7 @@ func (s *Server) listener(c *gin.Context) {
 		s.logger.Warn("failed to upgrade websocket", zap.Error(err))
 		return
 	}
-	stream := rpc.NewStream(conn.NewWebsocketConn(wsConn))
+	stream := rpc.NewStream(conn.NewWebsocketConn(wsConn), s.logger)
 	defer stream.Close()
 
 	s.logger.Debug(

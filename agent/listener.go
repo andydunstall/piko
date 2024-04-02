@@ -46,7 +46,7 @@ func (l *Listener) Run(ctx context.Context) error {
 		return fmt.Errorf("dial: %s, %w", l.serverURL(), err)
 	}
 	// TODO(andydunstall): Add RPC handler.
-	stream := rpc.NewStream(conn)
+	stream := rpc.NewStream(conn, l.logger)
 	defer stream.Close()
 
 	l.logger.Debug("connected to server", zap.String("url", l.serverURL()))
