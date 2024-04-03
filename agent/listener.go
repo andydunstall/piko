@@ -2,7 +2,9 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"net/url"
 	"time"
 
@@ -11,6 +13,11 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
 	"go.uber.org/zap"
+)
+
+var (
+	ErrUpstreamTimeout     = errors.New("upstream timeout")
+	ErrUpstreamUnreachable = errors.New("upstream unreachable")
 )
 
 // Listener is responsible for registering a listener with Pico for the given
@@ -28,13 +35,14 @@ type Listener struct {
 }
 
 func NewListener(endpointID string, forwardAddr string, conf *config.Config, logger *log.Logger) *Listener {
-	return &Listener{
+	l := &Listener{
 		endpointID:  endpointID,
 		forwardAddr: forwardAddr,
-		rpcServer:   newRPCServer(),
 		conf:        conf,
 		logger:      logger.WithSubsystem("listener"),
 	}
+	l.rpcServer = newRPCServer(l, logger)
+	return l
 }
 
 func (l *Listener) Run(ctx context.Context) error {
@@ -60,6 +68,10 @@ func (l *Listener) Run(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+func (l *Listener) ProxyHTTP(r *http.Request) (*http.Response, error) {
+	return nil, nil
 }
 
 // monitorConnection sends periodic heartbeats to ensure the connection

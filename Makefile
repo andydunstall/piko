@@ -14,3 +14,7 @@ fmt:
 lint:
 	go vet ./...
 	golangci-lint run
+
+.PHONY: generate
+generate:
+	protoc --go_out=. --go_opt=paths=source_relative api/rpc.proto
