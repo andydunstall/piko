@@ -7,9 +7,12 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
@@ -31,6 +34,7 @@ import (
 type Server struct {
 	httpServer        *http.Server
 	rpcServer         *rpcServer
+	proxy             *proxy
 	router            *gin.Engine
 	websocketUpgrader *websocket.Upgrader
 
@@ -69,6 +73,7 @@ func NewServer(
 			Handler: router,
 		},
 		rpcServer:         newRPCServer(),
+		proxy:             newProxy(logger),
 		websocketUpgrader: &websocket.Upgrader{},
 
 		shutdownCtx:    shutdownCtx,
@@ -120,12 +125,50 @@ func (s *Server) notFound(c *gin.Context) {
 		c.Status(http.StatusNotFound)
 		return
 	}
-	s.proxy(c)
+	s.proxyRequest(c)
 }
 
 // proxy handles proxied requests from downstream clients.
-func (s *Server) proxy(c *gin.Context) {
-	c.Status(http.StatusNotImplemented)
+func (s *Server) proxyRequest(c *gin.Context) {
+	// TODO(andydunstall): Add configurable gateway timeout.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+
+	resp, err := s.proxy.Request(ctx, c.Request)
+	if err != nil {
+		s.logger.Warn(
+			"failed to proxy request",
+			zap.String("path", c.Request.URL.Path),
+			zap.Error(err),
+		)
+
+		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, errUpstreamTimeout) {
+			c.String(http.StatusGatewayTimeout, "gateway timeout")
+			return
+		}
+
+		if errors.Is(err, errUpstreamUnreachable) {
+			c.String(http.StatusServiceUnavailable, "upstream unreachable")
+			return
+		}
+
+		if errors.Is(err, errNoHealthyUpstream) {
+			c.String(http.StatusServiceUnavailable, "no healthy upstream")
+			return
+		}
+
+		http.Error(c.Writer, "server error", http.StatusInternalServerError)
+		return
+	}
+
+	// Write the response status, headers and body.
+	for k, v := range resp.Header {
+		c.Writer.Header()[k] = v
+	}
+	c.Writer.WriteHeader(resp.StatusCode)
+	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+		s.logger.Warn("failed to write response", zap.Error(err))
+	}
 }
 
 // listener handles WebSocket connections from upstream listeners.
@@ -149,6 +192,9 @@ func (s *Server) listener(c *gin.Context) {
 		"upstream listener connected",
 		zap.String("endpoint-id", endpointID),
 	)
+
+	s.proxy.AddUpstream(endpointID, stream)
+	defer s.proxy.RemoveUpstream(endpointID, stream)
 
 	listener := newListener(endpointID, stream, s.conf.Upstream, s.logger)
 	if err := listener.Monitor(s.shutdownCtx); err != nil {

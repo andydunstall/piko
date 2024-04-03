@@ -52,7 +52,6 @@ func (f *forwarder) Forward(req *http.Request) (*http.Response, error) {
 			zap.String("method", req.Method),
 			zap.String("host", req.URL.Host),
 			zap.String("path", req.URL.Path),
-			zap.Int("status", resp.StatusCode),
 			zap.Error(err),
 		)
 
