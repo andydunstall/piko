@@ -59,6 +59,8 @@ Examples:
 	cmd.Flags().IntVar(&conf.Server.HeartbeatIntervalSeconds, "server.heartbeat-interval-seconds", 10, "Heartbeat interval in seconds")
 	cmd.Flags().IntVar(&conf.Server.HeartbeatTimeoutSeconds, "server.heartbeat-timeout-seconds", 10, "Heartbeat timeout in seconds")
 
+	cmd.Flags().IntVar(&conf.Forwarder.TimeoutSeconds, "forwarder.timeout", 10, "Forwarder timeout in seconds")
+
 	cmd.Flags().StringVar(&conf.Log.Level, "log.level", "info", "log level")
 	cmd.Flags().StringSliceVar(&conf.Log.Subsystems, "log.subsystems", nil, "enable debug logs for logs the the given subsystems")
 

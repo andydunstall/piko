@@ -2,7 +2,6 @@ package agent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -15,17 +14,14 @@ import (
 	"go.uber.org/zap"
 )
 
-var (
-	ErrUpstreamTimeout     = errors.New("upstream timeout")
-	ErrUpstreamUnreachable = errors.New("upstream unreachable")
-)
-
 // Listener is responsible for registering a listener with Pico for the given
 // endpoint ID, then forwarding incoming requests to the given forward
 // address.
 type Listener struct {
 	endpointID  string
 	forwardAddr string
+
+	forwarder *forwarder
 
 	rpcServer *rpcServer
 
@@ -38,8 +34,13 @@ func NewListener(endpointID string, forwardAddr string, conf *config.Config, log
 	l := &Listener{
 		endpointID:  endpointID,
 		forwardAddr: forwardAddr,
-		conf:        conf,
-		logger:      logger.WithSubsystem("listener"),
+		forwarder: newForwarder(
+			forwardAddr,
+			time.Duration(conf.Forwarder.TimeoutSeconds)*time.Second,
+			logger,
+		),
+		conf:   conf,
+		logger: logger.WithSubsystem("listener"),
 	}
 	l.rpcServer = newRPCServer(l, logger)
 	return l
@@ -71,7 +72,7 @@ func (l *Listener) Run(ctx context.Context) error {
 }
 
 func (l *Listener) ProxyHTTP(r *http.Request) (*http.Response, error) {
-	return nil, nil
+	return l.forwarder.Forward(r)
 }
 
 // monitorConnection sends periodic heartbeats to ensure the connection

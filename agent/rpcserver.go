@@ -67,14 +67,14 @@ func (s *rpcServer) ProxyHTTP(b []byte) []byte {
 
 	httpResp, err := s.listener.ProxyHTTP(httpReq)
 	if err != nil {
-		if errors.Is(err, ErrUpstreamTimeout) {
+		if errors.Is(err, errUpstreamTimeout) {
 			s.logger.Error("proxy http rpc; upstream timeout", zap.Error(err))
 
 			return s.proxyHTTPError(
 				api.ProxyHttpStatus_UPSTREAM_TIMEOUT,
 				"upstream timeout",
 			)
-		} else if errors.Is(err, ErrUpstreamUnreachable) {
+		} else if errors.Is(err, errUpstreamUnreachable) {
 			s.logger.Error("proxy http rpc; upstream unreachable", zap.Error(err))
 
 			return s.proxyHTTPError(

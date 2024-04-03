@@ -34,6 +34,12 @@ func (c *ServerConfig) Validate() error {
 	return nil
 }
 
+// ForwarderConfig contains the configuration for how to forward requests
+// from Pico.
+type ForwarderConfig struct {
+	TimeoutSeconds int `json:"timeout_seconds"`
+}
+
 type LogConfig struct {
 	Level string `json:"level"`
 	// Subsystems enables debug logging on logs the given subsystems (which
@@ -56,6 +62,8 @@ type Config struct {
 	Listeners []string `json:"listeners"`
 
 	Server ServerConfig `json:"server"`
+
+	Forwarder ForwarderConfig `json:"forwarder"`
 
 	Log LogConfig `json:"log"`
 }
