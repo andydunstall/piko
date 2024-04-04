@@ -17,6 +17,7 @@ import (
 	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
+	"github.com/andydunstall/pico/pkg/status"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -136,28 +137,12 @@ func (s *Server) proxyRequest(c *gin.Context) {
 
 	resp, err := s.proxy.Request(ctx, c.Request)
 	if err != nil {
-		s.logger.Warn(
-			"failed to proxy request",
-			zap.String("path", c.Request.URL.Path),
-			zap.Error(err),
-		)
-
-		if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, errUpstreamTimeout) {
-			c.String(http.StatusGatewayTimeout, "gateway timeout")
+		var errorInfo *status.ErrorInfo
+		if errors.As(err, &errorInfo) {
+			c.JSON(errorInfo.StatusCode, gin.H{"error": errorInfo.Message})
 			return
 		}
-
-		if errors.Is(err, errUpstreamUnreachable) {
-			c.String(http.StatusServiceUnavailable, "upstream unreachable")
-			return
-		}
-
-		if errors.Is(err, errNoHealthyUpstream) {
-			c.String(http.StatusServiceUnavailable, "no healthy upstream")
-			return
-		}
-
-		http.Error(c.Writer, "server error", http.StatusInternalServerError)
+		c.Status(http.StatusInternalServerError)
 		return
 	}
 
@@ -191,12 +176,15 @@ func (s *Server) listener(c *gin.Context) {
 	s.logger.Debug(
 		"upstream listener connected",
 		zap.String("endpoint-id", endpointID),
+		zap.String("client-ip", c.ClientIP()),
 	)
 
 	s.proxy.AddUpstream(endpointID, stream)
 	defer s.proxy.RemoveUpstream(endpointID, stream)
 
 	listener := newListener(endpointID, stream, s.conf.Upstream, s.logger)
+	// TODO(andydunstall): Speed up how quickly this detects listeners that
+	// disconnected gracefully.
 	if err := listener.Monitor(s.shutdownCtx); err != nil {
 		s.logger.Warn("listener unexpectly disconnected", zap.Error(err))
 	}
