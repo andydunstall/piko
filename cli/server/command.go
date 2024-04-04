@@ -47,6 +47,8 @@ Examples:
 	cmd.Flags().StringVar(&conf.Server.Addr, "server.addr", ":8080", "server listen address")
 	cmd.Flags().IntVar(&conf.Server.GracePeriodSeconds, "server.grace-period-seconds", 30, "terminate graceful shutdown period in seconds")
 
+	cmd.Flags().IntVar(&conf.Proxy.TimeoutSeconds, "proxy.timeout-seconds", 30, "timeout for sending proxied requests to upstream listeners")
+
 	cmd.Flags().IntVar(&conf.Upstream.HeartbeatIntervalSeconds, "upstream.heartbeat-interval-seconds", 10, "Heartbeat interval in seconds")
 	cmd.Flags().IntVar(&conf.Upstream.HeartbeatTimeoutSeconds, "upstream.heartbeat-timeout-seconds", 10, "Heartbeat timeout in seconds")
 

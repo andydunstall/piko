@@ -21,6 +21,17 @@ func (c *ServerConfig) Validate() error {
 	return nil
 }
 
+type ProxyConfig struct {
+	TimeoutSeconds int `json:"timeout_seconds"`
+}
+
+func (c *ProxyConfig) Validate() error {
+	if c.TimeoutSeconds == 0 {
+		return fmt.Errorf("missing timeout seconds")
+	}
+	return nil
+}
+
 type UpstreamConfig struct {
 	HeartbeatIntervalSeconds int `json:"heartbeat_interval_seconds"`
 	HeartbeatTimeoutSeconds  int `json:"heartbeat_timeout_seconds"`
@@ -52,6 +63,7 @@ func (c *LogConfig) Validate() error {
 
 type Config struct {
 	Server   ServerConfig   `json:"server"`
+	Proxy    ProxyConfig    `json:"proxy"`
 	Upstream UpstreamConfig `json:"upstream"`
 	Log      LogConfig      `json:"log"`
 }
@@ -59,6 +71,9 @@ type Config struct {
 func (c *Config) Validate() error {
 	if err := c.Server.Validate(); err != nil {
 		return fmt.Errorf("server: %w", err)
+	}
+	if err := c.Proxy.Validate(); err != nil {
+		return fmt.Errorf("proxy: %w", err)
 	}
 	if err := c.Upstream.Validate(); err != nil {
 		return fmt.Errorf("upstream: %w", err)

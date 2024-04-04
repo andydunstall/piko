@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -151,6 +152,13 @@ func (p *Proxy) request(ctx context.Context, endpointID string, r *http.Request)
 	}
 	b, err := stream.RPC(ctx, rpc.TypeProxyHTTP, payload)
 	if err != nil {
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, &status.ErrorInfo{
+				StatusCode: http.StatusGatewayTimeout,
+				Message:    "upstream timeout",
+			}
+		}
+
 		return nil, &status.ErrorInfo{
 			StatusCode: http.StatusServiceUnavailable,
 			Message:    "upstream unreachable",

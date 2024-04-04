@@ -132,8 +132,10 @@ func (s *Server) notFound(c *gin.Context) {
 
 // proxy handles proxied requests from downstream clients.
 func (s *Server) proxyRequest(c *gin.Context) {
-	// TODO(andydunstall): Add configurable gateway timeout.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		time.Duration(s.conf.Proxy.TimeoutSeconds)*time.Second,
+	)
 	defer cancel()
 
 	resp, err := s.proxy.Request(ctx, c.Request)
