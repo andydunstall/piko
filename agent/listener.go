@@ -53,22 +53,23 @@ func (l *Listener) Run(ctx context.Context) error {
 		zap.String("forward-addr", l.forwardAddr),
 	)
 
-	conn, err := conn.DialWebsocket(ctx, l.serverURL())
-	if err != nil {
-		return fmt.Errorf("dial: %s, %w", l.serverURL(), err)
+	for {
+		stream, err := l.connect(ctx)
+		if err != nil {
+			return fmt.Errorf("connect: %w", err)
+		}
+		defer stream.Close()
+
+		l.logger.Debug("connected to server", zap.String("url", l.serverURL()))
+
+		if err := l.monitorConnection(ctx, stream); err != nil {
+			l.logger.Warn("disconnected", zap.Error(err))
+			// Reconnect.
+			continue
+		}
+		// If monitorConnection returned nil it means the listener is shutdown.
+		return nil
 	}
-	stream := rpc.NewStream(conn, l.rpcServer.Handler(), l.logger)
-	defer stream.Close()
-
-	l.logger.Debug("connected to server", zap.String("url", l.serverURL()))
-
-	if err := l.monitorConnection(ctx, stream); err != nil {
-		l.logger.Warn("disconnected", zap.Error(err))
-		// TODO(andydunstall): Reconnect. Add metrics for reconnects.
-		return err
-	}
-
-	return nil
 }
 
 func (l *Listener) ProxyHTTP(r *http.Request) (*http.Response, error) {
@@ -85,6 +86,7 @@ func (l *Listener) monitorConnection(ctx context.Context, stream *rpc.Stream) er
 	)
 	defer ticker.Stop()
 
+	// TODO(andydunstall): Detect disconnect sooner. Add stream.Monitor?
 	for {
 		if err := l.heartbeat(ctx, stream); err != nil {
 			return fmt.Errorf("heartbeat: %w", err)
@@ -119,6 +121,33 @@ func (l *Listener) heartbeat(ctx context.Context, stream *rpc.Stream) error {
 	l.logger.Debug("heartbeat ok", zap.Duration("rtt", time.Since(ts)))
 
 	return nil
+}
+
+func (l *Listener) connect(ctx context.Context) (*rpc.Stream, error) {
+	backoff := time.Second
+	for {
+		conn, err := conn.DialWebsocket(ctx, l.serverURL())
+		if err == nil {
+			return rpc.NewStream(conn, l.rpcServer.Handler(), l.logger), nil
+		}
+
+		l.logger.Warn(
+			"failed to connect to server; retrying",
+			zap.Duration("backoff", backoff),
+			zap.Error(err),
+		)
+
+		select {
+		case <-time.After(backoff):
+			backoff *= 2
+			if backoff > time.Second*30 {
+				backoff = time.Second * 30
+			}
+			continue
+		case <-ctx.Done():
+			return nil, err
+		}
+	}
 }
 
 func (l *Listener) serverURL() string {
