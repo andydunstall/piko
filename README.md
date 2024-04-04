@@ -56,8 +56,6 @@ registered upstream listeners.
 Upstreams register one or more listeners with the server via an outbound-only
 connection. Each listener is identified by an endpoint ID.
 
-See [docs](docs/deploy/server.md).
-
 #### Routing
 Incoming HTTP requests include the endpoint ID to route to in either the `Host`
 header or an `x-pico-endpoint` header, then Pico load balances requests among
@@ -86,16 +84,6 @@ endpoint `my-endpoint` that forwards requests to that local service.
 
 Alternatively you can use an SDK where you register listeners directly in your
 application, rather than requiring an external process.
-
-See [docs](docs/deploy/agent.md).
-
-### SDK
-The Pico SDK is an alternatively to running the Pico agent, where you register
-listeners directly in your application.
-
-> :warning: The Go SDK is still in progress...
-
-See [docs](docs/deploy/sdk.md).
 
 ## Getting Started
 This section describes how to run both the Pico server and agent locally. In
