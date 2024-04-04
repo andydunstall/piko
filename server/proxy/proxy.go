@@ -50,7 +50,7 @@ func (p *Proxy) Request(ctx context.Context, r *http.Request) (*http.Response, e
 			zap.String("path", r.URL.Path),
 			zap.String("method", r.Method),
 		)
-		p.metrics.ProxyErrorsTotal.Inc()
+		p.metrics.ErrorsTotal.Inc()
 		return nil, &status.ErrorInfo{
 			StatusCode: http.StatusServiceUnavailable,
 			Message:    "missing endpoint id",
@@ -67,7 +67,7 @@ func (p *Proxy) Request(ctx context.Context, r *http.Request) (*http.Response, e
 			zap.String("method", r.Method),
 			zap.Error(err),
 		)
-		p.metrics.ProxyErrorsTotal.Inc()
+		p.metrics.ErrorsTotal.Inc()
 		return nil, err
 	}
 
@@ -80,10 +80,10 @@ func (p *Proxy) Request(ctx context.Context, r *http.Request) (*http.Response, e
 		zap.Duration("latency", time.Since(start)),
 	)
 
-	p.metrics.ProxyRequestsTotal.With(prometheus.Labels{
+	p.metrics.RequestsTotal.With(prometheus.Labels{
 		"status": strconv.Itoa(resp.StatusCode),
 	}).Inc()
-	p.metrics.ProxyRequestLatency.With(prometheus.Labels{
+	p.metrics.RequestLatency.With(prometheus.Labels{
 		"status": strconv.Itoa(resp.StatusCode),
 	}).Observe(float64(time.Since(start).Milliseconds()) / 1000)
 
@@ -106,6 +106,8 @@ func (p *Proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
 		"added upstream",
 		zap.String("endpoint-id", endpointID),
 	)
+
+	p.metrics.Listeners.Inc()
 }
 
 func (p *Proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
@@ -122,6 +124,8 @@ func (p *Proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
 		"removed upstream",
 		zap.String("endpoint-id", endpointID),
 	)
+
+	p.metrics.Listeners.Dec()
 }
 
 func (p *Proxy) request(ctx context.Context, endpointID string, r *http.Request) (*http.Response, error) {

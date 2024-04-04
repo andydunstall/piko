@@ -43,5 +43,6 @@ Both the Pico server and agent expose Prometheus metrics at /pico/v1/metrics.
 | proxy_requests_total               | Counter   | status        | Proxied requests total                             |
 | proxy_request_latency_seconds      | Histogram | status        | Proxied request latency histogram                  |
 | proxy_errors_total                 | Counter   |               | Errors forwarding proxied requests                 |
+| proxy_listeners                    | Gauge     |               | Number of registered upstream listeners            |
 | http_requests_total                | Counter   | status        | HTTP requests total                                |
 | http_request_latency_seconds       | Histogram | status        | HTTP request latency histogram                     |

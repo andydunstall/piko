@@ -3,23 +3,26 @@ package proxy
 import "github.com/prometheus/client_golang/prometheus"
 
 type metrics struct {
-	// ProxyRequestsTotal is the number proxied HTTP request. Labelled by
+	// RequestsTotal is the number proxied HTTP request. Labelled by
 	// status code.
 	//
 	// Only contains requests that are successfully proxied.
-	ProxyRequestsTotal *prometheus.CounterVec
+	RequestsTotal *prometheus.CounterVec
 
-	// ProxyRequestLatency is a histogram of the proxied HTTP requests.
-	ProxyRequestLatency *prometheus.HistogramVec
+	// RequestLatency is a histogram of the proxied HTTP requests.
+	RequestLatency *prometheus.HistogramVec
 
-	// ProxyErrorsTotal is the number of errors sending requests to upstream
+	// ErrorsTotal is the number of errors sending requests to upstream
 	// listeners.
-	ProxyErrorsTotal prometheus.Counter
+	ErrorsTotal prometheus.Counter
+
+	// Listeners is the number of registered upstream listeners.
+	Listeners prometheus.Gauge
 }
 
 func newMetrics() *metrics {
 	return &metrics{
-		ProxyRequestsTotal: prometheus.NewCounterVec(
+		RequestsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
 				Subsystem: "proxy",
 				Name:      "requests_total",
@@ -27,7 +30,7 @@ func newMetrics() *metrics {
 			},
 			[]string{"status"},
 		),
-		ProxyRequestLatency: prometheus.NewHistogramVec(
+		RequestLatency: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
 				Subsystem: "proxy",
 				Name:      "request_latency_seconds",
@@ -36,11 +39,18 @@ func newMetrics() *metrics {
 			},
 			[]string{"status"},
 		),
-		ProxyErrorsTotal: prometheus.NewCounter(
+		ErrorsTotal: prometheus.NewCounter(
 			prometheus.CounterOpts{
 				Subsystem: "proxy",
 				Name:      "errors_total",
 				Help:      "Proxy errors.",
+			},
+		),
+		Listeners: prometheus.NewGauge(
+			prometheus.GaugeOpts{
+				Subsystem: "proxy",
+				Name:      "listeners",
+				Help:      "Number of upstream listeners.",
 			},
 		),
 	}
@@ -48,8 +58,9 @@ func newMetrics() *metrics {
 
 func (m *metrics) Register(registry *prometheus.Registry) {
 	registry.MustRegister(
-		m.ProxyRequestsTotal,
-		m.ProxyRequestLatency,
-		m.ProxyErrorsTotal,
+		m.RequestsTotal,
+		m.RequestLatency,
+		m.ErrorsTotal,
+		m.Listeners,
 	)
 }
