@@ -62,65 +62,24 @@ func (l *Listener) Run(ctx context.Context) error {
 
 		l.logger.Debug("connected to server", zap.String("url", l.serverURL()))
 
-		if err := l.monitorConnection(ctx, stream); err != nil {
-			l.logger.Warn("disconnected", zap.Error(err))
+		if err := stream.Monitor(
+			ctx,
+			time.Duration(l.conf.Server.HeartbeatIntervalSeconds)*time.Second,
+			time.Duration(l.conf.Server.HeartbeatTimeoutSeconds)*time.Second,
+		); err != nil {
+			if ctx.Err() != nil {
+				// Shutdown.
+				return ctx.Err()
+			}
+
 			// Reconnect.
-			continue
+			l.logger.Warn("disconnected", zap.Error(err))
 		}
-		// If monitorConnection returned nil it means the listener is shutdown.
-		return nil
 	}
 }
 
 func (l *Listener) ProxyHTTP(r *http.Request) (*http.Response, error) {
 	return l.forwarder.Forward(r)
-}
-
-// monitorConnection sends periodic heartbeats to ensure the connection
-// to the server is ok.
-//
-// Returns an error if the connection is broken, or nil if ctx is cancelled.
-func (l *Listener) monitorConnection(ctx context.Context, stream *rpc.Stream) error {
-	ticker := time.NewTicker(
-		time.Duration(l.conf.Server.HeartbeatIntervalSeconds) * time.Second,
-	)
-	defer ticker.Stop()
-
-	// TODO(andydunstall): Detect disconnect sooner. Add stream.Monitor?
-	for {
-		if err := l.heartbeat(ctx, stream); err != nil {
-			return fmt.Errorf("heartbeat: %w", err)
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-		}
-	}
-}
-
-func (l *Listener) heartbeat(ctx context.Context, stream *rpc.Stream) error {
-	heartbeatCtx, cancel := context.WithTimeout(
-		ctx,
-		time.Duration(l.conf.Server.HeartbeatTimeoutSeconds)*time.Second,
-	)
-	defer cancel()
-
-	ts := time.Now()
-	_, err := stream.RPC(heartbeatCtx, rpc.TypeHeartbeat, nil)
-	if err != nil {
-		// If ctx was cancelled the listener is being closed so return
-		// nil.
-		if ctx.Err() != nil {
-			return nil
-		}
-		return fmt.Errorf("rpc: %w", err)
-	}
-
-	l.logger.Debug("heartbeat ok", zap.Duration("rtt", time.Since(ts)))
-
-	return nil
 }
 
 func (l *Listener) connect(ctx context.Context) (*rpc.Stream, error) {

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
@@ -108,6 +109,31 @@ func (s *Stream) RPC(ctx context.Context, rpcType Type, req []byte) ([]byte, err
 		return nil, s.shutdownErr
 	case <-ctx.Done():
 		return nil, ctx.Err()
+	}
+}
+
+// Monitor monitors the stream is healthy using heartbeats.
+func (s *Stream) Monitor(
+	ctx context.Context,
+	interval time.Duration,
+	timeout time.Duration,
+) error {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for {
+		if err := s.heartbeat(ctx, timeout); err != nil {
+			return fmt.Errorf("heartbeat: %w", err)
+
+		}
+
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-s.shutdownCh:
+			return s.shutdownErr
+		case <-ticker.C:
+		}
 	}
 }
 
@@ -310,4 +336,19 @@ func (s *Stream) findResponseHandler(id uint64) (chan<- *message, bool) {
 
 	ch, ok := s.responseHandlers[id]
 	return ch, ok
+}
+
+func (s *Stream) heartbeat(ctx context.Context, timeout time.Duration) error {
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+
+	ts := time.Now()
+	_, err := s.RPC(ctx, TypeHeartbeat, nil)
+	if err != nil {
+		return fmt.Errorf("rpc: %w", err)
+	}
+
+	s.logger.Debug("heartbeat ok", zap.Duration("rtt", time.Since(ts)))
+
+	return nil
 }

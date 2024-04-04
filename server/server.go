@@ -185,11 +185,12 @@ func (s *Server) listener(c *gin.Context) {
 	s.proxy.AddUpstream(endpointID, stream)
 	defer s.proxy.RemoveUpstream(endpointID, stream)
 
-	listener := newListener(endpointID, stream, s.conf.Upstream, s.logger)
-	// TODO(andydunstall): Speed up how quickly this detects listeners that
-	// disconnected gracefully.
-	if err := listener.Monitor(s.shutdownCtx); err != nil {
-		s.logger.Warn("listener unexpectly disconnected", zap.Error(err))
+	if err := stream.Monitor(
+		s.shutdownCtx,
+		time.Duration(s.conf.Upstream.HeartbeatIntervalSeconds)*time.Second,
+		time.Duration(s.conf.Upstream.HeartbeatTimeoutSeconds)*time.Second,
+	); err != nil {
+		s.logger.Debug("listener disconnected", zap.Error(err))
 	}
 }
 
