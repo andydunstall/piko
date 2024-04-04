@@ -1,4 +1,4 @@
-package server
+package proxy
 
 import (
 	"bufio"
@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -13,60 +14,34 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
 	"github.com/andydunstall/pico/pkg/status"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
-type endpoint struct {
-	streams   []*rpc.Stream
-	nextIndex int
-}
-
-func (e *endpoint) AddUpstream(s *rpc.Stream) {
-	e.streams = append(e.streams, s)
-}
-
-func (e *endpoint) RemoveUpstream(s *rpc.Stream) bool {
-	for i := 0; i != len(e.streams); i++ {
-		if e.streams[i] == s {
-			e.streams = append(e.streams[:i], e.streams[i+1:]...)
-			if len(e.streams) == 0 {
-				return true
-			}
-			e.nextIndex %= len(e.streams)
-			return false
-		}
-	}
-	return len(e.streams) == 0
-}
-
-func (e *endpoint) Next() *rpc.Stream {
-	if len(e.streams) == 0 {
-		return nil
-	}
-
-	s := e.streams[e.nextIndex]
-	e.nextIndex++
-	e.nextIndex %= len(e.streams)
-	return s
-}
-
-type proxy struct {
+// Proxy is responsible for forwarding requests to upstream listeners.
+type Proxy struct {
 	endpoints map[string]*endpoint
 
 	mu sync.Mutex
 
-	logger *log.Logger
+	metrics *metrics
+	logger  *log.Logger
 }
 
-func newProxy(logger *log.Logger) *proxy {
-	return &proxy{
+func NewProxy(registry *prometheus.Registry, logger *log.Logger) *Proxy {
+	metrics := newMetrics()
+	if registry != nil {
+		metrics.Register(registry)
+	}
+	return &Proxy{
 		endpoints: make(map[string]*endpoint),
+		metrics:   metrics,
 		logger:    logger.WithSubsystem("proxy"),
 	}
 }
 
-func (p *proxy) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
+func (p *Proxy) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
 	endpointID := r.Header.Get("x-pico-endpoint")
 	if endpointID == "" {
 		p.logger.Warn(
@@ -74,6 +49,7 @@ func (p *proxy) Request(ctx context.Context, r *http.Request) (*http.Response, e
 			zap.String("path", r.URL.Path),
 			zap.String("method", r.Method),
 		)
+		p.metrics.ProxyErrorsTotal.Inc()
 		return nil, &status.ErrorInfo{
 			StatusCode: http.StatusServiceUnavailable,
 			Message:    "missing endpoint id",
@@ -90,6 +66,7 @@ func (p *proxy) Request(ctx context.Context, r *http.Request) (*http.Response, e
 			zap.String("method", r.Method),
 			zap.Error(err),
 		)
+		p.metrics.ProxyErrorsTotal.Inc()
 		return nil, err
 	}
 
@@ -101,10 +78,18 @@ func (p *proxy) Request(ctx context.Context, r *http.Request) (*http.Response, e
 		zap.Int("status", resp.StatusCode),
 		zap.Duration("latency", time.Since(start)),
 	)
+
+	p.metrics.ProxyRequestsTotal.With(prometheus.Labels{
+		"status": strconv.Itoa(resp.StatusCode),
+	}).Inc()
+	p.metrics.ProxyRequestLatency.With(prometheus.Labels{
+		"status": strconv.Itoa(resp.StatusCode),
+	}).Observe(float64(time.Since(start).Milliseconds()) / 1000)
+
 	return resp, nil
 }
 
-func (p *proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
+func (p *Proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -122,7 +107,7 @@ func (p *proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
 	)
 }
 
-func (p *proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
+func (p *Proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -138,7 +123,7 @@ func (p *proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
 	)
 }
 
-func (p *proxy) request(ctx context.Context, endpointID string, r *http.Request) (*http.Response, error) {
+func (p *Proxy) request(ctx context.Context, endpointID string, r *http.Request) (*http.Response, error) {
 	p.mu.Lock()
 	endpoint, ok := p.endpoints[endpointID]
 	if !ok {

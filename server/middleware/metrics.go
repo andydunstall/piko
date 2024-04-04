@@ -7,7 +7,6 @@ package middleware
 
 import (
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -15,46 +14,25 @@ import (
 )
 
 // NewMetrics creates metrics middleware.
-//
-// Metrics are split into 'pico' and 'proxy' to distinguish between internal
-// management requests and proxied requests.
 func NewMetrics(registry *prometheus.Registry) gin.HandlerFunc {
-	var picoRequests = prometheus.NewCounterVec(
+	var requests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "pico_http_requests_total",
-			Help: "Pico HTTP requests.",
+			Name: "http_requests_total",
+			Help: "HTTP requests.",
 		},
 		[]string{"status"},
 	)
-	var picoRequestLatency = prometheus.NewHistogramVec(
+	var requestLatency = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "pico_http_request_latency_seconds",
-			Help:    "Pico HTTP request latency.",
+			Name:    "http_request_latency_seconds",
+			Help:    "HTTP request latency.",
 			Buckets: prometheus.ExponentialBuckets(0.01, 2, 10),
 		},
 		[]string{"status"},
 	)
 
-	var proxyRequests = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "proxy_http_requests_total",
-			Help: "Proxy HTTP requests.",
-		},
-		[]string{"status"},
-	)
-	var proxyRequestLatency = prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "proxy_http_request_latency_seconds",
-			Help:    "Proxy HTTP request latency.",
-			Buckets: prometheus.ExponentialBuckets(0.01, 2, 10),
-		},
-		[]string{"status"},
-	)
-
-	registry.MustRegister(picoRequests)
-	registry.MustRegister(picoRequestLatency)
-	registry.MustRegister(proxyRequests)
-	registry.MustRegister(proxyRequestLatency)
+	registry.MustRegister(requests)
+	registry.MustRegister(requestLatency)
 
 	return func(c *gin.Context) {
 		start := time.Now()
@@ -62,20 +40,11 @@ func NewMetrics(registry *prometheus.Registry) gin.HandlerFunc {
 		// Process request.
 		c.Next()
 
-		if strings.HasPrefix(c.Request.URL.Path, "/pico") {
-			picoRequests.With(prometheus.Labels{
-				"status": strconv.Itoa(c.Writer.Status()),
-			}).Inc()
-			picoRequestLatency.With(prometheus.Labels{
-				"status": strconv.Itoa(c.Writer.Status()),
-			}).Observe(float64(time.Since(start).Milliseconds()) / 1000)
-		} else {
-			proxyRequests.With(prometheus.Labels{
-				"status": strconv.Itoa(c.Writer.Status()),
-			}).Inc()
-			proxyRequestLatency.With(prometheus.Labels{
-				"status": strconv.Itoa(c.Writer.Status()),
-			}).Observe(float64(time.Since(start).Milliseconds()) / 1000)
-		}
+		requests.With(prometheus.Labels{
+			"status": strconv.Itoa(c.Writer.Status()),
+		}).Inc()
+		requestLatency.With(prometheus.Labels{
+			"status": strconv.Itoa(c.Writer.Status()),
+		}).Observe(float64(time.Since(start).Milliseconds()) / 1000)
 	}
 }

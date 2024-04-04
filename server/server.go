@@ -20,6 +20,7 @@ import (
 	"github.com/andydunstall/pico/pkg/status"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/middleware"
+	"github.com/andydunstall/pico/server/proxy"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus"
@@ -35,7 +36,7 @@ import (
 type Server struct {
 	httpServer        *http.Server
 	rpcServer         *rpcServer
-	proxy             *proxy
+	proxy             *proxy.Proxy
 	router            *gin.Engine
 	websocketUpgrader *websocket.Upgrader
 
@@ -74,7 +75,7 @@ func NewServer(
 			Handler: router,
 		},
 		rpcServer:         newRPCServer(),
-		proxy:             newProxy(logger),
+		proxy:             proxy.NewProxy(registry, logger),
 		websocketUpgrader: &websocket.Upgrader{},
 
 		shutdownCtx:    shutdownCtx,
