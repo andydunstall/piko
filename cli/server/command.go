@@ -11,6 +11,8 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server"
 	"github.com/andydunstall/pico/server/config"
+	"github.com/andydunstall/pico/server/gossip"
+	"github.com/andydunstall/pico/server/netmap"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -183,6 +185,11 @@ func run(conf *config.Config, logger *log.Logger) {
 		logger,
 	)
 
+	netmap := netmap.NewNetworkMap()
+	// TODO(andydunstall): Should wait for gossip to join and sync before
+	// the server becomes ready.
+	gossip := gossip.NewGossip(netmap, logger)
+
 	ctx, cancel := signal.NotifyContext(
 		context.Background(), syscall.SIGINT, syscall.SIGTERM,
 	)
@@ -208,6 +215,12 @@ func run(conf *config.Config, logger *log.Logger) {
 
 		if err := server.Shutdown(shutdownCtx); err != nil {
 			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
+		}
+		return nil
+	})
+	g.Go(func() error {
+		if err := gossip.Run(ctx); err != nil {
+			return fmt.Errorf("gossip: %w", err)
 		}
 		return nil
 	})
