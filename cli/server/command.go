@@ -47,15 +47,26 @@ Examples:
 	var conf config.Config
 
 	cmd.Flags().StringVar(
-		&conf.Server.ListenAddr,
-		"server.listen-addr",
+		&conf.Server.HTTPAddr,
+		"server.http-addr",
 		":8080",
 		`
 The host/port to listen on for incoming HTTP and WebSocket connections from
 both downstream clients and upstream listeners.
 
 If the host is unspecified it defaults to all listeners, such as
-'--server.listen-addr :8080' will listen on '0.0.0.0:8080'`,
+'--server.http-addr :8080' will listen on '0.0.0.0:8080'`,
+	)
+	cmd.Flags().StringVar(
+		&conf.Server.AdvertiseHTTPAddr,
+		"server.advertise-http-addr",
+		"127.0.0.1:8080",
+		`
+HTTP listen address to advertise to other nodes in the cluster. This is the
+address other nodes will used to send requests to the node.
+
+Such as if the listen address is ':8080', the advertised address may be
+'10.26.104.45:8080' or 'node1.cluster:8080'.`,
 	)
 	cmd.Flags().StringVar(
 		&conf.Server.GossipAddr,
@@ -66,6 +77,17 @@ The host/port to listen for inter-node gossip traffic.
 
 If the host is unspecified it defaults to all listeners, such as
 '--server.gossip-addr :7000' will listen on '0.0.0.0:7000'`,
+	)
+	cmd.Flags().StringVar(
+		&conf.Server.AdvertiseGossipAddr,
+		"server.advertise-gossip-addr",
+		"127.0.0.1:7000",
+		`
+Gossip listen address to advertise to other nodes in the cluster. This is the
+address other nodes will used to gossip with the.
+
+Such as if the listen address is ':7000', the advertised address may be
+'10.26.104.45:7000' or 'node1.cluster:7000'.`,
 	)
 
 	cmd.Flags().IntVar(
@@ -193,7 +215,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	registry := prometheus.NewRegistry()
 	server := server.NewServer(
-		conf.Server.ListenAddr,
+		conf.Server.HTTPAddr,
 		registry,
 		conf,
 		logger,

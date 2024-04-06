@@ -3,12 +3,20 @@ package config
 import "fmt"
 
 type ServerConfig struct {
-	// ListenAddr is the address to listen for incoming HTTP and WebSocket
+	// HTTPAddr is the address to listen for incoming HTTP and WebSocket
 	// connections.
-	ListenAddr string `json:"listen_addr"`
+	HTTPAddr string `json:"http_addr"`
+
+	// AdvertiseHTTPAddr is the HTTP address to advertise to other nodes
+	// in the cluster.
+	AdvertiseHTTPAddr string `json:"advertise_http_addr"`
 
 	// GossipAddr is the address to listen for incoming UDP gossip messages.
 	GossipAddr string `json:"gossip_addr"`
+
+	// AdvertiseGossipAddr is the gossip address to advertise to other nodes in
+	// the cluster.
+	AdvertiseGossipAddr string `json:"advertise_gossip_addr"`
 
 	// GracePeriodSeconds is the maximum number of seconds to gracefully
 	// shutdown after receiving a shutdown signal.
@@ -22,8 +30,17 @@ type ClusterConfig struct {
 }
 
 func (c *ServerConfig) Validate() error {
-	if c.ListenAddr == "" {
+	if c.HTTPAddr == "" {
 		return fmt.Errorf("missing listen addr")
+	}
+	if c.AdvertiseHTTPAddr == "" {
+		return fmt.Errorf("missing advertise listen addr")
+	}
+	if c.GossipAddr == "" {
+		return fmt.Errorf("missing gossip addr")
+	}
+	if c.AdvertiseGossipAddr == "" {
+		return fmt.Errorf("missing advertise gossip addr")
 	}
 	return nil
 }
