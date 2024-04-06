@@ -87,7 +87,7 @@ If the upstream does not respond within the given timeout a
 		`
 Heartbeat interval in seconds.
 
-To verify each upstream listener is still connected the server sends a
+To verify each upstream listener is still connected, the server sends a
 heartbeat to the upstream at the '--upstream.heartbeat-interval-seconds'
 interval, with a timeout of '--upstream.heartbeat-timeout-seconds'.`)
 	cmd.Flags().IntVar(
@@ -97,7 +97,7 @@ interval, with a timeout of '--upstream.heartbeat-timeout-seconds'.`)
 		`
 Heartbeat timeout in seconds.
 
-To verify each upstream listener is still connected the server sends a
+To verify each upstream listener is still connected, the server sends a
 heartbeat to the upstream at the '--upstream.heartbeat-interval-seconds'
 interval, with a timeout of '--upstream.heartbeat-timeout-seconds'.`)
 
