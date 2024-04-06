@@ -81,6 +81,16 @@ connections to upstream listeners, announcing to the cluster the node is
 leaving...`,
 	)
 
+	cmd.Flags().StringVar(
+		&conf.Cluster.NodeID,
+		"cluster.node-id",
+		"",
+		`
+A unique identifier for the node in the cluster.
+
+By default a random ID will be generated for the node.`,
+	)
+
 	cmd.Flags().StringSliceVar(
 		&conf.Cluster.Members,
 		"cluster.members",
@@ -166,6 +176,10 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 		if err != nil {
 			fmt.Printf("failed to setup logger: %s\n", err.Error())
 			os.Exit(1)
+		}
+
+		if conf.Cluster.NodeID == "" {
+			conf.Cluster.NodeID = netmap.GenerateNodeID()
 		}
 
 		run(&conf, logger)

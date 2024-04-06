@@ -16,6 +16,8 @@ type ServerConfig struct {
 }
 
 type ClusterConfig struct {
+	NodeID string `json:"node_id"`
+
 	Members []string `json:"members"`
 }
 
