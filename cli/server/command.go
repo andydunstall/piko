@@ -31,14 +31,19 @@ func NewCommand() *cobra.Command {
 The Pico server is responsible for proxying requests from downstream clients to
 registered upstream listeners.
 
-Note Pico does not yet support a cluster of nodes.
+Pico may run as a cluster of nodes for fault tolerance and scalability. Use
+'--cluster.members' to configure addresses of existing members in the cluster
+to join.
 
 Examples:
-  # Start a pico server on :8080
+  # Start a Pico server on :8080
   pico server
 
-  # Start a pico server on :7000.
-  pico server --server.addr :7000
+  # Start a Pico server on :7000.
+  pico server --server.listen-addr :7000
+
+  # Start a Pico server and join an existing cluster.
+  pico server --cluster.members 10.26.104.14,10.26.104.75
 `,
 	}
 
@@ -53,8 +58,19 @@ The host/port to listen on for incoming HTTP and WebSocket connections from
 both downstream clients and upstream listeners.
 
 If the host is unspecified it defaults to all listeners, such as
-'--server.addr :8080' will listen on '0.0.0.0:8080'`,
+'--server.listen-addr :8080' will listen on '0.0.0.0:8080'`,
 	)
+	cmd.Flags().StringVar(
+		&conf.Server.GossipAddr,
+		"server.gossip-addr",
+		":7000",
+		`
+The host/port to listen for inter-node gossip traffic.
+
+If the host is unspecified it defaults to all listeners, such as
+'--server.gossip-addr :7000' will listen on '0.0.0.0:7000'`,
+	)
+
 	cmd.Flags().IntVar(
 		&conf.Server.GracePeriodSeconds,
 		"server.grace-period-seconds",
@@ -66,6 +82,25 @@ SIGINT) to gracefully shutdown the server node before terminating.
 This includes handling in-progress HTTP requests, gracefully closing
 connections to upstream listeners, announcing to the cluster the node is
 leaving...`,
+	)
+
+	cmd.Flags().StringSliceVar(
+		&conf.Cluster.Members,
+		"cluster.members",
+		nil,
+		`
+A list of addresses of members in the cluster to join.
+
+This may be either addresses of specific nodes, such as
+'--cluster.members 10.26.104.14,10.26.104.75', or a domain that resolves to
+the addresses of the nodes in the cluster (e.g. a Kubernetes headless
+service), such as '--cluster.members pico.prod-pico-ns'.
+
+Each address must include the host, and may optionally include a port. If no
+port is given, the gossip port of this node is used.
+
+Note each node propagates membership information to the other known nodes,
+so the initial set of configured members only needs to be a subset of nodes.`,
 	)
 
 	cmd.Flags().IntVar(

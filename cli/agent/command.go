@@ -101,7 +101,6 @@ Heartbeat interval in seconds.
 To verify the connection to the server is ok, the listener sends a
 heartbeat to the upstream at the '--server.heartbeat-interval-seconds'
 interval, with a timeout of '--server.heartbeat-timeout-seconds'.`,
-
 	)
 	cmd.Flags().IntVar(
 		&conf.Server.HeartbeatTimeoutSeconds,
@@ -143,7 +142,7 @@ The available levels are 'debug', 'info', 'warn' and 'error'.`,
 		"log.subsystems",
 		nil,
 		`
-Each log has a 'subsystem' field where the log occured. 
+Each log has a 'subsystem' field where the log occured.
 
 '--log.subsystems' enables all log levels for those given subsystems. This
 can be useful to debug a particular subsystem without having to enable all

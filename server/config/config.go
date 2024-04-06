@@ -8,10 +8,20 @@ package config
 import "fmt"
 
 type ServerConfig struct {
+	// ListenAddr is the address to listen for incoming HTTP and WebSocket
+	// connections.
 	ListenAddr string `json:"listen_addr"`
+
+	// GossipAddr is the address to listen for incoming UDP gossip messages.
+	GossipAddr string `json:"gossip_addr"`
+
 	// GracePeriodSeconds is the maximum number of seconds to gracefully
 	// shutdown after receiving a shutdown signal.
 	GracePeriodSeconds int `json:"grace_period_seconds"`
+}
+
+type ClusterConfig struct {
+	Members []string `json:"members"`
 }
 
 func (c *ServerConfig) Validate() error {
@@ -63,6 +73,7 @@ func (c *LogConfig) Validate() error {
 
 type Config struct {
 	Server   ServerConfig   `json:"server"`
+	Cluster  ClusterConfig  `json:"cluster"`
 	Proxy    ProxyConfig    `json:"proxy"`
 	Upstream UpstreamConfig `json:"upstream"`
 	Log      LogConfig      `json:"log"`
