@@ -44,16 +44,85 @@ Examples:
 
 	var conf config.Config
 
-	cmd.Flags().StringVar(&conf.Server.Addr, "server.addr", ":8080", "server listen address")
-	cmd.Flags().IntVar(&conf.Server.GracePeriodSeconds, "server.grace-period-seconds", 30, "terminate graceful shutdown period in seconds")
+	cmd.Flags().StringVar(
+		&conf.Server.ListenAddr,
+		"server.listen-addr",
+		":8080",
+		`
+The host/port to listen on for incoming HTTP and WebSocket connections from
+both downstream clients and upstream listeners.
 
-	cmd.Flags().IntVar(&conf.Proxy.TimeoutSeconds, "proxy.timeout-seconds", 30, "timeout for sending proxied requests to upstream listeners")
+If the host is unspecified it defaults to all listeners, such as
+'--server.addr :8080' will listen on '0.0.0.0:8080'`,
+	)
+	cmd.Flags().IntVar(
+		&conf.Server.GracePeriodSeconds,
+		"server.grace-period-seconds",
+		60,
+		`
+Maximum number of seconds after a shutdown signal is received (SIGTERM or
+SIGINT) to gracefully shutdown the server node before terminating.
 
-	cmd.Flags().IntVar(&conf.Upstream.HeartbeatIntervalSeconds, "upstream.heartbeat-interval-seconds", 10, "Heartbeat interval in seconds")
-	cmd.Flags().IntVar(&conf.Upstream.HeartbeatTimeoutSeconds, "upstream.heartbeat-timeout-seconds", 10, "Heartbeat timeout in seconds")
+This includes handling in-progress HTTP requests, gracefully closing
+connections to upstream listeners, announcing to the cluster the node is
+leaving...`,
+	)
 
-	cmd.Flags().StringVar(&conf.Log.Level, "log.level", "info", "log level")
-	cmd.Flags().StringSliceVar(&conf.Log.Subsystems, "log.subsystems", nil, "enable debug logs for logs the the given subsystems")
+	cmd.Flags().IntVar(
+		&conf.Proxy.TimeoutSeconds,
+		"proxy.timeout-seconds",
+		30,
+		`
+The timeout when sending proxied requests to upstream listeners for forwarding
+to other nodes in the cluster.
+
+If the upstream does not respond within the given timeout a
+'504 Gateway Timeout' is returned to the client.`,
+	)
+
+	cmd.Flags().IntVar(
+		&conf.Upstream.HeartbeatIntervalSeconds,
+		"upstream.heartbeat-interval-seconds",
+		10,
+		`
+Heartbeat interval in seconds.
+
+To verify each upstream listener is still connected the server sends a
+heartbeat to the upstream at the '--upstream.heartbeat-interval-seconds'
+interval, with a timeout of '--upstream.heartbeat-timeout-seconds'.`)
+	cmd.Flags().IntVar(
+		&conf.Upstream.HeartbeatTimeoutSeconds,
+		"upstream.heartbeat-timeout-seconds",
+		10,
+		`
+Heartbeat timeout in seconds.
+
+To verify each upstream listener is still connected the server sends a
+heartbeat to the upstream at the '--upstream.heartbeat-interval-seconds'
+interval, with a timeout of '--upstream.heartbeat-timeout-seconds'.`)
+
+	cmd.Flags().StringVar(
+		&conf.Log.Level,
+		"log.level",
+		"info",
+		`
+Minimum log level to output.
+
+The available levels are 'debug', 'info', 'warn' and 'error'.`,
+	)
+	cmd.Flags().StringSliceVar(
+		&conf.Log.Subsystems,
+		"log.subsystems",
+		nil,
+		`
+Each log has a 'subsystem' field where the log occured.
+
+'--log.subsystems' enables all log levels for those given subsystems. This
+can be useful to debug a particular subsystem without having to enable all
+debug logs.
+
+Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
+	)
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := conf.Validate(); err != nil {
@@ -78,7 +147,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	registry := prometheus.NewRegistry()
 	server := server.NewServer(
-		conf.Server.Addr,
+		conf.Server.ListenAddr,
 		registry,
 		conf,
 		logger,

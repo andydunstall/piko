@@ -8,15 +8,15 @@ package config
 import "fmt"
 
 type ServerConfig struct {
-	Addr string `json:"addr"`
+	ListenAddr string `json:"listen_addr"`
 	// GracePeriodSeconds is the maximum number of seconds to gracefully
 	// shutdown after receiving a shutdown signal.
 	GracePeriodSeconds int `json:"grace_period_seconds"`
 }
 
 func (c *ServerConfig) Validate() error {
-	if c.Addr == "" {
-		return fmt.Errorf("missing addr")
+	if c.ListenAddr == "" {
+		return fmt.Errorf("missing listen addr")
 	}
 	return nil
 }
