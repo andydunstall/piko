@@ -3,6 +3,7 @@ module github.com/andydunstall/pico
 go 1.21.1
 
 require (
+	github.com/andydunstall/seal v0.0.0-20240407170420-662c0bc3748b
 	github.com/gin-gonic/gin v1.9.1
 	github.com/gorilla/websocket v1.5.1
 	github.com/prometheus/client_golang v1.19.0

@@ -1,3 +1,5 @@
+github.com/andydunstall/seal v0.0.0-20240407170420-662c0bc3748b h1:6rCwr8RlzOeppiznNeie5Ow/utJuaFElkcs5Il/aSd8=
+github.com/andydunstall/seal v0.0.0-20240407170420-662c0bc3748b/go.mod h1:ea7Y66HMDsjavZppRCrU8K75JMIww946XzmZV9hrb90=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bytedance/sonic v1.5.0/go.mod h1:ED5hyg4y6t3/9Ku1R6dU/4KyJ48DZ4jPhfY1O2AihPM=

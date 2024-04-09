@@ -9,10 +9,20 @@ var (
 	alphaNumericChars = []byte("abcdefghijklmnopqrstuvwxyz1234567890")
 )
 
+type NodeStatus string
+
+const (
+	NodeStatusJoining NodeStatus = "joining"
+	NodeStatusActive  NodeStatus = "active"
+	NodeStatusLeaving NodeStatus = "leaving"
+)
+
 // Node represents the known state about a node in the cluster.
 type Node struct {
 	// ID is a unique identifier for the node in the cluster.
 	ID string
+
+	Status NodeStatus
 
 	// HTTPAddr is the advertised HTTP address
 	HTTPAddr string
@@ -20,8 +30,9 @@ type Node struct {
 	// GossipAddr is the advertised gossip address.
 	GossipAddr string
 
-	// Endpoints contains the active endpoints on the node. This maps the
-	// active endpoint ID to the number of listeners for that endpoint.
+	// Endpoints contains the active endpoints on the node (endpoints with at
+	// least one upstream listener). This maps the active endpoint ID to the
+	// number of listeners for that endpoint.
 	Endpoints map[string]int
 }
 

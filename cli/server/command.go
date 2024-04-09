@@ -221,10 +221,38 @@ func run(conf *config.Config, logger *log.Logger) {
 		logger,
 	)
 
-	netmap := netmap.NewNetworkMap()
+	node := &netmap.Node{
+		ID:         conf.Cluster.NodeID,
+		Status:     netmap.NodeStatusJoining,
+		HTTPAddr:   conf.Server.AdvertiseHTTPAddr,
+		GossipAddr: conf.Server.AdvertiseGossipAddr,
+	}
+	netmap := netmap.NewNetworkMap(node)
 	// TODO(andydunstall): Should wait for gossip to join and sync before
 	// the server becomes ready.
-	gossip := gossip.NewGossip(netmap, logger)
+	gossip, err := gossip.NewGossip(netmap, logger)
+	if err != nil {
+		logger.Error("failed to start gossiper", zap.Error(err))
+		os.Exit(1)
+	}
+	defer gossip.Close()
+
+	joinCtx, cancel := context.WithTimeout(
+		context.Background(),
+		time.Second*30,
+	)
+	defer cancel()
+
+	if len(conf.Cluster.Members) > 0 {
+		if err := gossip.Join(joinCtx, conf.Cluster.Members); err != nil {
+			logger.Error(
+				"failed to join cluster",
+				zap.Strings("members", conf.Cluster.Members),
+				zap.Error(err),
+			)
+			os.Exit(1)
+		}
+	}
 
 	ctx, cancel := signal.NotifyContext(
 		context.Background(), syscall.SIGINT, syscall.SIGTERM,
@@ -254,16 +282,17 @@ func run(conf *config.Config, logger *log.Logger) {
 		}
 		return nil
 	})
-	g.Go(func() error {
-		if err := gossip.Run(ctx); err != nil {
-			return fmt.Errorf("gossip: %w", err)
-		}
-		return nil
-	})
 
 	if err := g.Wait(); err != nil {
 		logger.Error("failed to run server", zap.Error(err))
 		os.Exit(1)
+	}
+
+	// Wait for the server to shutdown before leaving the cluster.
+	// TODO(andydunstall): Needs to be considered as part of shutdown
+	// grace period.
+	if err := gossip.Leave(context.TODO()); err != nil {
+		logger.Warn("failed to gracefully leave cluster", zap.Error(err))
 	}
 
 	logger.Info("shutdown complete")
