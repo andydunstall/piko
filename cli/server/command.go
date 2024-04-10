@@ -213,14 +213,6 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 func run(conf *config.Config, logger *log.Logger) {
 	logger.Info("starting pico server", zap.Any("conf", conf))
 
-	registry := prometheus.NewRegistry()
-	server := server.NewServer(
-		conf.Server.HTTPAddr,
-		registry,
-		conf,
-		logger,
-	)
-
 	node := &netmap.Node{
 		ID:         conf.Cluster.NodeID,
 		Status:     netmap.NodeStatusJoining,
@@ -236,6 +228,15 @@ func run(conf *config.Config, logger *log.Logger) {
 		os.Exit(1)
 	}
 	defer gossip.Close()
+
+	registry := prometheus.NewRegistry()
+	server := server.NewServer(
+		conf.Server.HTTPAddr,
+		netmap,
+		registry,
+		conf,
+		logger,
+	)
 
 	joinCtx, cancel := context.WithTimeout(
 		context.Background(),

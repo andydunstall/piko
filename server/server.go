@@ -15,6 +15,7 @@ import (
 	"github.com/andydunstall/pico/pkg/status"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/middleware"
+	"github.com/andydunstall/pico/server/netmap"
 	"github.com/andydunstall/pico/server/proxy"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -48,6 +49,7 @@ type Server struct {
 
 func NewServer(
 	addr string,
+	networkMap *netmap.NetworkMap,
 	registry *prometheus.Registry,
 	conf *config.Config,
 	logger *log.Logger,
@@ -69,8 +71,10 @@ func NewServer(
 			Addr:    addr,
 			Handler: router,
 		},
-		rpcServer:         newRPCServer(),
-		proxy:             proxy.NewProxy(registry, logger),
+		rpcServer: newRPCServer(),
+		proxy: proxy.NewProxy(
+			proxy.NewEndpointResolver(networkMap), registry, logger,
+		),
 		websocketUpgrader: &websocket.Upgrader{},
 
 		shutdownCtx:    shutdownCtx,

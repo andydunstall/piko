@@ -22,7 +22,10 @@ import (
 
 // Proxy is responsible for forwarding requests to upstream listeners.
 type Proxy struct {
-	endpoints map[string]*endpoint
+	endpoints        map[string]*endpoint
+	endpointResolver *EndpointResolver
+
+	client *http.Client
 
 	mu sync.Mutex
 
@@ -30,15 +33,21 @@ type Proxy struct {
 	logger  *log.Logger
 }
 
-func NewProxy(registry *prometheus.Registry, logger *log.Logger) *Proxy {
+func NewProxy(
+	endpointResolver *EndpointResolver,
+	registry *prometheus.Registry,
+	logger *log.Logger,
+) *Proxy {
 	metrics := newMetrics()
 	if registry != nil {
 		metrics.Register(registry)
 	}
 	return &Proxy{
-		endpoints: make(map[string]*endpoint),
-		metrics:   metrics,
-		logger:    logger.WithSubsystem("proxy"),
+		endpoints:        make(map[string]*endpoint),
+		endpointResolver: endpointResolver,
+		client:           &http.Client{},
+		metrics:          metrics,
+		logger:           logger.WithSubsystem("proxy"),
 	}
 }
 
@@ -102,6 +111,8 @@ func (p *Proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
 	e.AddUpstream(stream)
 	p.endpoints[endpointID] = e
 
+	p.endpointResolver.AddLocalUpstream(endpointID)
+
 	p.logger.Info(
 		"added upstream",
 		zap.String("endpoint-id", endpointID),
@@ -120,6 +131,8 @@ func (p *Proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
 	}
 	endpoint.RemoveUpstream(stream)
 
+	p.endpointResolver.RemoveLocalUpstream(endpointID)
+
 	p.logger.Info(
 		"removed upstream",
 		zap.String("endpoint-id", endpointID),
@@ -128,19 +141,45 @@ func (p *Proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
 	p.metrics.Listeners.Dec()
 }
 
-func (p *Proxy) request(ctx context.Context, endpointID string, r *http.Request) (*http.Response, error) {
+func (p *Proxy) request(
+	ctx context.Context,
+	endpointID string,
+	r *http.Request,
+) (*http.Response, error) {
+	listenerStream, ok := p.lookupLocalListener(endpointID)
+	if ok {
+		return p.requestLocal(ctx, listenerStream, r)
+	}
+
+	addr, ok := p.endpointResolver.Resolve(endpointID)
+	if ok {
+		return p.requestRemote(ctx, addr, r)
+	}
+
+	return nil, &status.ErrorInfo{
+		StatusCode: http.StatusServiceUnavailable,
+		Message:    "no upstream found",
+	}
+}
+
+// lookupLocalListener looks up an RPC stream for an upstream listener for this
+// endpoint.
+func (p *Proxy) lookupLocalListener(endpointID string) (*rpc.Stream, bool) {
 	p.mu.Lock()
+	defer p.mu.Unlock()
 	endpoint, ok := p.endpoints[endpointID]
 	if !ok {
-		p.mu.Unlock()
-		return nil, &status.ErrorInfo{
-			StatusCode: http.StatusServiceUnavailable,
-			Message:    "no upstream found",
-		}
+		return nil, false
 	}
 	stream := endpoint.Next()
-	p.mu.Unlock()
+	return stream, true
+}
 
+func (p *Proxy) requestLocal(
+	ctx context.Context,
+	stream *rpc.Stream,
+	r *http.Request,
+) (*http.Response, error) {
 	// Write the HTTP request to a buffer.
 	var buffer bytes.Buffer
 	if err := r.Write(&buffer); err != nil {
@@ -198,4 +237,52 @@ func (p *Proxy) request(ctx context.Context, endpointID string, r *http.Request)
 		return nil, fmt.Errorf("decode http response: %w", err)
 	}
 	return httpResp, nil
+}
+
+func (p *Proxy) requestRemote(
+	ctx context.Context,
+	addr string,
+	req *http.Request,
+) (*http.Response, error) {
+	// TODO(andydunstall): Need to limit the number of hops.
+
+	req = req.WithContext(ctx)
+
+	req.URL.Scheme = "http"
+	req.URL.Host = addr
+	req.RequestURI = ""
+
+	resp, err := p.client.Do(req)
+	if err != nil {
+		p.logger.Warn(
+			"failed to forward request",
+			zap.String("method", req.Method),
+			zap.String("host", req.URL.Host),
+			zap.String("path", req.URL.Path),
+			zap.Error(err),
+		)
+
+		if errors.Is(err, context.DeadlineExceeded) {
+			return nil, &status.ErrorInfo{
+				StatusCode: http.StatusGatewayTimeout,
+				Message:    "upstream timeout",
+			}
+		}
+		return nil, &status.ErrorInfo{
+			StatusCode: http.StatusGatewayTimeout,
+			Message:    "upstream unreachable",
+		}
+	}
+
+	// TODO(andydunstall): Add metrics and extend logging.
+
+	p.logger.Debug(
+		"forward",
+		zap.String("method", req.Method),
+		zap.String("host", req.URL.Host),
+		zap.String("path", req.URL.Path),
+		zap.Int("status", resp.StatusCode),
+	)
+
+	return resp, nil
 }
