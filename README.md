@@ -133,7 +133,9 @@ the Pico architecture:
 > :warning: Pico is still a proof of concept so is not yet suitable for
 production.
 
-Pico does not yet support clustering or authentication.
+Pico does not yet support clustering or authentication. Currently working
+on adding a gossip layer for endpoint discovery with
+[kite](https://github.com/andydunstall/kite).
 
 Pico also only supports using Pico agent to register listeners, though aiming
 to add support for a Go SDK as well.
