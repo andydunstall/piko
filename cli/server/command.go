@@ -3,8 +3,10 @@ package server
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -13,6 +15,7 @@ import (
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/gossip"
 	"github.com/andydunstall/pico/server/netmap"
+	"github.com/hashicorp/go-sockaddr"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -60,13 +63,18 @@ If the host is unspecified it defaults to all listeners, such as
 	cmd.Flags().StringVar(
 		&conf.Server.AdvertiseHTTPAddr,
 		"server.advertise-http-addr",
-		"127.0.0.1:8080",
+		"",
 		`
 HTTP listen address to advertise to other nodes in the cluster. This is the
 address other nodes will used to send requests to the node.
 
 Such as if the listen address is ':8080', the advertised address may be
-'10.26.104.45:8080' or 'node1.cluster:8080'.`,
+'10.26.104.45:8080' or 'node1.cluster:8080'.
+
+By default, if the bind address includes an IP to bind to that will be used.
+If the bind address does not include an IP (such as ':8080') the nodes
+private IP will be used, such as a bind address of ':8080' may have an
+advertise address of '10.26.104.14:7000'`,
 	)
 	cmd.Flags().StringVar(
 		&conf.Server.GossipAddr,
@@ -81,13 +89,18 @@ If the host is unspecified it defaults to all listeners, such as
 	cmd.Flags().StringVar(
 		&conf.Server.AdvertiseGossipAddr,
 		"server.advertise-gossip-addr",
-		"127.0.0.1:7000",
+		"",
 		`
 Gossip listen address to advertise to other nodes in the cluster. This is the
 address other nodes will used to gossip with the.
 
 Such as if the listen address is ':7000', the advertised address may be
-'10.26.104.45:7000' or 'node1.cluster:7000'.`,
+'10.26.104.45:7000' or 'node1.cluster:7000'.
+
+By default, if the bind address includes an IP to bind to that will be used.
+If the bind address does not include an IP (such as ':7000') the nodes
+private IP will be used, such as a bind address of ':7000' may have an
+advertise address of '10.26.104.14:7000'.`,
 	)
 
 	cmd.Flags().IntVar(
@@ -203,6 +216,22 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 		if conf.Cluster.NodeID == "" {
 			conf.Cluster.NodeID = netmap.GenerateNodeID()
 		}
+		if conf.Server.AdvertiseHTTPAddr == "" {
+			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Server.HTTPAddr)
+			if err != nil {
+				logger.Error("invalid configuration", zap.Error(err))
+				os.Exit(1)
+			}
+			conf.Server.AdvertiseHTTPAddr = advertiseAddr
+		}
+		if conf.Server.AdvertiseGossipAddr == "" {
+			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Server.GossipAddr)
+			if err != nil {
+				logger.Error("invalid configuration", zap.Error(err))
+				os.Exit(1)
+			}
+			conf.Server.AdvertiseGossipAddr = advertiseAddr
+		}
 
 		run(&conf, logger)
 	}
@@ -213,6 +242,8 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 func run(conf *config.Config, logger *log.Logger) {
 	logger.Info("starting pico server", zap.Any("conf", conf))
 
+	registry := prometheus.NewRegistry()
+
 	node := &netmap.Node{
 		ID:         conf.Cluster.NodeID,
 		Status:     netmap.NodeStatusJoining,
@@ -220,16 +251,19 @@ func run(conf *config.Config, logger *log.Logger) {
 		GossipAddr: conf.Server.AdvertiseGossipAddr,
 	}
 	netmap := netmap.NewNetworkMap(node)
-	// TODO(andydunstall): Should wait for gossip to join and sync before
-	// the server becomes ready.
-	gossip, err := gossip.NewGossip(netmap, logger)
+	gossip, err := gossip.NewGossip(
+		conf.Server.GossipAddr,
+		conf.Server.AdvertiseGossipAddr,
+		netmap,
+		registry,
+		logger,
+	)
 	if err != nil {
 		logger.Error("failed to start gossiper", zap.Error(err))
 		os.Exit(1)
 	}
 	defer gossip.Close()
 
-	registry := prometheus.NewRegistry()
 	server := server.NewServer(
 		conf.Server.HTTPAddr,
 		netmap,
@@ -238,14 +272,8 @@ func run(conf *config.Config, logger *log.Logger) {
 		logger,
 	)
 
-	joinCtx, cancel := context.WithTimeout(
-		context.Background(),
-		time.Second*30,
-	)
-	defer cancel()
-
 	if len(conf.Cluster.Members) > 0 {
-		if err := gossip.Join(joinCtx, conf.Cluster.Members); err != nil {
+		if err := gossip.Join(conf.Cluster.Members); err != nil {
 			logger.Error(
 				"failed to join cluster",
 				zap.Strings("members", conf.Cluster.Members),
@@ -292,9 +320,32 @@ func run(conf *config.Config, logger *log.Logger) {
 	// Wait for the server to shutdown before leaving the cluster.
 	// TODO(andydunstall): Needs to be considered as part of shutdown
 	// grace period.
-	if err := gossip.Leave(context.TODO()); err != nil {
+	if err := gossip.Leave(); err != nil {
 		logger.Warn("failed to gracefully leave cluster", zap.Error(err))
 	}
 
 	logger.Info("shutdown complete")
+}
+
+func advertiseAddrFromBindAddr(bindAddr string) (string, error) {
+	if strings.HasPrefix(bindAddr, ":") {
+		bindAddr = "0.0.0.0" + bindAddr
+	}
+
+	host, port, err := net.SplitHostPort(bindAddr)
+	if err != nil {
+		return "", fmt.Errorf("invalid bind addr: %s: %w", bindAddr, err)
+	}
+
+	if host == "0.0.0.0" {
+		ip, err := sockaddr.GetPrivateIP()
+		if err != nil {
+			return "", fmt.Errorf("get interface addr: %w", err)
+		}
+		if ip == "" {
+			return "", fmt.Errorf("no private ip found")
+		}
+		return ip + ":" + port, nil
+	}
+	return bindAddr, nil
 }

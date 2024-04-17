@@ -33,14 +33,8 @@ func (c *ServerConfig) Validate() error {
 	if c.HTTPAddr == "" {
 		return fmt.Errorf("missing listen addr")
 	}
-	if c.AdvertiseHTTPAddr == "" {
-		return fmt.Errorf("missing advertise listen addr")
-	}
 	if c.GossipAddr == "" {
 		return fmt.Errorf("missing gossip addr")
-	}
-	if c.AdvertiseGossipAddr == "" {
-		return fmt.Errorf("missing advertise gossip addr")
 	}
 	return nil
 }

@@ -1,22 +1,22 @@
 package gossip
 
 import (
-	"context"
 	"fmt"
 	"strconv"
 	"strings"
 	"sync"
 
+	"github.com/andydunstall/kite"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/netmap"
-	"github.com/andydunstall/seal"
+	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
 // Gossip is responsible for maintaining the nodes local NetworkMap and
 // propagating the state of the local node to the rest of the cluster.
 //
-// It uses the 'seal' library for cluster membership anti-entropy, where each
+// It uses the 'kite' library for cluster membership anti-entropy, where each
 // node maintains a local key-value store containing the nodes state which is
 // then propagated to the other nodes in the cluster. Therefore Gossip
 // manages updating the local key-value for this node, and watching for updates
@@ -24,10 +24,10 @@ import (
 type Gossip struct {
 	networkMap *netmap.NetworkMap
 
-	seal *seal.Seal
+	kite *kite.Kite
 
 	// pendingNodes contains nodes that we haven't received the full state for
-	// yet so can't be added to the netmap. Since seal propagates key-value
+	// yet so can't be added to the netmap. Since kite propagates key-value
 	// pairs in order, we may only have a few entries of a node. Therefore
 	// a node is only considered 'complete' once we have its status (which is
 	// always sent last).
@@ -37,22 +37,31 @@ type Gossip struct {
 	logger *log.Logger
 }
 
-func NewGossip(networkMap *netmap.NetworkMap, logger *log.Logger) (*Gossip, error) {
+func NewGossip(
+	bindAddr string,
+	advertiseAddr string,
+	networkMap *netmap.NetworkMap,
+	registry *prometheus.Registry,
+	logger *log.Logger,
+) (*Gossip, error) {
 	gossip := &Gossip{
 		networkMap:   networkMap,
 		pendingNodes: make(map[string]*netmap.Node),
 		logger:       logger.WithSubsystem("gossip"),
 	}
 
-	seal, err := seal.New(
+	kite, err := kite.New(
 		networkMap.LocalNode().ID,
-		seal.WithWatcher(newSealWatcher(gossip)),
-		seal.WithLogger(logger.WithSubsystem("gossip.seal")),
+		kite.WithBindAddr(bindAddr),
+		kite.WithAdvertiseAddr(advertiseAddr),
+		kite.WithWatcher(newKiteWatcher(gossip)),
+		kite.WithPrometeusRegistry(registry),
+		kite.WithLogger(logger.WithSubsystem("gossip.kite")),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("seal: %w", err)
+		return nil, fmt.Errorf("kite: %w", err)
 	}
-	gossip.seal = seal
+	gossip.kite = kite
 	gossip.updateLocalState()
 
 	networkMap.OnLocalStatusUpdated(gossip.onLocalStatusUpdated)
@@ -62,48 +71,49 @@ func NewGossip(networkMap *netmap.NetworkMap, logger *log.Logger) (*Gossip, erro
 	return gossip, nil
 }
 
-func (g *Gossip) Join(ctx context.Context, addrs []string) error {
-	return g.seal.Join(ctx, addrs)
+func (g *Gossip) Join(addrs []string) error {
+	_, err := g.kite.Join(addrs)
+	return err
 }
 
-func (g *Gossip) Leave(ctx context.Context) error {
-	return g.seal.Leave(ctx)
+func (g *Gossip) Leave() error {
+	return g.kite.Leave()
 }
 
 func (g *Gossip) Close() error {
-	return g.seal.Close()
+	return g.kite.Close()
 }
 
 func (g *Gossip) onLocalStatusUpdated(status netmap.NodeStatus) {
-	g.seal.UpsertLocal("status", string(status))
+	g.kite.UpsertLocal("status", string(status))
 }
 
 func (g *Gossip) onLocalEndpointUpdated(endpointID string, numListeners int) {
 	if numListeners > 0 {
-		g.seal.UpsertLocal("endpoint:"+endpointID, strconv.Itoa(numListeners))
+		g.kite.UpsertLocal("endpoint:"+endpointID, strconv.Itoa(numListeners))
 	} else {
-		g.seal.DeleteLocal("endpoint:" + endpointID)
+		g.kite.DeleteLocal("endpoint:" + endpointID)
 	}
 }
 
 func (g *Gossip) onLocalEndpointRemoved(endpointID string) {
-	g.seal.DeleteLocal("endpoint:" + endpointID)
+	g.kite.DeleteLocal("endpoint:" + endpointID)
 }
 
-// updateLocalState updates the local Seal key-value state which will be
+// updateLocalState updates the local Kite key-value state which will be
 // propagated to other nodes.
 func (g *Gossip) updateLocalState() {
 	localNode := g.networkMap.LocalNode()
-	g.seal.UpsertLocal("http_addr", localNode.HTTPAddr)
-	g.seal.UpsertLocal("gossip_addr", localNode.GossipAddr)
+	g.kite.UpsertLocal("http_addr", localNode.HTTPAddr)
+	g.kite.UpsertLocal("gossip_addr", localNode.GossipAddr)
 	for endpointID, numListeners := range localNode.Endpoints {
 		if numListeners > 0 {
-			g.seal.UpsertLocal("endpoint:"+endpointID, strconv.Itoa(numListeners))
+			g.kite.UpsertLocal("endpoint:"+endpointID, strconv.Itoa(numListeners))
 		}
 	}
 	// Note adding the status last since a node is considered 'pending' until
 	// the status is known.
-	g.seal.UpsertLocal("status", string(localNode.Status))
+	g.kite.UpsertLocal("status", string(localNode.Status))
 }
 
 func (g *Gossip) onRemoteJoin(nodeID string) {
@@ -268,32 +278,32 @@ func (g *Gossip) applyNodeUpdate(node *netmap.Node, key, value string) {
 	}
 }
 
-// sealWatcher is a seal.Watcher which is notified when nodes in the cluster
+// kiteWatcher is a kite.Watcher which is notified when nodes in the cluster
 // are updated.
-type sealWatcher struct {
+type kiteWatcher struct {
 	gossip *Gossip
 }
 
-func newSealWatcher(gossip *Gossip) *sealWatcher {
-	return &sealWatcher{
+func newKiteWatcher(gossip *Gossip) *kiteWatcher {
+	return &kiteWatcher{
 		gossip: gossip,
 	}
 }
 
-func (w *sealWatcher) OnJoin(memberID string) {
+func (w *kiteWatcher) OnJoin(memberID string) {
 	w.gossip.onRemoteJoin(memberID)
 }
 
-func (w *sealWatcher) OnLeave(memberID string) {
+func (w *kiteWatcher) OnLeave(memberID string) {
 	w.gossip.onRemoteLeave(memberID)
 }
 
-func (w *sealWatcher) OnDown(memberID string) {
+func (w *kiteWatcher) OnDown(memberID string) {
 	w.gossip.onRemoteDown(memberID)
 }
 
-func (w *sealWatcher) OnUpdate(memberID, key, value string) {
+func (w *kiteWatcher) OnUpdate(memberID, key, value string) {
 	w.gossip.onRemoteUpdate(memberID, key, value)
 }
 
-var _ seal.Watcher = &sealWatcher{}
+var _ kite.Watcher = &kiteWatcher{}
