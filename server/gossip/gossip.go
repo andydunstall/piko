@@ -51,7 +51,7 @@ func NewGossip(
 	}
 
 	kite, err := kite.New(
-		networkMap.LocalNode().ID,
+		kite.WithMemberID(networkMap.LocalNode().ID),
 		kite.WithBindAddr(bindAddr),
 		kite.WithAdvertiseAddr(advertiseAddr),
 		kite.WithWatcher(newKiteWatcher(gossip)),
