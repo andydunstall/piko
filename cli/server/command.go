@@ -72,7 +72,7 @@ If the host is unspecified it defaults to all listeners, such as
 '--proxy.bind-addr :8080' will listen on '0.0.0.0:8080'`,
 	)
 	cmd.Flags().StringVar(
-		&conf.Gossip.AdvertiseAddr,
+		&conf.Proxy.AdvertiseAddr,
 		"proxy.advertise-addr",
 		"",
 		`
@@ -87,6 +87,16 @@ If the bind address does not include an IP (such as ':8080') the nodes
 private IP will be used, such as a bind address of ':8080' may have an
 advertise address of '10.26.104.14:8080'.`,
 	)
+	cmd.Flags().IntVar(
+		&conf.Proxy.GatewayTimeout,
+		"proxy.gateway-timeout",
+		15,
+		`
+The timeout when sending proxied requests to upstream listeners for forwarding
+to other nodes in the cluster.
+If the upstream does not respond within the given timeout a
+'504 Gateway Timeout' is returned to the client.`,
+	)
 
 	cmd.Flags().StringVar(
 		&conf.Admin.BindAddr,
@@ -99,7 +109,7 @@ If the host is unspecified it defaults to all listeners, such as
 '--admin.bind-addr :8081' will listen on '0.0.0.0:8081'`,
 	)
 	cmd.Flags().StringVar(
-		&conf.Gossip.AdvertiseAddr,
+		&conf.Admin.AdvertiseAddr,
 		"admin.advertise-addr",
 		"",
 		`
@@ -141,6 +151,18 @@ By default, if the bind address includes an IP to bind to that will be used.
 If the bind address does not include an IP (such as ':7000') the nodes
 private IP will be used, such as a bind address of ':7000' may have an
 advertise address of '10.26.104.14:7000'.`,
+	)
+
+	cmd.Flags().IntVar(
+		&conf.Server.GracefulShutdownTimeout,
+		"server.graceful-shutdown-timeout",
+		60,
+		`
+Maximum number of seconds after a shutdown signal is received (SIGTERM or
+SIGINT) to gracefully shutdown the server node before terminating.
+This includes handling in-progress HTTP requests, gracefully closing
+connections to upstream listeners, announcing to the cluster the node is
+leaving...`,
 	)
 
 	cmd.Flags().StringVar(
@@ -267,7 +289,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	if len(conf.Cluster.Join) > 0 {
 		if err := gossip.Join(conf.Cluster.Join); err != nil {
-			logger.Error("failed to join cluster: %w", zap.Error(err))
+			logger.Error("failed to join cluster", zap.Error(err))
 			os.Exit(1)
 		}
 	}
@@ -284,6 +306,7 @@ func run(conf *config.Config, logger *log.Logger) {
 	proxyServer := proxyserver.NewServer(
 		conf.Proxy.BindAddr,
 		proxy.NewProxy(networkMap, registry, logger),
+		&conf.Proxy,
 		registry,
 		logger,
 	)
@@ -307,8 +330,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
-			// TODO(andydunstall): Add configuration.
-			time.Second*30,
+			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
 		)
 		defer cancel()
 
@@ -330,8 +352,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
-			// TODO(andydunstall): Add configuration.
-			time.Second*30,
+			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
 		)
 		defer cancel()
 
@@ -340,15 +361,29 @@ func run(conf *config.Config, logger *log.Logger) {
 		}
 		return nil
 	})
+	g.Go(func() error {
+		<-ctx.Done()
+
+		logger.Info("leaving cluster")
+
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
+		)
+		defer cancel()
+
+		// Leave as soon as we receive the shutdown signal to avoid receiving
+		// forward proxy requests.
+		if err := gossip.Leave(shutdownCtx); err != nil {
+			logger.Warn("failed to leave cluster", zap.Error(err))
+		}
+		return nil
+	})
 
 	networkMap.UpdateLocalStatus(netmap.NodeStatusActive)
 
 	if err := g.Wait(); err != nil {
 		logger.Error("failed to run server", zap.Error(err))
-	}
-
-	if err := gossip.Leave(); err != nil {
-		logger.Error("failed to leave gossip", zap.Error(err))
 	}
 
 	logger.Info("shutdown complete")

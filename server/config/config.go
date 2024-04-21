@@ -8,11 +8,18 @@ type ProxyConfig struct {
 
 	// AdvertiseAddr is the address to advertise to other nodes.
 	AdvertiseAddr string `json:"advertise_addr"`
+
+	// GatewayTimeout is the timeout in seconds of forwarding requests to an
+	// upstream listener.
+	GatewayTimeout int `json:"gateway_timeout"`
 }
 
 func (c *ProxyConfig) Validate() error {
 	if c.BindAddr == "" {
 		return fmt.Errorf("missing bind addr")
+	}
+	if c.GatewayTimeout == 0 {
+		return fmt.Errorf("missing gateway timeout")
 	}
 	return nil
 }
@@ -55,6 +62,19 @@ type ClusterConfig struct {
 	Join []string `json:"join"`
 }
 
+type ServerConfig struct {
+	// GracefulShutdownTimeout is the timeout to allow for graceful shutdown
+	// of the server in seconds.
+	GracefulShutdownTimeout int `json:"graceful_shutdown_timeout"`
+}
+
+func (c *ServerConfig) Validate() error {
+	if c.GracefulShutdownTimeout == 0 {
+		return fmt.Errorf("missing grafeful shutdown timeout")
+	}
+	return nil
+}
+
 type LogConfig struct {
 	Level string `json:"level"`
 	// Subsystems enables debug logging on logs the given subsystems (which
@@ -74,6 +94,7 @@ type Config struct {
 	Admin   AdminConfig   `json:"admin"`
 	Gossip  GossipConfig  `json:"gossip"`
 	Cluster ClusterConfig `json:"cluster"`
+	Server  ServerConfig  `json:"server"`
 	Log     LogConfig     `json:"log"`
 }
 
@@ -86,6 +107,9 @@ func (c *Config) Validate() error {
 	}
 	if err := c.Gossip.Validate(); err != nil {
 		return fmt.Errorf("gossip: %w", err)
+	}
+	if err := c.Server.Validate(); err != nil {
+		return fmt.Errorf("server: %w", err)
 	}
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)

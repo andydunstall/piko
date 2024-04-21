@@ -300,8 +300,6 @@ func (s *Stream) handleRequest(m *message) {
 }
 
 func (s *Stream) handleResponse(m *message) {
-	// TODO(andydunstall): For now echo the message with the response flag.
-
 	// If no handler is found, it means RPC has already returned so discard
 	// the response.
 	ch, ok := s.findResponseHandler(m.Header.ID)

@@ -13,6 +13,7 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
 	"github.com/andydunstall/pico/pkg/status"
+	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/proxy"
 	"github.com/andydunstall/pico/server/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -40,12 +41,15 @@ type Server struct {
 	shutdownCtx    context.Context
 	shutdownCancel func()
 
+	conf *config.ProxyConfig
+
 	logger *log.Logger
 }
 
 func NewServer(
 	addr string,
 	proxy *proxy.Proxy,
+	conf *config.ProxyConfig,
 	registry *prometheus.Registry,
 	logger *log.Logger,
 ) *Server {
@@ -64,6 +68,7 @@ func NewServer(
 		shutdownCtx:       shutdownCtx,
 		shutdownCancel:    shutdownCancel,
 		proxy:             proxy,
+		conf:              conf,
 		logger:            logger.WithSubsystem("proxy.server"),
 	}
 
@@ -129,7 +134,6 @@ func (s *Server) listenerRoute(c *gin.Context) {
 
 	if err := stream.Monitor(
 		s.shutdownCtx,
-		// TODO(andydunstall): Configurable.
 		time.Second*10,
 		time.Second*10,
 	); err != nil {
@@ -141,8 +145,7 @@ func (s *Server) listenerRoute(c *gin.Context) {
 func (s *Server) proxyRoute(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		// TODO(andydunstall): Configure.
-		10*time.Second,
+		time.Duration(s.conf.GatewayTimeout)*time.Second,
 	)
 	defer cancel()
 

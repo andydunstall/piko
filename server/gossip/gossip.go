@@ -1,6 +1,7 @@
 package gossip
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -74,8 +75,18 @@ func (g *Gossip) Join(addrs []string) error {
 	return err
 }
 
-func (g *Gossip) Leave() error {
-	return g.kite.Leave()
+func (g *Gossip) Leave(ctx context.Context) error {
+	ch := make(chan error, 1)
+	go func() {
+		ch <- g.kite.Leave()
+	}()
+
+	select {
+	case err := <-ch:
+		return err
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (g *Gossip) Close() error {
