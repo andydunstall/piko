@@ -2,7 +2,9 @@ package server
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -10,6 +12,7 @@ import (
 	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
+	"github.com/andydunstall/pico/pkg/status"
 	"github.com/andydunstall/pico/serverv2/proxy"
 	"github.com/andydunstall/pico/serverv2/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -134,8 +137,34 @@ func (s *Server) listenerRoute(c *gin.Context) {
 	}
 }
 
+// proxyRoute handles proxied requests from downstream clients.
 func (s *Server) proxyRoute(c *gin.Context) {
-	c.Status(http.StatusNotImplemented)
+	ctx, cancel := context.WithTimeout(
+		context.Background(),
+		// TODO(andydunstall): Configure.
+		10*time.Second,
+	)
+	defer cancel()
+
+	resp, err := s.proxy.Request(ctx, c.Request)
+	if err != nil {
+		var errorInfo *status.ErrorInfo
+		if errors.As(err, &errorInfo) {
+			c.JSON(errorInfo.StatusCode, gin.H{"error": errorInfo.Message})
+			return
+		}
+		c.Status(http.StatusInternalServerError)
+		return
+	}
+
+	// Write the response status, headers and body.
+	for k, v := range resp.Header {
+		c.Writer.Header()[k] = v
+	}
+	c.Writer.WriteHeader(resp.StatusCode)
+	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+		s.logger.Warn("failed to write response", zap.Error(err))
+	}
 }
 
 func (s *Server) notFoundRoute(c *gin.Context) {

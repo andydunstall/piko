@@ -235,3 +235,16 @@ func (m *NetworkMap) OnLocalUpsert(f func(key, value string)) {
 
 	m.localUpsertSubscribers = append(m.localUpsertSubscribers, f)
 }
+
+func (m *NetworkMap) LookupEndpoint(endpointID string) (*Node, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for _, node := range m.nodes {
+		if numListeners, ok := node.Endpoints[endpointID]; ok && numListeners > 0 {
+			return node.Copy(), true
+		}
+	}
+
+	return nil, false
+}
