@@ -254,6 +254,8 @@ func run(conf *config.Config, logger *log.Logger) {
 		return nil
 	})
 
+	networkMap.UpdateLocalStatus(netmap.NodeStatusActive)
+
 	if err := g.Wait(); err != nil {
 		logger.Error("failed to run server", zap.Error(err))
 	}

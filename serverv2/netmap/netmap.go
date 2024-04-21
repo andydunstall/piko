@@ -16,6 +16,8 @@ type NetworkMap struct {
 	localID string
 	nodes   map[string]*Node
 
+	localUpdateSubscribers []func(key, value string)
+
 	// mu protects the above fields.
 	mu sync.RWMutex
 
@@ -59,6 +61,22 @@ func (m *NetworkMap) Nodes() []*Node {
 		nodes = append(nodes, node.Copy())
 	}
 	return nodes
+}
+
+func (m *NetworkMap) UpdateLocalStatus(status NodeStatus) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.nodes[m.localID].Status = status
+
+	for _, f := range m.localUpdateSubscribers {
+		f("status", string(status))
+	}
+
+	m.logger.Debug(
+		"updated local status ",
+		zap.String("status", string(status)),
+	)
 }
 
 func (m *NetworkMap) AddRemote(node *Node) {
@@ -118,4 +136,13 @@ func (m *NetworkMap) UpdateRemote(nodeID, key, value string) bool {
 	}
 
 	return true
+}
+
+// OnLocalUpdate subscribes to updates to the local node. The callback must not
+// block.
+func (m *NetworkMap) OnLocalUpdate(f func(key, value string)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.localUpdateSubscribers = append(m.localUpdateSubscribers, f)
 }

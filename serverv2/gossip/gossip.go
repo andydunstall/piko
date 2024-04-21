@@ -47,6 +47,8 @@ func NewGossip(
 		logger:       logger.WithSubsystem("gossip"),
 	}
 
+	networkMap.OnLocalUpdate(gossip.onLocalUpdate)
+
 	kite, err := kite.New(
 		kite.WithMemberID(networkMap.LocalNode().ID),
 		kite.WithBindAddr(bindAddr),
@@ -86,6 +88,10 @@ func (g *Gossip) updateLocalState() {
 	// Note adding the status last since a node is considered 'pending' until
 	// the status is known.
 	g.kite.UpsertLocal("status", string(localNode.Status))
+}
+
+func (g *Gossip) onLocalUpdate(key, value string) {
+	g.kite.UpsertLocal(key, value)
 }
 
 func (g *Gossip) onRemoteJoin(nodeID string) {

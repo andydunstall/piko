@@ -14,7 +14,6 @@ type NodeStatus string
 const (
 	NodeStatusJoining NodeStatus = "joining"
 	NodeStatusActive  NodeStatus = "active"
-	NodeStatusLeaving NodeStatus = "leaving"
 )
 
 // Node represents the known state about a node in the cluster.
