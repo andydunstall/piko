@@ -10,6 +10,7 @@ import (
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/serverv2/config"
+	"github.com/andydunstall/pico/serverv2/netmap"
 	adminserver "github.com/andydunstall/pico/serverv2/server/admin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
@@ -69,6 +70,16 @@ If the host is unspecified it defaults to all listeners, such as
 	)
 
 	cmd.Flags().StringVar(
+		&conf.Cluster.NodeID,
+		"cluster.node-id",
+		"",
+		`
+A unique identifier for the node in the cluster.
+
+By default a random ID will be generated for the node.`,
+	)
+
+	cmd.Flags().StringVar(
 		&conf.Log.Level,
 		"log.level",
 		"info",
@@ -103,6 +114,10 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 			os.Exit(1)
 		}
 
+		if conf.Cluster.NodeID == "" {
+			conf.Cluster.NodeID = netmap.GenerateNodeID()
+		}
+
 		run(&conf, logger)
 	}
 
@@ -114,11 +129,18 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	registry := prometheus.NewRegistry()
 
+	networkMap := netmap.NewNetworkMap(&netmap.Node{
+		ID: conf.Cluster.NodeID,
+	})
+
 	adminServer := adminserver.NewServer(
 		conf.Admin.BindAddr,
 		registry,
 		logger,
 	)
+
+	networkMapStatus := netmap.NewStatus(networkMap)
+	adminServer.AddStatus("/netmap", networkMapStatus)
 
 	ctx, cancel := signal.NotifyContext(
 		context.Background(), syscall.SIGINT, syscall.SIGTERM,

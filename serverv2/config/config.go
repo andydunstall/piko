@@ -26,6 +26,11 @@ func (c *AdminConfig) Validate() error {
 	return nil
 }
 
+type ClusterConfig struct {
+	// NodeID is a unique identifier for this node in the cluster.
+	NodeID string `json:"node_id"`
+}
+
 type LogConfig struct {
 	Level string `json:"level"`
 	// Subsystems enables debug logging on logs the given subsystems (which
@@ -41,9 +46,10 @@ func (c *LogConfig) Validate() error {
 }
 
 type Config struct {
-	Proxy ProxyConfig `json:"proxy"`
-	Admin AdminConfig `json:"admin"`
-	Log   LogConfig   `json:"log"`
+	Proxy   ProxyConfig   `json:"proxy"`
+	Admin   AdminConfig   `json:"admin"`
+	Cluster ClusterConfig `json:"cluster"`
+	Log     LogConfig     `json:"log"`
 }
 
 func (c *Config) Validate() error {

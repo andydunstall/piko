@@ -7,6 +7,7 @@ import (
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/serverv2/server/middleware"
+	"github.com/andydunstall/pico/serverv2/status"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -55,6 +56,11 @@ func NewServer(
 	server.registerRoutes()
 
 	return server
+}
+
+func (s *Server) AddStatus(route string, handler status.Handler) {
+	group := s.router.Group("/status").Group(route)
+	handler.Register(group)
 }
 
 func (s *Server) Serve() error {
