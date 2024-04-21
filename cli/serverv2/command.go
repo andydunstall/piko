@@ -14,6 +14,7 @@ import (
 	"github.com/andydunstall/pico/serverv2/config"
 	"github.com/andydunstall/pico/serverv2/gossip"
 	"github.com/andydunstall/pico/serverv2/netmap"
+	"github.com/andydunstall/pico/serverv2/proxy"
 	adminserver "github.com/andydunstall/pico/serverv2/server/admin"
 	proxyserver "github.com/andydunstall/pico/serverv2/server/proxy"
 	"github.com/hashicorp/go-sockaddr"
@@ -277,6 +278,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	proxyServer := proxyserver.NewServer(
 		conf.Proxy.BindAddr,
+		proxy.NewProxy(),
 		registry,
 		logger,
 	)
