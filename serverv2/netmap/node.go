@@ -9,10 +9,20 @@ var (
 	alphaNumericChars = []byte("abcdefghijklmnopqrstuvwxyz1234567890")
 )
 
+type NodeStatus string
+
+const (
+	NodeStatusJoining NodeStatus = "joining"
+	NodeStatusActive  NodeStatus = "active"
+	NodeStatusLeaving NodeStatus = "leaving"
+)
+
 // Node represents the known state about a node in the cluster.
 type Node struct {
 	// ID is a unique identifier for the node in the cluster.
 	ID string `json:"id"`
+
+	Status NodeStatus `json:"status"`
 
 	// GossipAddr is the advertised gossip address.
 	GossipAddr string `json:"gossip_addr"`
@@ -21,6 +31,7 @@ type Node struct {
 func (n *Node) Copy() *Node {
 	return &Node{
 		ID:         n.ID,
+		Status:     n.Status,
 		GossipAddr: n.GossipAddr,
 	}
 }

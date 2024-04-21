@@ -3,7 +3,6 @@ package log
 import (
 	"fmt"
 	"os"
-	"strings"
 	"time"
 
 	"go.uber.org/zap"
@@ -150,18 +149,7 @@ func (l *Logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
 
 func subsystemMatch(subsystem string, enabled []string) bool {
 	for _, s := range enabled {
-		// An exact match is ok
 		if subsystem == s {
-			return true
-		}
-		// Check if the enabled subsystem is a prefix of the subsystem.
-		// Append a period as a separator. So 'rpc' matches 'rpc.conn' not
-		// 'rpcar'.
-		prefix := s
-		if !strings.HasSuffix(prefix, ".") {
-			prefix += "."
-		}
-		if strings.HasPrefix(subsystem, prefix) {
 			return true
 		}
 	}

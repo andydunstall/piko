@@ -25,14 +25,8 @@ All logs can be enabled for a subsystem using `--log.subsystems`, which
 overrides `--log.level` for the configured subsystems. Such as
 `--log.subsystems server.http,metrics,proxy.forwarder`.
 
-Subsystem fields can contain segments separated by periods. Such as
-`server`, `server.http`, `server.http.route`, ... This is used to separate
-types of logs so you don't have to enable all logs for a given subsystem.
-
-`--log.subsystems` enables any subsystem whose starting segments match the
-given filter. Such as `--log.subsystems server` will match logs with subsystem
-`server`, `server.http`, `server.http.route`..., though
-`--log.subsystems server.http.route` will only match `server.http.route`.
+`--log.subsystems` enables any subsystem that are an exact match of the given
+list. Such as `gossip` will match `gossip` but not `gossip.kite`.
 
 ## Metrics
 Both the Pico server and agent expose Prometheus metrics at /pico/v1/metrics.

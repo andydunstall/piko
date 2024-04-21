@@ -36,7 +36,7 @@ downstream clients and upstream listeners, and an 'admin' port which is used
 to inspect the status of the server.
 
 Pico may run as a cluster of nodes for fault tolerance and scalability. Use
-'--cluster.members' to configure addresses of existing members in the cluster
+'--cluster.join' to configure addresses of existing members in the cluster
 to join.
 
 Examples:
@@ -48,7 +48,7 @@ Examples:
   pico server --proxy.bind-addr :8000 --admin.bind-addr :9000
 
   # Start a Pico server and join an existing cluster.
-  pico server --cluster.members 10.26.104.14,10.26.104.75
+  pico server --cluster.join 10.26.104.14,10.26.104.75
 `,
 	}
 
@@ -114,16 +114,16 @@ A unique identifier for the node in the cluster.
 By default a random ID will be generated for the node.`,
 	)
 	cmd.Flags().StringSliceVar(
-		&conf.Cluster.Members,
-		"cluster.members",
+		&conf.Cluster.Join,
+		"cluster.join",
 		nil,
 		`
 A list of addresses of members in the cluster to join.
 
 This may be either addresses of specific nodes, such as
-'--cluster.members 10.26.104.14,10.26.104.75', or a domain that resolves to
+'--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
 the addresses of the nodes in the cluster (e.g. a Kubernetes headless
-service), such as '--cluster.members pico.prod-pico-ns'.
+service), such as '--cluster.join pico.prod-pico-ns'.
 
 Each address must include the host, and may optionally include a port. If no
 port is given, the gossip port of this node is used.
@@ -193,17 +193,23 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	networkMap := netmap.NewNetworkMap(&netmap.Node{
 		ID:         conf.Cluster.NodeID,
+		Status:     netmap.NodeStatusJoining,
 		GossipAddr: conf.Gossip.AdvertiseAddr,
-	})
-	gossip, err := gossip.NewGossip(networkMap)
+	}, logger)
+	gossip, err := gossip.NewGossip(
+		conf.Gossip.BindAddr,
+		networkMap,
+		registry,
+		logger,
+	)
 	if err != nil {
 		logger.Error("failed to start gossip: %w", zap.Error(err))
 		os.Exit(1)
 	}
 	defer gossip.Close()
 
-	if len(conf.Cluster.Members) > 0 {
-		if err := gossip.Join(conf.Cluster.Members); err != nil {
+	if len(conf.Cluster.Join) > 0 {
+		if err := gossip.Join(conf.Cluster.Join); err != nil {
 			logger.Error("failed to join cluster: %w", zap.Error(err))
 			os.Exit(1)
 		}

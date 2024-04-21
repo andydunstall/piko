@@ -45,8 +45,8 @@ type ClusterConfig struct {
 	// NodeID is a unique identifier for this node in the cluster.
 	NodeID string `json:"node_id"`
 
-	// Members contians a list of addresses of members in the cluster to join.
-	Members []string `json:"members"`
+	// Join contians a list of addresses of members in the cluster to join.
+	Join []string `json:"join"`
 }
 
 type LogConfig struct {
