@@ -2,6 +2,8 @@ package gossip
 
 import (
 	"fmt"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/andydunstall/kite"
@@ -47,7 +49,7 @@ func NewGossip(
 		logger:       logger.WithSubsystem("gossip"),
 	}
 
-	networkMap.OnLocalUpdate(gossip.onLocalUpdate)
+	networkMap.OnLocalUpsert(gossip.onLocalUpsert)
 
 	kite, err := kite.New(
 		kite.WithMemberID(networkMap.LocalNode().ID),
@@ -92,8 +94,12 @@ func (g *Gossip) updateLocalState() {
 	g.kite.UpsertLocal("status", string(localNode.Status))
 }
 
-func (g *Gossip) onLocalUpdate(key, value string) {
-	g.kite.UpsertLocal(key, value)
+func (g *Gossip) onLocalUpsert(key, value string) {
+	if value == "" {
+		g.kite.DeleteLocal(key)
+	} else {
+		g.kite.UpsertLocal(key, value)
+	}
 }
 
 func (g *Gossip) onRemoteJoin(nodeID string) {
@@ -159,8 +165,8 @@ func (g *Gossip) onRemoteDown(nodeID string) {
 	// TODO(andydunstall): Need to notify if it comes back up as well.
 }
 
-func (g *Gossip) onRemoteUpdate(nodeID, key, value string) {
-	if g.networkMap.UpdateRemote(nodeID, key, value) {
+func (g *Gossip) onRemoteUpsert(nodeID, key, value string) {
+	if g.networkMap.UpsertRemote(nodeID, key, value) {
 		g.logger.Debug(
 			"node updated; netmap updated",
 			zap.String("node-id", nodeID),
@@ -194,11 +200,28 @@ func (g *Gossip) onRemoteUpdate(nodeID, key, value string) {
 	case "status":
 		node.Status = netmap.NodeStatus(value)
 	default:
-		g.logger.Warn(
-			"unknown key",
-			zap.String("node-id", node.ID),
-			zap.String("key", key),
-		)
+		if strings.HasPrefix(key, "endpoint:") {
+			endpointID, _ := strings.CutPrefix(key, "endpoint:")
+			numListeners, err := strconv.Atoi(value)
+			if err != nil {
+				g.logger.Error(
+					"invalid endpoint: num listeners",
+					zap.String("node-id", node.ID),
+					zap.Error(err),
+				)
+			}
+			if node.Endpoints == nil {
+				node.Endpoints = make(map[string]int)
+			}
+			node.Endpoints[endpointID] = numListeners
+		} else {
+			g.logger.Error(
+				"unknown key",
+				zap.String("node-id", node.ID),
+				zap.String("key", key),
+			)
+		}
+
 		return
 	}
 
@@ -222,6 +245,49 @@ func (g *Gossip) onRemoteUpdate(nodeID, key, value string) {
 			zap.String("value", value),
 		)
 	}
+}
+
+func (g *Gossip) onRemoteDelete(nodeID, key string) {
+	if g.networkMap.DeleteRemoteState(nodeID, key) {
+		g.logger.Debug(
+			"node key deleted; netmap updated",
+			zap.String("node-id", nodeID),
+			zap.String("key", key),
+		)
+		return
+	}
+
+	g.pendingNodesMu.Lock()
+	defer g.pendingNodesMu.Unlock()
+
+	node, ok := g.pendingNodes[nodeID]
+	if !ok {
+		g.logger.Warn(
+			"node key deleted; unknown node",
+			zap.String("node-id", nodeID),
+			zap.String("key", key),
+		)
+		return
+	}
+
+	if strings.HasPrefix(key, "endpoint:") {
+		endpointID, _ := strings.CutPrefix(key, "endpoint:")
+		if node.Endpoints != nil {
+			delete(node.Endpoints, endpointID)
+		}
+	} else {
+		g.logger.Error(
+			"unknown key",
+			zap.String("node-id", node.ID),
+			zap.String("key", key),
+		)
+	}
+
+	g.logger.Debug(
+		"node key deleted; pending node",
+		zap.String("node-id", nodeID),
+		zap.String("key", key),
+	)
 }
 
 // kiteWatcher is a kite.Watcher which is notified when nodes in the cluster
@@ -248,8 +314,12 @@ func (w *kiteWatcher) OnDown(memberID string) {
 	w.gossip.onRemoteDown(memberID)
 }
 
-func (w *kiteWatcher) OnUpdate(memberID, key, value string) {
-	w.gossip.onRemoteUpdate(memberID, key, value)
+func (w *kiteWatcher) OnUpsert(memberID, key, value string) {
+	w.gossip.onRemoteUpsert(memberID, key, value)
+}
+
+func (w *kiteWatcher) OnDelete(memberID, key string) {
+	w.gossip.onRemoteDelete(memberID, key)
 }
 
 var _ kite.Watcher = &kiteWatcher{}

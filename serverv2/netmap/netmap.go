@@ -1,6 +1,8 @@
 package netmap
 
 import (
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/andydunstall/pico/pkg/log"
@@ -16,7 +18,7 @@ type NetworkMap struct {
 	localID string
 	nodes   map[string]*Node
 
-	localUpdateSubscribers []func(key, value string)
+	localUpsertSubscribers []func(key, value string)
 
 	// mu protects the above fields.
 	mu sync.RWMutex
@@ -69,13 +71,53 @@ func (m *NetworkMap) UpdateLocalStatus(status NodeStatus) {
 
 	m.nodes[m.localID].Status = status
 
-	for _, f := range m.localUpdateSubscribers {
+	for _, f := range m.localUpsertSubscribers {
 		f("status", string(status))
 	}
 
 	m.logger.Debug(
-		"updated local status ",
+		"updated local status",
 		zap.String("status", string(status)),
+	)
+}
+
+func (m *NetworkMap) AddLocalEndpoint(endpointID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	numListeners := m.nodes[m.localID].AddEndpoint(endpointID)
+
+	key := "endpoint:" + endpointID
+	for _, f := range m.localUpsertSubscribers {
+		f(key, strconv.Itoa(numListeners))
+	}
+
+	m.logger.Debug(
+		"added local endpoint",
+		zap.String("endpoint-id", endpointID),
+		zap.Int("num-listeners", numListeners),
+	)
+}
+
+func (m *NetworkMap) RemoveLocalEndpoint(endpointID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	numListeners := m.nodes[m.localID].RemoveEndpoint(endpointID)
+
+	key := "endpoint:" + endpointID
+	for _, f := range m.localUpsertSubscribers {
+		if numListeners > 0 {
+			f(key, strconv.Itoa(numListeners))
+		} else {
+			f(key, "")
+		}
+	}
+
+	m.logger.Debug(
+		"removed local endpoint",
+		zap.String("endpoint-id", endpointID),
+		zap.Int("num-listeners", numListeners),
 	)
 }
 
@@ -107,7 +149,7 @@ func (m *NetworkMap) RemoveRemote(nodeID string) bool {
 	return false
 }
 
-func (m *NetworkMap) UpdateRemote(nodeID, key, value string) bool {
+func (m *NetworkMap) UpsertRemote(nodeID, key, value string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -128,9 +170,56 @@ func (m *NetworkMap) UpdateRemote(nodeID, key, value string) bool {
 			zap.String("status", string(node.Status)),
 		)
 	default:
-		m.logger.Warn(
-			"update remote; unknown key ",
-			zap.String("node-id", nodeID),
+		if strings.HasPrefix(key, "endpoint:") {
+			endpointID, _ := strings.CutPrefix(key, "endpoint:")
+			numListeners, err := strconv.Atoi(value)
+			if err != nil {
+				m.logger.Error(
+					"invalid endpoint: num listeners",
+					zap.String("node-id", node.ID),
+					zap.Error(err),
+				)
+			}
+			if node.Endpoints == nil {
+				node.Endpoints = make(map[string]int)
+			}
+			node.Endpoints[endpointID] = numListeners
+
+			m.logger.Debug(
+				"update remote; endpoint updated ",
+				zap.String("node-id", nodeID),
+				zap.String("endpoint-id", endpointID),
+			)
+		} else {
+			m.logger.Error(
+				"unknown key",
+				zap.String("node-id", node.ID),
+				zap.String("key", key),
+			)
+		}
+	}
+
+	return true
+}
+
+func (m *NetworkMap) DeleteRemoteState(nodeID, key string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	node, ok := m.nodes[nodeID]
+	if !ok {
+		return false
+	}
+
+	if strings.HasPrefix(key, "endpoint:") {
+		endpointID, _ := strings.CutPrefix(key, "endpoint:")
+		if node.Endpoints != nil {
+			delete(node.Endpoints, endpointID)
+		}
+	} else {
+		m.logger.Error(
+			"unknown key",
+			zap.String("node-id", node.ID),
 			zap.String("key", key),
 		)
 	}
@@ -138,11 +227,11 @@ func (m *NetworkMap) UpdateRemote(nodeID, key, value string) bool {
 	return true
 }
 
-// OnLocalUpdate subscribes to updates to the local node. The callback must not
+// OnLocalUpsert subscribes to updates to the local node. The callback must not
 // block.
-func (m *NetworkMap) OnLocalUpdate(f func(key, value string)) {
+func (m *NetworkMap) OnLocalUpsert(f func(key, value string)) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.localUpdateSubscribers = append(m.localUpdateSubscribers, f)
+	m.localUpsertSubscribers = append(m.localUpsertSubscribers, f)
 }

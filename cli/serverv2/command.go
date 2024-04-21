@@ -278,7 +278,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	proxyServer := proxyserver.NewServer(
 		conf.Proxy.BindAddr,
-		proxy.NewProxy(),
+		proxy.NewProxy(networkMap),
 		registry,
 		logger,
 	)

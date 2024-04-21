@@ -302,8 +302,11 @@ func (w *kiteWatcher) OnDown(memberID string) {
 	w.gossip.onRemoteDown(memberID)
 }
 
-func (w *kiteWatcher) OnUpdate(memberID, key, value string) {
+func (w *kiteWatcher) OnUpsert(memberID, key, value string) {
 	w.gossip.onRemoteUpdate(memberID, key, value)
+}
+
+func (w *kiteWatcher) OnDelete(_, _ string) {
 }
 
 var _ kite.Watcher = &kiteWatcher{}
