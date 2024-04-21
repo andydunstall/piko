@@ -6,8 +6,8 @@ import (
 	"net/http"
 
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/serverv2/server/middleware"
-	"github.com/andydunstall/pico/serverv2/status"
+	"github.com/andydunstall/pico/server/server/middleware"
+	"github.com/andydunstall/pico/server/status"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"

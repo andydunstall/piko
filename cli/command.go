@@ -3,7 +3,6 @@ package cli
 import (
 	"github.com/andydunstall/pico/cli/agent"
 	"github.com/andydunstall/pico/cli/server"
-	"github.com/andydunstall/pico/cli/serverv2"
 	"github.com/spf13/cobra"
 )
 
@@ -21,7 +20,6 @@ func NewCommand() *cobra.Command {
 
 	cmd.AddCommand(agent.NewCommand())
 	cmd.AddCommand(server.NewCommand())
-	cmd.AddCommand(serverv2.NewCommand())
 
 	return cmd
 }

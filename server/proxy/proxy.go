@@ -15,26 +15,62 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
 	"github.com/andydunstall/pico/pkg/status"
+	"github.com/andydunstall/pico/server/netmap"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"google.golang.org/protobuf/proto"
 )
 
+type localEndpoint struct {
+	streams   []*rpc.Stream
+	nextIndex int
+}
+
+func (e *localEndpoint) AddUpstream(s *rpc.Stream) {
+	e.streams = append(e.streams, s)
+}
+
+func (e *localEndpoint) RemoveUpstream(s *rpc.Stream) bool {
+	for i := 0; i != len(e.streams); i++ {
+		if e.streams[i] == s {
+			e.streams = append(e.streams[:i], e.streams[i+1:]...)
+			if len(e.streams) == 0 {
+				return true
+			}
+			e.nextIndex %= len(e.streams)
+			return false
+		}
+	}
+	return len(e.streams) == 0
+}
+
+func (e *localEndpoint) Next() *rpc.Stream {
+	if len(e.streams) == 0 {
+		return nil
+	}
+
+	s := e.streams[e.nextIndex]
+	e.nextIndex++
+	e.nextIndex %= len(e.streams)
+	return s
+}
+
 // Proxy is responsible for forwarding requests to upstream listeners.
 type Proxy struct {
-	endpoints        map[string]*endpoint
-	endpointResolver *EndpointResolver
+	localEndpoints map[string]*localEndpoint
+
+	mu sync.Mutex
 
 	client *http.Client
 
-	mu sync.Mutex
+	networkMap *netmap.NetworkMap
 
 	metrics *metrics
 	logger  *log.Logger
 }
 
 func NewProxy(
-	endpointResolver *EndpointResolver,
+	networkMap *netmap.NetworkMap,
 	registry *prometheus.Registry,
 	logger *log.Logger,
 ) *Proxy {
@@ -43,11 +79,11 @@ func NewProxy(
 		metrics.Register(registry)
 	}
 	return &Proxy{
-		endpoints:        make(map[string]*endpoint),
-		endpointResolver: endpointResolver,
-		client:           &http.Client{},
-		metrics:          metrics,
-		logger:           logger.WithSubsystem("proxy"),
+		localEndpoints: make(map[string]*localEndpoint),
+		networkMap:     networkMap,
+		client:         &http.Client{},
+		metrics:        metrics,
+		logger:         logger.WithSubsystem("proxy"),
 	}
 }
 
@@ -100,18 +136,18 @@ func (p *Proxy) Request(ctx context.Context, r *http.Request) (*http.Response, e
 }
 
 func (p *Proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
+	p.networkMap.AddLocalEndpoint(endpointID)
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	e, ok := p.endpoints[endpointID]
+	e, ok := p.localEndpoints[endpointID]
 	if !ok {
-		e = &endpoint{}
+		e = &localEndpoint{}
 	}
 
 	e.AddUpstream(stream)
-	p.endpoints[endpointID] = e
-
-	p.endpointResolver.AddLocalUpstream(endpointID)
+	p.localEndpoints[endpointID] = e
 
 	p.logger.Info(
 		"added upstream",
@@ -122,16 +158,16 @@ func (p *Proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
 }
 
 func (p *Proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
+	p.networkMap.RemoveLocalEndpoint(endpointID)
+
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	endpoint, ok := p.endpoints[endpointID]
+	endpoint, ok := p.localEndpoints[endpointID]
 	if !ok {
 		return
 	}
 	endpoint.RemoveUpstream(stream)
-
-	p.endpointResolver.RemoveLocalUpstream(endpointID)
 
 	p.logger.Info(
 		"removed upstream",
@@ -151,9 +187,9 @@ func (p *Proxy) request(
 		return p.requestLocal(ctx, listenerStream, r)
 	}
 
-	addr, ok := p.endpointResolver.Resolve(endpointID)
+	node, ok := p.networkMap.LookupEndpoint(endpointID)
 	if ok {
-		return p.requestRemote(ctx, addr, r)
+		return p.requestRemote(ctx, node.ProxyAddr, r)
 	}
 
 	return nil, &status.ErrorInfo{
@@ -167,7 +203,8 @@ func (p *Proxy) request(
 func (p *Proxy) lookupLocalListener(endpointID string) (*rpc.Stream, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
-	endpoint, ok := p.endpoints[endpointID]
+
+	endpoint, ok := p.localEndpoints[endpointID]
 	if !ok {
 		return nil, false
 	}

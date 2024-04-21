@@ -2,67 +2,57 @@ package config
 
 import "fmt"
 
-type ServerConfig struct {
-	// HTTPAddr is the address to listen for incoming HTTP and WebSocket
-	// connections.
-	HTTPAddr string `json:"http_addr"`
-
-	// AdvertiseHTTPAddr is the HTTP address to advertise to other nodes
-	// in the cluster.
-	AdvertiseHTTPAddr string `json:"advertise_http_addr"`
-
-	// GossipAddr is the address to listen for incoming UDP gossip messages.
-	GossipAddr string `json:"gossip_addr"`
-
-	// AdvertiseGossipAddr is the gossip address to advertise to other nodes in
-	// the cluster.
-	AdvertiseGossipAddr string `json:"advertise_gossip_addr"`
-
-	// GracePeriodSeconds is the maximum number of seconds to gracefully
-	// shutdown after receiving a shutdown signal.
-	GracePeriodSeconds int `json:"grace_period_seconds"`
-}
-
-type ClusterConfig struct {
-	NodeID string `json:"node_id"`
-
-	Members []string `json:"members"`
-}
-
-func (c *ServerConfig) Validate() error {
-	if c.HTTPAddr == "" {
-		return fmt.Errorf("missing listen addr")
-	}
-	if c.GossipAddr == "" {
-		return fmt.Errorf("missing gossip addr")
-	}
-	return nil
-}
-
 type ProxyConfig struct {
-	TimeoutSeconds int `json:"timeout_seconds"`
+	// BindAddr is the address to bind to listen for incoming HTTP connections.
+	BindAddr string `json:"bind_addr"`
+
+	// AdvertiseAddr is the address to advertise to other nodes.
+	AdvertiseAddr string `json:"advertise_addr"`
 }
 
 func (c *ProxyConfig) Validate() error {
-	if c.TimeoutSeconds == 0 {
-		return fmt.Errorf("missing timeout seconds")
+	if c.BindAddr == "" {
+		return fmt.Errorf("missing bind addr")
 	}
 	return nil
 }
 
-type UpstreamConfig struct {
-	HeartbeatIntervalSeconds int `json:"heartbeat_interval_seconds"`
-	HeartbeatTimeoutSeconds  int `json:"heartbeat_timeout_seconds"`
+type AdminConfig struct {
+	// BindAddr is the address to bind to listen for incoming HTTP connections.
+	BindAddr string `json:"bind_addr"`
+
+	// AdvertiseAddr is the address to advertise to other nodes.
+	AdvertiseAddr string `json:"advertise_addr"`
 }
 
-func (c *UpstreamConfig) Validate() error {
-	if c.HeartbeatIntervalSeconds == 0 {
-		return fmt.Errorf("missing heartbeat interval")
-	}
-	if c.HeartbeatTimeoutSeconds == 0 {
-		return fmt.Errorf("missing heartbeat timeout")
+func (c *AdminConfig) Validate() error {
+	if c.BindAddr == "" {
+		return fmt.Errorf("missing bind addr")
 	}
 	return nil
+}
+
+type GossipConfig struct {
+	// BindAddr is the address to bind to listen for gossip traffic.
+	BindAddr string `json:"bind_addr"`
+
+	// AdvertiseAddr is the address to advertise to other nodes.
+	AdvertiseAddr string `json:"advertise_addr"`
+}
+
+func (c *GossipConfig) Validate() error {
+	if c.BindAddr == "" {
+		return fmt.Errorf("missing bind addr")
+	}
+	return nil
+}
+
+type ClusterConfig struct {
+	// NodeID is a unique identifier for this node in the cluster.
+	NodeID string `json:"node_id"`
+
+	// Join contians a list of addresses of members in the cluster to join.
+	Join []string `json:"join"`
 }
 
 type LogConfig struct {
@@ -80,22 +70,22 @@ func (c *LogConfig) Validate() error {
 }
 
 type Config struct {
-	Server   ServerConfig   `json:"server"`
-	Cluster  ClusterConfig  `json:"cluster"`
-	Proxy    ProxyConfig    `json:"proxy"`
-	Upstream UpstreamConfig `json:"upstream"`
-	Log      LogConfig      `json:"log"`
+	Proxy   ProxyConfig   `json:"proxy"`
+	Admin   AdminConfig   `json:"admin"`
+	Gossip  GossipConfig  `json:"gossip"`
+	Cluster ClusterConfig `json:"cluster"`
+	Log     LogConfig     `json:"log"`
 }
 
 func (c *Config) Validate() error {
-	if err := c.Server.Validate(); err != nil {
-		return fmt.Errorf("server: %w", err)
-	}
 	if err := c.Proxy.Validate(); err != nil {
 		return fmt.Errorf("proxy: %w", err)
 	}
-	if err := c.Upstream.Validate(); err != nil {
-		return fmt.Errorf("upstream: %w", err)
+	if err := c.Admin.Validate(); err != nil {
+		return fmt.Errorf("admin: %w", err)
+	}
+	if err := c.Gossip.Validate(); err != nil {
+		return fmt.Errorf("gossip: %w", err)
 	}
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)

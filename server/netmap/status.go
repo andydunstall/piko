@@ -3,7 +3,7 @@ package netmap
 import (
 	"net/http"
 
-	"github.com/andydunstall/pico/serverv2/status"
+	"github.com/andydunstall/pico/server/status"
 	"github.com/gin-gonic/gin"
 )
 

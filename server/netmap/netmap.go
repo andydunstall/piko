@@ -1,6 +1,13 @@
 package netmap
 
-import "sync"
+import (
+	"strconv"
+	"strings"
+	"sync"
+
+	"github.com/andydunstall/pico/pkg/log"
+	"go.uber.org/zap"
+)
 
 // NetworkMap represents the known state of the cluster as seen by the local
 // node.
@@ -11,21 +18,21 @@ type NetworkMap struct {
 	localID string
 	nodes   map[string]*Node
 
-	// endpointIndex maps each active endpoint ID to a set of node IDs that
-	// have at least one listener for that endpoint.
-	endpointIndex map[string]map[string]struct{}
+	localUpsertSubscribers []func(key, value string)
 
 	// mu protects the above fields.
 	mu sync.RWMutex
+
+	logger *log.Logger
 }
 
-func NewNetworkMap(localNode *Node) *NetworkMap {
+func NewNetworkMap(localNode *Node, logger *log.Logger) *NetworkMap {
 	nodes := make(map[string]*Node)
 	nodes[localNode.ID] = localNode
 	return &NetworkMap{
-		localID:       localNode.ID,
-		nodes:         nodes,
-		endpointIndex: make(map[string]map[string]struct{}),
+		localID: localNode.ID,
+		nodes:   nodes,
+		logger:  logger.WithSubsystem("netmap"),
 	}
 }
 
@@ -33,109 +40,211 @@ func (m *NetworkMap) LocalNode() *Node {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	return m.nodes[m.localID]
+	return m.nodes[m.localID].Copy()
 }
 
-func (m *NetworkMap) NodeByID(id string) (*Node, bool) {
+func (m *NetworkMap) Node(id string) (*Node, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	node, ok := m.nodes[id]
-	return node, ok
+	if !ok {
+		return nil, false
+	}
+	return node.Copy(), true
 }
 
-func (m *NetworkMap) AddNode(node *Node) {
+func (m *NetworkMap) Nodes() []*Node {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	nodes := make([]*Node, 0, len(m.nodes))
+	for _, node := range m.nodes {
+		nodes = append(nodes, node.Copy())
+	}
+	return nodes
+}
+
+func (m *NetworkMap) UpdateLocalStatus(status NodeStatus) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.nodes[m.localID].Status = status
+
+	for _, f := range m.localUpsertSubscribers {
+		f("status", string(status))
+	}
+
+	m.logger.Debug(
+		"updated local status",
+		zap.String("status", string(status)),
+	)
+}
+
+func (m *NetworkMap) AddLocalEndpoint(endpointID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	numListeners := m.nodes[m.localID].AddEndpoint(endpointID)
+
+	key := "endpoint:" + endpointID
+	for _, f := range m.localUpsertSubscribers {
+		f(key, strconv.Itoa(numListeners))
+	}
+
+	m.logger.Debug(
+		"added local endpoint",
+		zap.String("endpoint-id", endpointID),
+		zap.Int("num-listeners", numListeners),
+	)
+}
+
+func (m *NetworkMap) RemoveLocalEndpoint(endpointID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	numListeners := m.nodes[m.localID].RemoveEndpoint(endpointID)
+
+	key := "endpoint:" + endpointID
+	for _, f := range m.localUpsertSubscribers {
+		if numListeners > 0 {
+			f(key, strconv.Itoa(numListeners))
+		} else {
+			f(key, "")
+		}
+	}
+
+	m.logger.Debug(
+		"removed local endpoint",
+		zap.String("endpoint-id", endpointID),
+		zap.Int("num-listeners", numListeners),
+	)
+}
+
+func (m *NetworkMap) AddRemote(node *Node) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	m.nodes[node.ID] = node
 
-	m.addToEndpointIndex(node)
+	m.logger.Debug(
+		"add remote ",
+		zap.String("node-id", node.ID),
+		zap.String("status", string(node.Status)),
+	)
 }
 
-// UpdateNodeByID updates the node with the given ID using a callback function.
-//
-// The function must not block as it is called while the netmap mutex is held.
-func (m *NetworkMap) UpdateNodeByID(id string, f func(n *Node)) bool {
+func (m *NetworkMap) RemoveRemote(nodeID string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	node, ok := m.nodes[id]
+	if _, ok := m.nodes[nodeID]; ok {
+		delete(m.nodes, nodeID)
+		m.logger.Debug(
+			"remove remote ",
+			zap.String("node-id", nodeID),
+		)
+		return true
+	}
+	return false
+}
+
+func (m *NetworkMap) UpsertRemote(nodeID, key, value string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	node, ok := m.nodes[nodeID]
 	if !ok {
 		return false
 	}
-	// Remove this nodes endpoints before updating the node as a simple way to
-	// keep the index up to date.
-	// TODO(andydunstall): This will be expensive with 1000s of endpoints per
-	// node so look at improving. Can add an explicit
-	// netmap.AddEndpoint(nodeID, endpointID).
-	m.removeFromEndpointIndex(node)
-	f(node)
-	m.addToEndpointIndex(node)
+
+	m.nodes[node.ID] = node
+
+	switch key {
+	case "status":
+		node.Status = NodeStatus(value)
+
+		m.logger.Debug(
+			"update remote; status updated ",
+			zap.String("node-id", nodeID),
+			zap.String("status", string(node.Status)),
+		)
+	default:
+		if strings.HasPrefix(key, "endpoint:") {
+			endpointID, _ := strings.CutPrefix(key, "endpoint:")
+			numListeners, err := strconv.Atoi(value)
+			if err != nil {
+				m.logger.Error(
+					"invalid endpoint: num listeners",
+					zap.String("node-id", node.ID),
+					zap.Error(err),
+				)
+			}
+			if node.Endpoints == nil {
+				node.Endpoints = make(map[string]int)
+			}
+			node.Endpoints[endpointID] = numListeners
+
+			m.logger.Debug(
+				"update remote; endpoint updated ",
+				zap.String("node-id", nodeID),
+				zap.String("endpoint-id", endpointID),
+			)
+		} else {
+			m.logger.Error(
+				"unknown key",
+				zap.String("node-id", node.ID),
+				zap.String("key", key),
+			)
+		}
+	}
+
 	return true
 }
 
-func (m *NetworkMap) DeleteNodeByID(id string) bool {
+func (m *NetworkMap) DeleteRemoteState(nodeID, key string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	node, ok := m.nodes[id]
-	m.removeFromEndpointIndex(node)
-	delete(m.nodes, id)
-	return ok
-}
-
-func (m *NetworkMap) NodesByEndpointID(endpointID string) []*Node {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	nodeIDs, ok := m.endpointIndex[endpointID]
+	node, ok := m.nodes[nodeID]
 	if !ok {
-		return nil
+		return false
 	}
 
-	var nodes []*Node
-	for nodeID := range nodeIDs {
-		nodes = append(nodes, m.nodes[nodeID])
-	}
-	return nodes
-}
-
-func (m *NetworkMap) OnLocalStatusUpdated(_ func(status NodeStatus)) {
-	// TODO(andydunstall)
-}
-
-func (m *NetworkMap) OnLocalEndpointUpdated(_ func(endpointID string, numListeners int)) {
-	// TODO(andydunstall)
-}
-
-func (m *NetworkMap) OnLocalEndpointRemoved(_ func(endpointID string)) {
-	// TODO(andydunstall)
-}
-
-// addToEndpointIndex adds the endpoints for the given node to the endpoint
-// index. Note the mutex MUST be held before calling this method.
-func (m *NetworkMap) addToEndpointIndex(node *Node) {
-	for endpointID, numListeners := range node.Endpoints {
-		if numListeners <= 0 {
-			continue
+	if strings.HasPrefix(key, "endpoint:") {
+		endpointID, _ := strings.CutPrefix(key, "endpoint:")
+		if node.Endpoints != nil {
+			delete(node.Endpoints, endpointID)
 		}
-		nodeIDs, ok := m.endpointIndex[endpointID]
-		if !ok {
-			nodeIDs = make(map[string]struct{})
-		}
-		nodeIDs[node.ID] = struct{}{}
-		m.endpointIndex[endpointID] = nodeIDs
+	} else {
+		m.logger.Error(
+			"unknown key",
+			zap.String("node-id", node.ID),
+			zap.String("key", key),
+		)
 	}
+
+	return true
 }
 
-// removeFromEndpointIndex removes the endpoints for the given node to the
-// endpoint index. Note the mutex MUST be held before calling this method.
-func (m *NetworkMap) removeFromEndpointIndex(node *Node) {
-	for endpointID := range node.Endpoints {
-		nodeIDs, ok := m.endpointIndex[endpointID]
-		if ok {
-			delete(nodeIDs, node.ID)
+// OnLocalUpsert subscribes to updates to the local node. The callback must not
+// block.
+func (m *NetworkMap) OnLocalUpsert(f func(key, value string)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.localUpsertSubscribers = append(m.localUpsertSubscribers, f)
+}
+
+func (m *NetworkMap) LookupEndpoint(endpointID string) (*Node, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for _, node := range m.nodes {
+		if numListeners, ok := node.Endpoints[endpointID]; ok && numListeners > 0 {
+			return node.Copy(), true
 		}
 	}
+
+	return nil, false
 }

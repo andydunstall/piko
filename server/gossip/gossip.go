@@ -24,8 +24,6 @@ import (
 type Gossip struct {
 	networkMap *netmap.NetworkMap
 
-	kite *kite.Kite
-
 	// pendingNodes contains nodes that we haven't received the full state for
 	// yet so can't be added to the netmap. Since kite propagates key-value
 	// pairs in order, we may only have a few entries of a node. Therefore
@@ -34,12 +32,13 @@ type Gossip struct {
 	pendingNodes   map[string]*netmap.Node
 	pendingNodesMu sync.Mutex
 
+	kite *kite.Kite
+
 	logger *log.Logger
 }
 
 func NewGossip(
 	bindAddr string,
-	advertiseAddr string,
 	networkMap *netmap.NetworkMap,
 	registry *prometheus.Registry,
 	logger *log.Logger,
@@ -50,10 +49,12 @@ func NewGossip(
 		logger:       logger.WithSubsystem("gossip"),
 	}
 
+	networkMap.OnLocalUpsert(gossip.onLocalUpsert)
+
 	kite, err := kite.New(
 		kite.WithMemberID(networkMap.LocalNode().ID),
 		kite.WithBindAddr(bindAddr),
-		kite.WithAdvertiseAddr(advertiseAddr),
+		kite.WithAdvertiseAddr(networkMap.LocalNode().GossipAddr),
 		kite.WithWatcher(newKiteWatcher(gossip)),
 		kite.WithPrometeusRegistry(registry),
 		kite.WithLogger(logger.WithSubsystem("gossip.kite")),
@@ -62,11 +63,8 @@ func NewGossip(
 		return nil, fmt.Errorf("kite: %w", err)
 	}
 	gossip.kite = kite
-	gossip.updateLocalState()
 
-	networkMap.OnLocalStatusUpdated(gossip.onLocalStatusUpdated)
-	networkMap.OnLocalEndpointUpdated(gossip.onLocalEndpointUpdated)
-	networkMap.OnLocalEndpointRemoved(gossip.onLocalEndpointRemoved)
+	gossip.updateLocalState()
 
 	return gossip, nil
 }
@@ -84,40 +82,28 @@ func (g *Gossip) Close() error {
 	return g.kite.Close()
 }
 
-func (g *Gossip) onLocalStatusUpdated(status netmap.NodeStatus) {
-	g.kite.UpsertLocal("status", string(status))
-}
-
-func (g *Gossip) onLocalEndpointUpdated(endpointID string, numListeners int) {
-	if numListeners > 0 {
-		g.kite.UpsertLocal("endpoint:"+endpointID, strconv.Itoa(numListeners))
-	} else {
-		g.kite.DeleteLocal("endpoint:" + endpointID)
-	}
-}
-
-func (g *Gossip) onLocalEndpointRemoved(endpointID string) {
-	g.kite.DeleteLocal("endpoint:" + endpointID)
-}
-
 // updateLocalState updates the local Kite key-value state which will be
 // propagated to other nodes.
 func (g *Gossip) updateLocalState() {
 	localNode := g.networkMap.LocalNode()
-	g.kite.UpsertLocal("http_addr", localNode.HTTPAddr)
+	g.kite.UpsertLocal("proxy_addr", localNode.ProxyAddr)
+	g.kite.UpsertLocal("admin_addr", localNode.AdminAddr)
 	g.kite.UpsertLocal("gossip_addr", localNode.GossipAddr)
-	for endpointID, numListeners := range localNode.Endpoints {
-		if numListeners > 0 {
-			g.kite.UpsertLocal("endpoint:"+endpointID, strconv.Itoa(numListeners))
-		}
-	}
 	// Note adding the status last since a node is considered 'pending' until
 	// the status is known.
 	g.kite.UpsertLocal("status", string(localNode.Status))
 }
 
+func (g *Gossip) onLocalUpsert(key, value string) {
+	if value == "" {
+		g.kite.DeleteLocal(key)
+	} else {
+		g.kite.UpsertLocal(key, value)
+	}
+}
+
 func (g *Gossip) onRemoteJoin(nodeID string) {
-	if _, ok := g.networkMap.NodeByID(nodeID); ok {
+	if _, ok := g.networkMap.Node(nodeID); ok {
 		g.logger.Warn(
 			"node joined; already in netmap",
 			zap.String("node-id", nodeID),
@@ -136,19 +122,17 @@ func (g *Gossip) onRemoteJoin(nodeID string) {
 		return
 	}
 
-	g.logger.Info(
-		"node joined",
-		zap.String("node-id", nodeID),
-	)
 	// Add as pending since we don't have enough information to add to the
 	// netmap.
 	g.pendingNodes[nodeID] = &netmap.Node{
 		ID: nodeID,
 	}
+
+	g.logger.Info("node joined", zap.String("node-id", nodeID))
 }
 
 func (g *Gossip) onRemoteLeave(nodeID string) {
-	if deleted := g.networkMap.DeleteNodeByID(nodeID); deleted {
+	if deleted := g.networkMap.RemoveRemote(nodeID); deleted {
 		g.logger.Info(
 			"node left; removed from netmap",
 			zap.String("node-id", nodeID),
@@ -176,37 +160,13 @@ func (g *Gossip) onRemoteLeave(nodeID string) {
 }
 
 func (g *Gossip) onRemoteDown(nodeID string) {
-	if deleted := g.networkMap.DeleteNodeByID(nodeID); deleted {
-		g.logger.Info(
-			"node down; removed from netmap",
-			zap.String("node-id", nodeID),
-		)
-		return
-	}
+	g.logger.Info("node down", zap.String("node-id", nodeID))
 
-	g.pendingNodesMu.Lock()
-	defer g.pendingNodesMu.Unlock()
-
-	_, ok := g.pendingNodes[nodeID]
-	if ok {
-		delete(g.pendingNodes, nodeID)
-
-		g.logger.Info(
-			"node down; removed from pending",
-			zap.String("node-id", nodeID),
-		)
-	} else {
-		g.logger.Warn(
-			"node down; unknown node",
-			zap.String("node-id", nodeID),
-		)
-	}
+	// TODO(andydunstall): Need to notify if it comes back up as well.
 }
 
-func (g *Gossip) onRemoteUpdate(nodeID, key, value string) {
-	if ok := g.networkMap.UpdateNodeByID(nodeID, func(n *netmap.Node) {
-		g.applyNodeUpdate(n, key, value)
-	}); ok {
+func (g *Gossip) onRemoteUpsert(nodeID, key, value string) {
+	if g.networkMap.UpsertRemote(nodeID, key, value) {
 		g.logger.Debug(
 			"node updated; netmap updated",
 			zap.String("node-id", nodeID),
@@ -230,27 +190,11 @@ func (g *Gossip) onRemoteUpdate(nodeID, key, value string) {
 		return
 	}
 
-	g.applyNodeUpdate(node, key, value)
-
-	g.logger.Debug(
-		"node updated; pending node",
-		zap.String("node-id", nodeID),
-		zap.String("key", key),
-		zap.String("value", value),
-	)
-
-	// Once we have the node state for the pending node, it can be added to
-	// the netmap.
-	if node.Status != "" {
-		delete(g.pendingNodes, node.ID)
-		g.networkMap.AddNode(node)
-	}
-}
-
-func (g *Gossip) applyNodeUpdate(node *netmap.Node, key, value string) {
 	switch key {
-	case "http_addr":
-		node.HTTPAddr = value
+	case "proxy_addr":
+		node.ProxyAddr = value
+	case "admin_addr":
+		node.AdminAddr = value
 	case "gossip_addr":
 		node.GossipAddr = value
 	case "status":
@@ -260,22 +204,90 @@ func (g *Gossip) applyNodeUpdate(node *netmap.Node, key, value string) {
 			endpointID, _ := strings.CutPrefix(key, "endpoint:")
 			numListeners, err := strconv.Atoi(value)
 			if err != nil {
-				g.logger.Warn(
+				g.logger.Error(
 					"invalid endpoint: num listeners",
 					zap.String("node-id", node.ID),
 					zap.Error(err),
 				)
-				return
+			}
+			if node.Endpoints == nil {
+				node.Endpoints = make(map[string]int)
 			}
 			node.Endpoints[endpointID] = numListeners
 		} else {
-			g.logger.Warn(
+			g.logger.Error(
 				"unknown key",
 				zap.String("node-id", node.ID),
 				zap.String("key", key),
 			)
 		}
+
+		return
 	}
+
+	// Once we have the node status for the pending node, it can be added to
+	// the netmap.
+	if node.Status != "" {
+		delete(g.pendingNodes, node.ID)
+		g.networkMap.AddRemote(node)
+
+		g.logger.Debug(
+			"node updated; added to netmap",
+			zap.String("node-id", nodeID),
+			zap.String("key", key),
+			zap.String("value", value),
+		)
+	} else {
+		g.logger.Debug(
+			"node updated; pending node",
+			zap.String("node-id", nodeID),
+			zap.String("key", key),
+			zap.String("value", value),
+		)
+	}
+}
+
+func (g *Gossip) onRemoteDelete(nodeID, key string) {
+	if g.networkMap.DeleteRemoteState(nodeID, key) {
+		g.logger.Debug(
+			"node key deleted; netmap updated",
+			zap.String("node-id", nodeID),
+			zap.String("key", key),
+		)
+		return
+	}
+
+	g.pendingNodesMu.Lock()
+	defer g.pendingNodesMu.Unlock()
+
+	node, ok := g.pendingNodes[nodeID]
+	if !ok {
+		g.logger.Warn(
+			"node key deleted; unknown node",
+			zap.String("node-id", nodeID),
+			zap.String("key", key),
+		)
+		return
+	}
+
+	if strings.HasPrefix(key, "endpoint:") {
+		endpointID, _ := strings.CutPrefix(key, "endpoint:")
+		if node.Endpoints != nil {
+			delete(node.Endpoints, endpointID)
+		}
+	} else {
+		g.logger.Error(
+			"unknown key",
+			zap.String("node-id", node.ID),
+			zap.String("key", key),
+		)
+	}
+
+	g.logger.Debug(
+		"node key deleted; pending node",
+		zap.String("node-id", nodeID),
+		zap.String("key", key),
+	)
 }
 
 // kiteWatcher is a kite.Watcher which is notified when nodes in the cluster
@@ -303,10 +315,11 @@ func (w *kiteWatcher) OnDown(memberID string) {
 }
 
 func (w *kiteWatcher) OnUpsert(memberID, key, value string) {
-	w.gossip.onRemoteUpdate(memberID, key, value)
+	w.gossip.onRemoteUpsert(memberID, key, value)
 }
 
-func (w *kiteWatcher) OnDelete(_, _ string) {
+func (w *kiteWatcher) OnDelete(memberID, key string) {
+	w.gossip.onRemoteDelete(memberID, key)
 }
 
 var _ kite.Watcher = &kiteWatcher{}
