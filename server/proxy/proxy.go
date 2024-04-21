@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -88,7 +89,7 @@ func NewProxy(
 }
 
 func (p *Proxy) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
-	endpointID := r.Header.Get("x-pico-endpoint")
+	endpointID := parseEndpointID(r)
 	if endpointID == "" {
 		p.logger.Warn(
 			"failed to proxy request: missing endpoint id",
@@ -322,4 +323,23 @@ func (p *Proxy) requestRemote(
 	)
 
 	return resp, nil
+}
+
+func parseEndpointID(r *http.Request) string {
+	endpointID := r.Header.Get("x-pico-endpoint")
+	if endpointID != "" {
+		return endpointID
+	}
+
+	host := r.Header.Get("host")
+	if host != "" && strings.Contains(host, ".") {
+		// If a host is given and contains a separator, use the bottom-level
+		// domain as the endpoint ID.
+		//
+		// Such as if the domain is 'xyz.pico.example.com', then 'xyz' is the
+		// endpoint ID.
+		return strings.Split(host, ".")[0]
+	}
+
+	return ""
 }

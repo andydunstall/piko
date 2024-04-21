@@ -29,14 +29,4 @@ overrides `--log.level` for the configured subsystems. Such as
 list. Such as `gossip` will match `gossip` but not `gossip.kite`.
 
 ## Metrics
-Both the Pico server and agent expose Prometheus metrics at /pico/v1/metrics.
-
-### Available Metrics
-| Metric                             | Type      | Labels        | Description                                        |
-| ---------------------------------- | --------- | ------------- | -------------------------------------------------- |
-| proxy_requests_total               | Counter   | status        | Proxied requests total                             |
-| proxy_request_latency_seconds      | Histogram | status        | Proxied request latency histogram                  |
-| proxy_errors_total                 | Counter   |               | Errors forwarding proxied requests                 |
-| proxy_listeners                    | Gauge     |               | Number of registered upstream listeners            |
-| http_requests_total                | Counter   | status        | HTTP requests total                                |
-| http_request_latency_seconds       | Histogram | status        | HTTP request latency histogram                     |
+The Pico server exposes Prometheus on the admin port at `/metrics`.

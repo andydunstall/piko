@@ -1,10 +1,11 @@
-# Pico
+# Pico [![Build](https://github.com/andydunstall/pico/actions/workflows/build.yaml/badge.svg)](https://github.com/andydunstall/pico/actions/workflows/build.yaml)
 
-> :warning: Pico is still a proof of concept so is not yet suitable for
-production. See 'Limitations' below.
+> :warning: Pico is currently only a proof of concept so is not yet suitable
+for production.
 
 Pico is a reverse proxy that allows you to expose a service that isn't publicly
-routable (known as tunnelling). Pico is designed to serve production traffic.
+routable (known as tunnelling). Unlike other open-source tunelling solutions,
+Pico is designed to serve production traffic.
 
 Upstream services register a listener with Pico via an outbound-only
 connection. Downstream clients may then send HTTP(S) requests to Pico which
@@ -16,6 +17,8 @@ header, then Pico load balances requests among registered listeners with that
 endpoint ID.
 
 ![overview](assets/images/overview.png)
+
+## Contents
 
 - [Design Goals](#design-goals)
 - [Components](#components)
@@ -39,7 +42,7 @@ Pico is designed to be simple to host, particularly in Kubernetes. Therefore
 Pico may be hosted behind a HTTP load balancer or
 [Kubernetes Gateway](https://kubernetes.io/docs/concepts/services-networking/gateway/).
 
-The downside of this approach is it means the proxy only supports HTTP. Pico
+The downside of this approach is it means Pico only supports HTTP. Pico
 also uses WebSockets internally to communicate with upstream listeners, which
 are typically supported by HTTP load balancers.
 
@@ -49,12 +52,15 @@ any static configuration. When multiple listeners register with the same
 endpoint ID, Pico will load balance requests among those listeners.
 
 ## Components
+
 ### Server
 The Pico server is responsible for proxying requests from downstream clients to
 registered upstream listeners.
 
 Upstreams register one or more listeners with the server via an outbound-only
 connection. Each listener is identified by an endpoint ID.
+
+Pico may be hosted as a cluster of servers for fault tolerance and scalability.
 
 #### Routing
 Incoming HTTP requests include the endpoint ID to route to in either the `Host`
@@ -82,21 +88,18 @@ then forwards incoming requests to your upstream service.
 Such as if you have a service running at `localhost:3000`, you can register
 endpoint `my-endpoint` that forwards requests to that local service.
 
-Alternatively you can use an SDK where you register listeners directly in your
-application, rather than requiring an external process.
-
 ## Getting Started
 This section describes how to run both the Pico server and agent locally. In
-production you'd host the server remotely though this is still useful to demo
-Pico.
+production you'd host the server remotely as a cluster, though this is still
+useful to demo Pico.
 
 Start by either downloading the `pico` binary from the releases page, or to
 build Pico directly you can clone the repo and run `make pico` (which requires
 Go 1.21 or later).
 
 ### Server
-Start the server with `pico server`, which will run at `localhost:8080` by
-default.
+Start the server with `pico server`, which will listen for proxy reuqests at
+`localhost:8080` by default.
 
 See `pico server -h` for the available configuration options.
 
@@ -106,7 +109,7 @@ Next start a service you would like to route requests to, such as
 port `3000`.
 
 Next you can start Pico agent with
-`pico agent --listener my-endpoint-123/localhost:3000` which registers a
+`pico agent --listeners my-endpoint-123/localhost:3000` which registers a
 listener with endpoint ID `my-endpoint-123` and forwards requests to
 `localhost:3000`.
 
@@ -128,14 +131,3 @@ See [docs](./docs) for details on deploying and managing Pico, plus details on
 the Pico architecture:
 - Deploy
   - [Observability](./docs/deploy/observability.md)
-
-## Limitations
-> :warning: Pico is still a proof of concept so is not yet suitable for
-production.
-
-Pico does not yet support clustering or authentication. Currently working
-on adding a gossip layer for endpoint discovery with
-[kite](https://github.com/andydunstall/kite).
-
-Pico also only supports using Pico agent to register listeners, though aiming
-to add support for a Go SDK as well.

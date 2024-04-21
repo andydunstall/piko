@@ -49,8 +49,13 @@ Examples:
   // ocnnections on :9000.
   pico server --proxy.bind-addr :8000 --admin.bind-addr :9000
 
-  # Start a Pico server and join an existing cluster.
+  # Start a Pico server and join an existing cluster by specifying each member.
   pico server --cluster.join 10.26.104.14,10.26.104.75
+
+  # Start a Pico server and join an existing cluster by specifying a domain.
+  # The server will resolve the domain and attempt to join each returned
+  # member.
+  pico server --cluster.join cluster.pico-ns.svc.cluster.local
 `,
 	}
 
