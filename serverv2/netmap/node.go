@@ -23,6 +23,10 @@ type Node struct {
 
 	Status NodeStatus `json:"status"`
 
+	// ProxyAddr is the advertised proxy address.
+	ProxyAddr string `json:"proxy_addr"`
+	// AdminAddr is the advertised admin address.
+	AdminAddr string `json:"admin_addr"`
 	// GossipAddr is the advertised gossip address.
 	GossipAddr string `json:"gossip_addr"`
 }
@@ -31,6 +35,8 @@ func (n *Node) Copy() *Node {
 	return &Node{
 		ID:         n.ID,
 		Status:     n.Status,
+		ProxyAddr:  n.ProxyAddr,
+		AdminAddr:  n.AdminAddr,
 		GossipAddr: n.GossipAddr,
 	}
 }

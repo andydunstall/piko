@@ -15,6 +15,7 @@ import (
 	"github.com/andydunstall/pico/serverv2/gossip"
 	"github.com/andydunstall/pico/serverv2/netmap"
 	adminserver "github.com/andydunstall/pico/serverv2/server/admin"
+	proxyserver "github.com/andydunstall/pico/serverv2/server/proxy"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
@@ -64,6 +65,22 @@ The host/port to listen for incoming proxy HTTP and WebSocket connections.
 If the host is unspecified it defaults to all listeners, such as
 '--proxy.bind-addr :8080' will listen on '0.0.0.0:8080'`,
 	)
+	cmd.Flags().StringVar(
+		&conf.Gossip.AdvertiseAddr,
+		"proxy.advertise-addr",
+		"",
+		`
+Proxy listen address to advertise to other nodes in the cluster. This is the
+address other nodes will used to forward proxy requests.
+
+Such as if the listen address is ':8080', the advertised address may be
+'10.26.104.45:8080' or 'node1.cluster:8080'.
+
+By default, if the bind address includes an IP to bind to that will be used.
+If the bind address does not include an IP (such as ':8080') the nodes
+private IP will be used, such as a bind address of ':8080' may have an
+advertise address of '10.26.104.14:8080'.`,
+	)
 
 	cmd.Flags().StringVar(
 		&conf.Admin.BindAddr,
@@ -74,6 +91,22 @@ The host/port to listen for incoming admin connections.
 
 If the host is unspecified it defaults to all listeners, such as
 '--admin.bind-addr :8081' will listen on '0.0.0.0:8081'`,
+	)
+	cmd.Flags().StringVar(
+		&conf.Gossip.AdvertiseAddr,
+		"admin.advertise-addr",
+		"",
+		`
+Admin listen address to advertise to other nodes in the cluster. This is the
+address other nodes will used to forward admin requests.
+
+Such as if the listen address is ':8081', the advertised address may be
+'10.26.104.45:8081' or 'node1.cluster:8081'.
+
+By default, if the bind address includes an IP to bind to that will be used.
+If the bind address does not include an IP (such as ':8081') the nodes
+private IP will be used, such as a bind address of ':8081' may have an
+advertise address of '10.26.104.14:8081'.`,
 	)
 
 	cmd.Flags().StringVar(
@@ -93,7 +126,7 @@ If the host is unspecified it defaults to all listeners, such as
 		"",
 		`
 Gossip listen address to advertise to other nodes in the cluster. This is the
-address other nodes will used to gossip with the.
+address other nodes will used to gossip with the node.
 
 Such as if the listen address is ':7000', the advertised address may be
 '10.26.104.45:7000' or 'node1.cluster:7000'.
@@ -171,6 +204,22 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 			conf.Cluster.NodeID = netmap.GenerateNodeID()
 		}
 
+		if conf.Proxy.AdvertiseAddr == "" {
+			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Proxy.BindAddr)
+			if err != nil {
+				logger.Error("invalid configuration", zap.Error(err))
+				os.Exit(1)
+			}
+			conf.Proxy.AdvertiseAddr = advertiseAddr
+		}
+		if conf.Admin.AdvertiseAddr == "" {
+			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Admin.BindAddr)
+			if err != nil {
+				logger.Error("invalid configuration", zap.Error(err))
+				os.Exit(1)
+			}
+			conf.Admin.AdvertiseAddr = advertiseAddr
+		}
 		if conf.Gossip.AdvertiseAddr == "" {
 			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Gossip.BindAddr)
 			if err != nil {
@@ -194,6 +243,8 @@ func run(conf *config.Config, logger *log.Logger) {
 	networkMap := netmap.NewNetworkMap(&netmap.Node{
 		ID:         conf.Cluster.NodeID,
 		Status:     netmap.NodeStatusJoining,
+		ProxyAddr:  conf.Proxy.AdvertiseAddr,
+		AdminAddr:  conf.Admin.AdvertiseAddr,
 		GossipAddr: conf.Gossip.AdvertiseAddr,
 	}, logger)
 	gossip, err := gossip.NewGossip(
@@ -224,6 +275,12 @@ func run(conf *config.Config, logger *log.Logger) {
 	networkMapStatus := netmap.NewStatus(networkMap)
 	adminServer.AddStatus("/netmap", networkMapStatus)
 
+	proxyServer := proxyserver.NewServer(
+		conf.Proxy.BindAddr,
+		registry,
+		logger,
+	)
+
 	ctx, cancel := signal.NotifyContext(
 		context.Background(), syscall.SIGINT, syscall.SIGTERM,
 	)
@@ -249,6 +306,29 @@ func run(conf *config.Config, logger *log.Logger) {
 		defer cancel()
 
 		if err := adminServer.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
+		}
+		return nil
+	})
+	g.Go(func() error {
+		if err := proxyServer.Serve(); err != nil {
+			return fmt.Errorf("proxy server serve: %w", err)
+		}
+		return nil
+	})
+	g.Go(func() error {
+		<-ctx.Done()
+
+		logger.Info("shutting down proxy server")
+
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			// TODO(andydunstall): Add configuration.
+			time.Second*30,
+		)
+		defer cancel()
+
+		if err := proxyServer.Shutdown(shutdownCtx); err != nil {
 			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
 		}
 		return nil

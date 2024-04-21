@@ -1,29 +1,28 @@
-package admin
+package server
 
 import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/serverv2/server/middleware"
-	"github.com/andydunstall/pico/serverv2/status"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 )
 
-// Server is the admin HTTP server, which exposes endpoints for metrics, health
-// and inspecting the node status.
+// Server is the HTTP server for the proxy, which is used for both upstream
+// listeners and downstream clients.
+//
+// /pico is reserved for upstream listeners, all other routes will be proxied.
 type Server struct {
 	addr string
 
 	router *gin.Engine
 
 	httpServer *http.Server
-
-	registry *prometheus.Registry
 
 	logger *log.Logger
 }
@@ -41,8 +40,7 @@ func NewServer(
 			Addr:    addr,
 			Handler: router,
 		},
-		registry: registry,
-		logger:   logger.WithSubsystem("admin.server"),
+		logger: logger.WithSubsystem("proxy.server"),
 	}
 
 	// Recover from panics.
@@ -50,17 +48,12 @@ func NewServer(
 
 	server.router.Use(middleware.NewLogger(logger))
 	if registry != nil {
-		router.Use(middleware.NewMetrics("admin", registry))
+		router.Use(middleware.NewMetrics("proxy", registry))
 	}
 
 	server.registerRoutes()
 
 	return server
-}
-
-func (s *Server) AddStatus(route string, handler status.Handler) {
-	group := s.router.Group("/status").Group(route)
-	handler.Register(group)
 }
 
 func (s *Server) Serve() error {
@@ -72,16 +65,33 @@ func (s *Server) Serve() error {
 	return nil
 }
 
-// Shutdown attempts to gracefully shutdown the server by waiting for pending
-// requests to complete.
 func (s *Server) Shutdown(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
 func (s *Server) registerRoutes() {
-	if s.registry != nil {
-		s.router.GET("/metrics", s.metricsHandler())
+	pico := s.router.Group("/pico/v1")
+	pico.GET("/listener/:endpointID", s.listenerRoute)
+
+	// Handle not found routes, which includes all proxied endpoints.
+	s.router.NoRoute(s.notFoundRoute)
+}
+
+func (s *Server) listenerRoute(c *gin.Context) {
+	c.Status(http.StatusNotImplemented)
+}
+
+func (s *Server) proxyRoute(c *gin.Context) {
+	c.Status(http.StatusNotImplemented)
+}
+
+func (s *Server) notFoundRoute(c *gin.Context) {
+	// All /pico endpoints are reserved. All others are proxied.
+	if strings.HasPrefix(c.Request.URL.Path, "/pico") {
+		c.Status(http.StatusNotFound)
+		return
 	}
+	s.proxyRoute(c)
 }
 
 func (s *Server) panicRoute(c *gin.Context, err any) {
@@ -91,16 +101,6 @@ func (s *Server) panicRoute(c *gin.Context, err any) {
 		zap.Any("err", err),
 	)
 	c.AbortWithStatus(http.StatusInternalServerError)
-}
-
-func (s *Server) metricsHandler() gin.HandlerFunc {
-	h := promhttp.HandlerFor(
-		s.registry,
-		promhttp.HandlerOpts{Registry: s.registry},
-	)
-	return func(c *gin.Context) {
-		h.ServeHTTP(c.Writer, c.Request)
-	}
 }
 
 func init() {

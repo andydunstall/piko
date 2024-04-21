@@ -84,6 +84,8 @@ func (g *Gossip) Close() error {
 // propagated to other nodes.
 func (g *Gossip) updateLocalState() {
 	localNode := g.networkMap.LocalNode()
+	g.kite.UpsertLocal("proxy_addr", localNode.ProxyAddr)
+	g.kite.UpsertLocal("admin_addr", localNode.AdminAddr)
 	g.kite.UpsertLocal("gossip_addr", localNode.GossipAddr)
 	// Note adding the status last since a node is considered 'pending' until
 	// the status is known.
@@ -183,6 +185,10 @@ func (g *Gossip) onRemoteUpdate(nodeID, key, value string) {
 	}
 
 	switch key {
+	case "proxy_addr":
+		node.ProxyAddr = value
+	case "admin_addr":
+		node.AdminAddr = value
 	case "gossip_addr":
 		node.GossipAddr = value
 	case "status":

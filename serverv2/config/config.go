@@ -5,6 +5,9 @@ import "fmt"
 type ProxyConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr"`
+
+	// AdvertiseAddr is the address to advertise to other nodes.
+	AdvertiseAddr string `json:"advertise_addr"`
 }
 
 func (c *ProxyConfig) Validate() error {
@@ -17,6 +20,9 @@ func (c *ProxyConfig) Validate() error {
 type AdminConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr"`
+
+	// AdvertiseAddr is the address to advertise to other nodes.
+	AdvertiseAddr string `json:"advertise_addr"`
 }
 
 func (c *AdminConfig) Validate() error {

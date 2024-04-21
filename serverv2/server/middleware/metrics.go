@@ -9,19 +9,21 @@ import (
 )
 
 // NewMetrics creates metrics middleware.
-func NewMetrics(registry *prometheus.Registry) gin.HandlerFunc {
+func NewMetrics(namespace string, registry *prometheus.Registry) gin.HandlerFunc {
 	var requests = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "http_requests_total",
-			Help: "HTTP requests.",
+			Namespace: namespace,
+			Name:      "http_requests_total",
+			Help:      "HTTP requests.",
 		},
 		[]string{"status"},
 	)
 	var requestLatency = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "http_request_latency_seconds",
-			Help:    "HTTP request latency.",
-			Buckets: prometheus.ExponentialBuckets(0.01, 2, 10),
+			Namespace: namespace,
+			Name:      "http_request_latency_seconds",
+			Help:      "HTTP request latency.",
+			Buckets:   prometheus.ExponentialBuckets(0.01, 2, 10),
 		},
 		[]string{"status"},
 	)
