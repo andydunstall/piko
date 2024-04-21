@@ -3,15 +3,19 @@ package serverv2
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/serverv2/config"
+	"github.com/andydunstall/pico/serverv2/gossip"
 	"github.com/andydunstall/pico/serverv2/netmap"
 	adminserver "github.com/andydunstall/pico/serverv2/server/admin"
+	"github.com/hashicorp/go-sockaddr"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -42,6 +46,9 @@ Examples:
   # Start a Pico server, listening for proxy connections on :7000 and admin
   // ocnnections on :9000.
   pico server --proxy.bind-addr :8000 --admin.bind-addr :9000
+
+  # Start a Pico server and join an existing cluster.
+  pico server --cluster.members 10.26.104.14,10.26.104.75
 `,
 	}
 
@@ -70,6 +77,34 @@ If the host is unspecified it defaults to all listeners, such as
 	)
 
 	cmd.Flags().StringVar(
+		&conf.Gossip.BindAddr,
+		"gossip.bind-addr",
+		":7000",
+		`
+The host/port to listen for inter-node gossip traffic.
+
+If the host is unspecified it defaults to all listeners, such as
+'--gossip.bind-addr :7000' will listen on '0.0.0.0:7000'`,
+	)
+
+	cmd.Flags().StringVar(
+		&conf.Gossip.AdvertiseAddr,
+		"gossip.advertise-addr",
+		"",
+		`
+Gossip listen address to advertise to other nodes in the cluster. This is the
+address other nodes will used to gossip with the.
+
+Such as if the listen address is ':7000', the advertised address may be
+'10.26.104.45:7000' or 'node1.cluster:7000'.
+
+By default, if the bind address includes an IP to bind to that will be used.
+If the bind address does not include an IP (such as ':7000') the nodes
+private IP will be used, such as a bind address of ':7000' may have an
+advertise address of '10.26.104.14:7000'.`,
+	)
+
+	cmd.Flags().StringVar(
 		&conf.Cluster.NodeID,
 		"cluster.node-id",
 		"",
@@ -77,6 +112,24 @@ If the host is unspecified it defaults to all listeners, such as
 A unique identifier for the node in the cluster.
 
 By default a random ID will be generated for the node.`,
+	)
+	cmd.Flags().StringSliceVar(
+		&conf.Cluster.Members,
+		"cluster.members",
+		nil,
+		`
+A list of addresses of members in the cluster to join.
+
+This may be either addresses of specific nodes, such as
+'--cluster.members 10.26.104.14,10.26.104.75', or a domain that resolves to
+the addresses of the nodes in the cluster (e.g. a Kubernetes headless
+service), such as '--cluster.members pico.prod-pico-ns'.
+
+Each address must include the host, and may optionally include a port. If no
+port is given, the gossip port of this node is used.
+
+Note each node propagates membership information to the other known nodes,
+so the initial set of configured members only needs to be a subset of nodes.`,
 	)
 
 	cmd.Flags().StringVar(
@@ -118,6 +171,15 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 			conf.Cluster.NodeID = netmap.GenerateNodeID()
 		}
 
+		if conf.Gossip.AdvertiseAddr == "" {
+			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Gossip.BindAddr)
+			if err != nil {
+				logger.Error("invalid configuration", zap.Error(err))
+				os.Exit(1)
+			}
+			conf.Gossip.AdvertiseAddr = advertiseAddr
+		}
+
 		run(&conf, logger)
 	}
 
@@ -130,8 +192,22 @@ func run(conf *config.Config, logger *log.Logger) {
 	registry := prometheus.NewRegistry()
 
 	networkMap := netmap.NewNetworkMap(&netmap.Node{
-		ID: conf.Cluster.NodeID,
+		ID:         conf.Cluster.NodeID,
+		GossipAddr: conf.Gossip.AdvertiseAddr,
 	})
+	gossip, err := gossip.NewGossip(networkMap)
+	if err != nil {
+		logger.Error("failed to start gossip: %w", zap.Error(err))
+		os.Exit(1)
+	}
+	defer gossip.Close()
+
+	if len(conf.Cluster.Members) > 0 {
+		if err := gossip.Join(conf.Cluster.Members); err != nil {
+			logger.Error("failed to join cluster: %w", zap.Error(err))
+			os.Exit(1)
+		}
+	}
 
 	adminServer := adminserver.NewServer(
 		conf.Admin.BindAddr,
@@ -174,8 +250,34 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	if err := g.Wait(); err != nil {
 		logger.Error("failed to run server", zap.Error(err))
-		os.Exit(1)
+	}
+
+	if err := gossip.Leave(); err != nil {
+		logger.Error("failed to leave gossip", zap.Error(err))
 	}
 
 	logger.Info("shutdown complete")
+}
+
+func advertiseAddrFromBindAddr(bindAddr string) (string, error) {
+	if strings.HasPrefix(bindAddr, ":") {
+		bindAddr = "0.0.0.0" + bindAddr
+	}
+
+	host, port, err := net.SplitHostPort(bindAddr)
+	if err != nil {
+		return "", fmt.Errorf("invalid bind addr: %s: %w", bindAddr, err)
+	}
+
+	if host == "0.0.0.0" {
+		ip, err := sockaddr.GetPrivateIP()
+		if err != nil {
+			return "", fmt.Errorf("get interface addr: %w", err)
+		}
+		if ip == "" {
+			return "", fmt.Errorf("no private ip found")
+		}
+		return ip + ":" + port, nil
+	}
+	return bindAddr, nil
 }

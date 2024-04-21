@@ -13,11 +13,15 @@ var (
 type Node struct {
 	// ID is a unique identifier for the node in the cluster.
 	ID string `json:"id"`
+
+	// GossipAddr is the advertised gossip address.
+	GossipAddr string `json:"gossip_addr"`
 }
 
 func (n *Node) Copy() *Node {
 	return &Node{
-		ID: n.ID,
+		ID:         n.ID,
+		GossipAddr: n.GossipAddr,
 	}
 }
 
