@@ -9,5 +9,6 @@ type Conn interface {
 	NextReader() (io.Reader, error)
 	WriteMessage(b []byte) error
 	NextWriter() (io.WriteCloser, error)
+	Addr() string
 	Close() error
 }

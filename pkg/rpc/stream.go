@@ -73,6 +73,10 @@ func NewStream(conn conn.Conn, handler *Handler, logger *log.Logger) *Stream {
 	return stream
 }
 
+func (s *Stream) Addr() string {
+	return s.conn.Addr()
+}
+
 // RPC sends the given request message to the peer and returns the response or
 // an error.
 //

@@ -56,6 +56,14 @@ func (e *localEndpoint) Next() *rpc.Stream {
 	return s
 }
 
+func (e *localEndpoint) UpstreamAddrs() []string {
+	var addrs []string
+	for _, stream := range e.streams {
+		addrs = append(addrs, stream.Addr())
+	}
+	return addrs
+}
+
 // Proxy is responsible for forwarding requests to upstream listeners.
 type Proxy struct {
 	localEndpoints map[string]*localEndpoint
@@ -176,6 +184,19 @@ func (p *Proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
 	)
 
 	p.metrics.Listeners.Dec()
+}
+
+// LocalEndpoints returns a mapping from endpoint ID to listener addresses for
+// all local registered endpoints.
+func (p *Proxy) LocalEndpoints() map[string][]string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	endpoints := make(map[string][]string)
+	for endpointID, endpoint := range p.localEndpoints {
+		endpoints[endpointID] = endpoint.UpstreamAddrs()
+	}
+	return endpoints
 }
 
 func (p *Proxy) request(

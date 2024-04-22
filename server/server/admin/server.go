@@ -87,6 +87,7 @@ func (s *Server) registerRoutes() {
 }
 
 func (s *Server) healthRoute(c *gin.Context) {
+	c.Status(http.StatusOK)
 }
 
 func (s *Server) panicRoute(c *gin.Context, err any) {

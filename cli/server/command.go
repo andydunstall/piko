@@ -303,13 +303,17 @@ func run(conf *config.Config, logger *log.Logger) {
 	networkMapStatus := netmap.NewStatus(networkMap)
 	adminServer.AddStatus("/netmap", networkMapStatus)
 
+	p := proxy.NewProxy(networkMap, registry, logger)
 	proxyServer := proxyserver.NewServer(
 		conf.Proxy.BindAddr,
-		proxy.NewProxy(networkMap, registry, logger),
+		p,
 		&conf.Proxy,
 		registry,
 		logger,
 	)
+
+	proxyStatus := proxy.NewStatus(p)
+	adminServer.AddStatus("/proxy", proxyStatus)
 
 	ctx, cancel := signal.NotifyContext(
 		context.Background(), syscall.SIGINT, syscall.SIGTERM,

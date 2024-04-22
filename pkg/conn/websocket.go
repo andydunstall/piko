@@ -58,6 +58,10 @@ func (t *WebsocketConn) NextWriter() (io.WriteCloser, error) {
 	return t.wsConn.NextWriter(websocket.BinaryMessage)
 }
 
+func (t *WebsocketConn) Addr() string {
+	return t.wsConn.RemoteAddr().String()
+}
+
 func (t *WebsocketConn) Close() error {
 	return t.wsConn.Close()
 }
