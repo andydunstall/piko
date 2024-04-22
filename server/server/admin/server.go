@@ -79,9 +79,14 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 func (s *Server) registerRoutes() {
+	s.router.GET("/healthz", s.healthRoute)
+
 	if s.registry != nil {
 		s.router.GET("/metrics", s.metricsHandler())
 	}
+}
+
+func (s *Server) healthRoute(c *gin.Context) {
 }
 
 func (s *Server) panicRoute(c *gin.Context, err any) {
