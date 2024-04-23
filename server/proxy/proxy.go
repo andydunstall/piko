@@ -75,13 +75,13 @@ type Proxy struct {
 	networkMap *netmap.NetworkMap
 
 	metrics *metrics
-	logger  *log.Logger
+	logger  log.Logger
 }
 
 func NewProxy(
 	networkMap *netmap.NetworkMap,
 	registry *prometheus.Registry,
-	logger *log.Logger,
+	logger log.Logger,
 ) *Proxy {
 	metrics := newMetrics()
 	if registry != nil {

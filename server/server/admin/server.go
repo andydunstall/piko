@@ -25,13 +25,13 @@ type Server struct {
 
 	registry *prometheus.Registry
 
-	logger *log.Logger
+	logger log.Logger
 }
 
 func NewServer(
 	addr string,
 	registry *prometheus.Registry,
-	logger *log.Logger,
+	logger log.Logger,
 ) *Server {
 	router := gin.New()
 	server := &Server{

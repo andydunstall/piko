@@ -23,10 +23,10 @@ type forwarder struct {
 
 	client *http.Client
 
-	logger *log.Logger
+	logger log.Logger
 }
 
-func newForwarder(addr string, timeout time.Duration, logger *log.Logger) *forwarder {
+func newForwarder(addr string, timeout time.Duration, logger log.Logger) *forwarder {
 	return &forwarder{
 		addr:    addr,
 		timeout: timeout,

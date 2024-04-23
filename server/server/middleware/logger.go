@@ -9,7 +9,7 @@ import (
 )
 
 // NewLogger creates logging middleware that logs every request.
-func NewLogger(logger *log.Logger) gin.HandlerFunc {
+func NewLogger(logger log.Logger) gin.HandlerFunc {
 	logger = logger.WithSubsystem(logger.Subsystem() + ".route")
 	return func(c *gin.Context) {
 		start := time.Now()

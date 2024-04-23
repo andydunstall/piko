@@ -18,7 +18,19 @@ import (
 //
 // Logger is a simplified zap.Logger (which uses zapcore). zap.Logger had to
 // be reimplemented to support overriding the log level filter.
-type Logger struct {
+type Logger interface {
+	Subsystem() string
+	// WithSubsystem creates a new logger with the given subsystem.
+	WithSubsystem(s string) Logger
+	With(fields ...zap.Field) Logger
+	Debug(msg string, fields ...zap.Field)
+	Info(msg string, fields ...zap.Field)
+	Warn(msg string, fields ...zap.Field)
+	Error(msg string, fields ...zap.Field)
+	Sync() error
+}
+
+type logger struct {
 	core zapcore.Core
 
 	subsystem         string
@@ -30,7 +42,7 @@ type Logger struct {
 
 // NewLogger creates a new logger filtering using the given log level and
 // enabled subsystems.
-func NewLogger(lvl string, enabledSubsystems []string) (*Logger, error) {
+func NewLogger(lvl string, enabledSubsystems []string) (Logger, error) {
 	zapLevel, err := zapLevelFromString(lvl)
 	if err != nil {
 		return nil, err
@@ -51,7 +63,7 @@ func NewLogger(lvl string, enabledSubsystems []string) (*Logger, error) {
 	core := &core{core: zapcore.NewCore(
 		enc, sink, zap.NewAtomicLevelAt(zapLevel),
 	)}
-	return &Logger{
+	return &logger{
 		core: core,
 		// Use 'main' as default subsystem.
 		subsystem:         "main",
@@ -61,12 +73,11 @@ func NewLogger(lvl string, enabledSubsystems []string) (*Logger, error) {
 	}, nil
 }
 
-func (l *Logger) Subsystem() string {
+func (l *logger) Subsystem() string {
 	return l.subsystem
 }
 
-// WithSubsystem creates a new logger with the given subsystem.
-func (l *Logger) WithSubsystem(s string) *Logger {
+func (l *logger) WithSubsystem(s string) Logger {
 	if s == l.subsystem {
 		return l
 	}
@@ -78,7 +89,7 @@ func (l *Logger) WithSubsystem(s string) *Logger {
 }
 
 // With creates a new logger with the given fields.
-func (l *Logger) With(fields ...zap.Field) *Logger {
+func (l *logger) With(fields ...zap.Field) Logger {
 	if len(fields) == 0 {
 		return l
 	}
@@ -87,40 +98,40 @@ func (l *Logger) With(fields ...zap.Field) *Logger {
 	return clone
 }
 
-func (l *Logger) Debug(msg string, fields ...zap.Field) {
+func (l *logger) Debug(msg string, fields ...zap.Field) {
 	if ce := l.check(zap.DebugLevel, msg); ce != nil {
 		ce.Write(fields...)
 	}
 }
 
-func (l *Logger) Info(msg string, fields ...zap.Field) {
+func (l *logger) Info(msg string, fields ...zap.Field) {
 	if ce := l.check(zap.InfoLevel, msg); ce != nil {
 		ce.Write(fields...)
 	}
 }
 
-func (l *Logger) Warn(msg string, fields ...zap.Field) {
+func (l *logger) Warn(msg string, fields ...zap.Field) {
 	if ce := l.check(zap.WarnLevel, msg); ce != nil {
 		ce.Write(fields...)
 	}
 }
 
-func (l *Logger) Error(msg string, fields ...zap.Field) {
+func (l *logger) Error(msg string, fields ...zap.Field) {
 	if ce := l.check(zap.ErrorLevel, msg); ce != nil {
 		ce.Write(fields...)
 	}
 }
 
-func (l *Logger) Sync() error {
+func (l *logger) Sync() error {
 	return l.core.Sync()
 }
 
-func (l *Logger) clone() *Logger {
+func (l *logger) clone() *logger {
 	clone := *l
 	return &clone
 }
 
-func (l *Logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
+func (l *logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
 	// Only filter by log level if the subsystem isn't enabled.
 	if !l.subsystemEnabled {
 		if lvl < zapcore.DPanicLevel && !l.core.Enabled(lvl) {
@@ -145,6 +156,41 @@ func (l *Logger) check(lvl zapcore.Level, msg string) *zapcore.CheckedEntry {
 	ce.ErrorOutput = l.errorOutput
 
 	return ce
+}
+
+type nopLogger struct {
+}
+
+func NewNopLogger() Logger {
+	return &nopLogger{}
+}
+
+func (l *nopLogger) Subsystem() string {
+	return ""
+}
+
+func (l *nopLogger) WithSubsystem(_ string) Logger {
+	return l
+}
+
+func (l *nopLogger) With(_ ...zap.Field) Logger {
+	return l
+}
+
+func (l *nopLogger) Debug(_ string, _ ...zap.Field) {
+}
+
+func (l *nopLogger) Info(_ string, _ ...zap.Field) {
+}
+
+func (l *nopLogger) Warn(_ string, _ ...zap.Field) {
+}
+
+func (l *nopLogger) Error(_ string, _ ...zap.Field) {
+}
+
+func (l *nopLogger) Sync() error {
+	return nil
 }
 
 func subsystemMatch(subsystem string, enabled []string) bool {

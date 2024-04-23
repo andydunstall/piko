@@ -263,7 +263,7 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 	return cmd
 }
 
-func run(conf *config.Config, logger *log.Logger) {
+func run(conf *config.Config, logger log.Logger) {
 	logger.Info("starting pico server", zap.Any("conf", conf))
 
 	registry := prometheus.NewRegistry()

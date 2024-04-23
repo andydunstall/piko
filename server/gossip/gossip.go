@@ -35,14 +35,14 @@ type Gossip struct {
 
 	kite *kite.Kite
 
-	logger *log.Logger
+	logger log.Logger
 }
 
 func NewGossip(
 	bindAddr string,
 	networkMap *netmap.NetworkMap,
 	registry *prometheus.Registry,
-	logger *log.Logger,
+	logger log.Logger,
 ) (*Gossip, error) {
 	gossip := &Gossip{
 		networkMap:   networkMap,

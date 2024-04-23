@@ -23,10 +23,10 @@ type NetworkMap struct {
 	// mu protects the above fields.
 	mu sync.RWMutex
 
-	logger *log.Logger
+	logger log.Logger
 }
 
-func NewNetworkMap(localNode *Node, logger *log.Logger) *NetworkMap {
+func NewNetworkMap(localNode *Node, logger log.Logger) *NetworkMap {
 	nodes := make(map[string]*Node)
 	nodes[localNode.ID] = localNode
 	return &NetworkMap{

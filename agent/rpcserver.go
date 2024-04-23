@@ -18,10 +18,10 @@ type rpcServer struct {
 
 	rpcHandler *rpc.Handler
 
-	logger *log.Logger
+	logger log.Logger
 }
 
-func newRPCServer(listener *Listener, logger *log.Logger) *rpcServer {
+func newRPCServer(listener *Listener, logger log.Logger) *rpcServer {
 	server := &rpcServer{
 		listener:   listener,
 		rpcHandler: rpc.NewHandler(),

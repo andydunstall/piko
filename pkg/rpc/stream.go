@@ -51,12 +51,12 @@ type Stream struct {
 	// shutdown indicates whether the stream is already shutdown.
 	shutdown *atomic.Bool
 
-	logger *log.Logger
+	logger log.Logger
 }
 
 // NewStream creates an RPC stream on top of the given message-oriented
 // connection.
-func NewStream(conn conn.Conn, handler *Handler, logger *log.Logger) *Stream {
+func NewStream(conn conn.Conn, handler *Handler, logger log.Logger) *Stream {
 	stream := &Stream{
 		conn:             conn,
 		handler:          handler,

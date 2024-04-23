@@ -27,10 +27,10 @@ type Listener struct {
 
 	conf *config.Config
 
-	logger *log.Logger
+	logger log.Logger
 }
 
-func NewListener(endpointID string, forwardAddr string, conf *config.Config, logger *log.Logger) *Listener {
+func NewListener(endpointID string, forwardAddr string, conf *config.Config, logger log.Logger) *Listener {
 	l := &Listener{
 		endpointID:  endpointID,
 		forwardAddr: forwardAddr,

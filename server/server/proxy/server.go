@@ -43,7 +43,7 @@ type Server struct {
 
 	conf *config.ProxyConfig
 
-	logger *log.Logger
+	logger log.Logger
 }
 
 func NewServer(
@@ -51,7 +51,7 @@ func NewServer(
 	proxy *proxy.Proxy,
 	conf *config.ProxyConfig,
 	registry *prometheus.Registry,
-	logger *log.Logger,
+	logger log.Logger,
 ) *Server {
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
