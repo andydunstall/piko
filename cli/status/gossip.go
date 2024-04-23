@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 
 	"github.com/andydunstall/kite"
 	"github.com/andydunstall/pico/status/client"
@@ -76,6 +77,11 @@ func showGossipMembers(conf *config.Config) {
 		fmt.Printf("failed to get gossip members: %s\n", err.Error())
 		os.Exit(1)
 	}
+
+	// Sort by ID.
+	sort.Slice(members, func(i, j int) bool {
+		return members[i].ID < members[j].ID
+	})
 
 	output := gossipMembersOutput{
 		Members: members,

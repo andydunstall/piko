@@ -289,8 +289,16 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	if len(conf.Cluster.Join) > 0 {
 		if err := g.Join(conf.Cluster.Join); err != nil {
-			logger.Error("failed to join cluster", zap.Error(err))
-			os.Exit(1)
+			logger.Warn(
+				"failed to join cluster",
+				zap.Strings("join", conf.Cluster.Join),
+				zap.Error(err),
+			)
+		} else {
+			logger.Info(
+				"joined cluster",
+				zap.Strings("join", conf.Cluster.Join),
+			)
 		}
 	}
 
@@ -367,6 +375,29 @@ func run(conf *config.Config, logger *log.Logger) {
 			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
 		}
 		return nil
+	})
+	group.Go(func() error {
+		ticker := time.NewTicker(time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ticker.C:
+				// Periodically attempt to sync with the configured members.
+				// This helps prevent a net split.
+				if len(conf.Cluster.Join) > 0 {
+					if err := g.Join(conf.Cluster.Join); err != nil {
+						logger.Warn(
+							"failed to join cluster",
+							zap.Strings("join", conf.Cluster.Join),
+							zap.Error(err),
+						)
+					}
+				}
+			case <-ctx.Done():
+				return nil
+			}
+		}
 	})
 	group.Go(func() error {
 		<-ctx.Done()
