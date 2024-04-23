@@ -12,6 +12,7 @@ Each Pico server exposes a status API to inspect the state of the node, this
 can be used to answer questions such as:
 * What upstream listeners are attached to each node?
 * What cluster state does this node know?
+* What is the gossip state of each known node?
 
 See 'status --help' for the availale commands.
 
@@ -29,6 +30,7 @@ Examples:
 
 	cmd.AddCommand(newProxyCommand())
 	cmd.AddCommand(newNetmapCommand())
+	cmd.AddCommand(newGossipCommand())
 
 	return cmd
 }

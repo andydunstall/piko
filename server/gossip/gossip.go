@@ -89,6 +89,14 @@ func (g *Gossip) Leave(ctx context.Context) error {
 	}
 }
 
+func (g *Gossip) MembersMetadata(filter kite.MemberFilter) []kite.MemberMeta {
+	return g.kite.MembersMetadata(filter)
+}
+
+func (g *Gossip) MemberState(id string) (kite.MemberState, bool) {
+	return g.kite.MemberState(id)
+}
+
 func (g *Gossip) Close() error {
 	return g.kite.Close()
 }

@@ -275,7 +275,7 @@ func run(conf *config.Config, logger *log.Logger) {
 		AdminAddr:  conf.Admin.AdvertiseAddr,
 		GossipAddr: conf.Gossip.AdvertiseAddr,
 	}, logger)
-	gossip, err := gossip.NewGossip(
+	g, err := gossip.NewGossip(
 		conf.Gossip.BindAddr,
 		networkMap,
 		registry,
@@ -285,10 +285,10 @@ func run(conf *config.Config, logger *log.Logger) {
 		logger.Error("failed to start gossip: %w", zap.Error(err))
 		os.Exit(1)
 	}
-	defer gossip.Close()
+	defer g.Close()
 
 	if len(conf.Cluster.Join) > 0 {
-		if err := gossip.Join(conf.Cluster.Join); err != nil {
+		if err := g.Join(conf.Cluster.Join); err != nil {
 			logger.Error("failed to join cluster", zap.Error(err))
 			os.Exit(1)
 		}
@@ -302,6 +302,9 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	networkMapStatus := netmap.NewStatus(networkMap)
 	adminServer.AddStatus("/netmap", networkMapStatus)
+
+	gossipStatus := gossip.NewStatus(g)
+	adminServer.AddStatus("/gossip", gossipStatus)
 
 	p := proxy.NewProxy(networkMap, registry, logger)
 	proxyServer := proxyserver.NewServer(
@@ -320,14 +323,14 @@ func run(conf *config.Config, logger *log.Logger) {
 	)
 	defer cancel()
 
-	g, ctx := errgroup.WithContext(ctx)
-	g.Go(func() error {
+	group, ctx := errgroup.WithContext(ctx)
+	group.Go(func() error {
 		if err := adminServer.Serve(); err != nil {
 			return fmt.Errorf("admin server serve: %w", err)
 		}
 		return nil
 	})
-	g.Go(func() error {
+	group.Go(func() error {
 		<-ctx.Done()
 
 		logger.Info("shutting down admin server")
@@ -343,13 +346,13 @@ func run(conf *config.Config, logger *log.Logger) {
 		}
 		return nil
 	})
-	g.Go(func() error {
+	group.Go(func() error {
 		if err := proxyServer.Serve(); err != nil {
 			return fmt.Errorf("proxy server serve: %w", err)
 		}
 		return nil
 	})
-	g.Go(func() error {
+	group.Go(func() error {
 		<-ctx.Done()
 
 		logger.Info("shutting down proxy server")
@@ -365,7 +368,7 @@ func run(conf *config.Config, logger *log.Logger) {
 		}
 		return nil
 	})
-	g.Go(func() error {
+	group.Go(func() error {
 		<-ctx.Done()
 
 		logger.Info("leaving cluster")
@@ -378,7 +381,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 		// Leave as soon as we receive the shutdown signal to avoid receiving
 		// forward proxy requests.
-		if err := gossip.Leave(shutdownCtx); err != nil {
+		if err := g.Leave(shutdownCtx); err != nil {
 			logger.Warn("failed to leave cluster", zap.Error(err))
 		}
 		return nil
@@ -386,7 +389,7 @@ func run(conf *config.Config, logger *log.Logger) {
 
 	networkMap.UpdateLocalStatus(netmap.NodeStatusActive)
 
-	if err := g.Wait(); err != nil {
+	if err := group.Wait(); err != nil {
 		logger.Error("failed to run server", zap.Error(err))
 	}
 

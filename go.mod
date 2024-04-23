@@ -3,7 +3,7 @@ module github.com/andydunstall/pico
 go 1.21.1
 
 require (
-	github.com/andydunstall/kite v0.0.0-20240421130541-932f8f353c71
+	github.com/andydunstall/kite v0.0.0-20240423050227-a2d489e20d80
 	github.com/gin-gonic/gin v1.9.1
 	github.com/goccy/go-yaml v1.11.3
 	github.com/gorilla/websocket v1.5.1
