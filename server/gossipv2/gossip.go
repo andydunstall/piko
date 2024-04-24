@@ -26,21 +26,6 @@ func NewGossip(
 
 // Join attempts to join an existing cluster by syncronising with the members
 // at the given addresses.
-//
-// The addresses may be either IP addresses or domains. If a domain is used
-// all resolved IPs will be joined. If the port is omitted the default bind
-// port is used. Note if a domain is used and it doesn't resolve to any
-// members (other then ourselves), join will succeed.
-//
-// The local node sends its full local member state to the target member along
-// with a delta, then receives any cluster state the local node is missing from
-// the remote member.
-//
-// If the address is a domain, gossip will periodically resolve the domain
-// and attempt to gossip with any unknown nodes. This is used to resolve
-// network splits and handle the domain entries being updated.
-//
-// Returns the IDs of the joined nodes.
 func (g *Gossip) Join(_ []string) ([]string, error) {
 	return nil, nil
 }

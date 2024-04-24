@@ -1,5 +1,5 @@
-github.com/andydunstall/kite v0.0.0-20240423054725-6decf3dc7a00 h1:OPDMURf7vC1F05UUAq7gJfOdlmdHgAsUDIIVIcXvcwY=
-github.com/andydunstall/kite v0.0.0-20240423054725-6decf3dc7a00/go.mod h1:7Bn7WGcSRLvX5HQySLzcGl9dJD1m9xoYNZtx5IIkx1I=
+github.com/andydunstall/kite v0.0.0-20240424181904-0a6886a6b43a h1:1NGvwcT4A760h5NZMNbV3xo50Aac1IYM4mRIWDIIrjw=
+github.com/andydunstall/kite v0.0.0-20240424181904-0a6886a6b43a/go.mod h1:7Bn7WGcSRLvX5HQySLzcGl9dJD1m9xoYNZtx5IIkx1I=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bytedance/sonic v1.11.5 h1:G00FYjjqll5iQ1PYXynbg/hyzqBqavH8Mo9/oTopd9k=

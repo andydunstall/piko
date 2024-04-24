@@ -465,12 +465,11 @@ func runv2(conf *config.Config, logger log.Logger) error {
 	// Attempt to join an existing cluster. Note if 'join' is a domain that
 	// doesn't map to any entries (except ourselves), then join will succeed
 	// since it means we're the first member.
-	if len(conf.Cluster.Join) > 0 {
-		nodeIDs, err := gossip.Join(conf.Cluster.Join)
-		if err != nil {
-			return fmt.Errorf("join cluster: %w", err)
-		}
-
+	nodeIDs, err := gossip.Join(conf.Cluster.Join)
+	if err != nil {
+		return fmt.Errorf("join cluster: %w", err)
+	}
+	if len(nodeIDs) > 0 {
 		logger.Info(
 			"joined cluster",
 			zap.Strings("node-ids", nodeIDs),
