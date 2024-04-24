@@ -13,11 +13,14 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/gossip"
+	gossipv2 "github.com/andydunstall/pico/server/gossipv2"
 	"github.com/andydunstall/pico/server/netmap"
+	netmapv2 "github.com/andydunstall/pico/server/netmapv2"
 	"github.com/andydunstall/pico/server/proxy"
 	adminserver "github.com/andydunstall/pico/server/server/admin"
 	proxyserver "github.com/andydunstall/pico/server/server/proxy"
 	"github.com/hashicorp/go-sockaddr"
+	rungroup "github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -257,13 +260,16 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 			conf.Gossip.AdvertiseAddr = advertiseAddr
 		}
 
-		run(&conf, logger)
+		if err := run(&conf, logger); err != nil {
+			logger.Error("failed to run server", zap.Error(err))
+			os.Exit(1)
+		}
 	}
 
 	return cmd
 }
 
-func run(conf *config.Config, logger log.Logger) {
+func run(conf *config.Config, logger log.Logger) error {
 	logger.Info("starting pico server", zap.Any("conf", conf))
 
 	registry := prometheus.NewRegistry()
@@ -425,6 +431,105 @@ func run(conf *config.Config, logger log.Logger) {
 	}
 
 	logger.Info("shutdown complete")
+
+	return nil
+}
+
+// nolint
+func runv2(conf *config.Config, logger log.Logger) error {
+	logger.Info("starting pico server", zap.Any("conf", conf))
+
+	registry := prometheus.NewRegistry()
+	adminServer := adminserver.NewServer(
+		conf.Admin.BindAddr,
+		registry,
+		logger,
+	)
+
+	networkMap := netmapv2.NewNetworkMap(&netmapv2.Node{
+		ID:        conf.Cluster.NodeID,
+		Status:    netmapv2.NodeStatusActive,
+		ProxyAddr: conf.Proxy.AdvertiseAddr,
+		AdminAddr: conf.Admin.AdvertiseAddr,
+	}, logger)
+	networkMap.Metrics().Register(registry)
+	adminServer.AddStatus("/netmap", netmapv2.NewStatus(networkMap))
+
+	gossip, err := gossipv2.NewGossip(networkMap, conf, logger)
+	if err != nil {
+		return fmt.Errorf("gossip: %w", err)
+	}
+	defer gossip.Close()
+	adminServer.AddStatus("/gossip", gossipv2.NewStatus(gossip))
+
+	// Attempt to join an existing cluster. Note if 'join' is a domain that
+	// doesn't map to any entries (except ourselves), then join will succeed
+	// since it means we're the first member.
+	if len(conf.Cluster.Join) > 0 {
+		nodeIDs, err := gossip.Join(conf.Cluster.Join)
+		if err != nil {
+			return fmt.Errorf("join cluster: %w", err)
+		}
+
+		logger.Info(
+			"joined cluster",
+			zap.Strings("node-ids", nodeIDs),
+		)
+	}
+
+	var group rungroup.Group
+
+	// Termination handler.
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	group.Add(func() error {
+		sig := <-signalCh
+		logger.Info(
+			"received shutdown signal",
+			zap.String("signal", sig.String()),
+		)
+
+		networkMap.UpdateLocalStatus(netmapv2.NodeStatusLeft)
+
+		// Leave as soon as we receive the shutdown signal to avoid receiving
+		// forward proxy requests.
+		if err := gossip.Leave(); err != nil {
+			logger.Warn("failed to gracefully leave cluster", zap.Error(err))
+		} else {
+			logger.Info("left cluster")
+		}
+
+		return nil
+	}, func(error) {
+	})
+
+	// Admin server.
+	group.Add(func() error {
+		if err := adminServer.Serve(); err != nil {
+			return fmt.Errorf("admin server serve: %w", err)
+		}
+		return nil
+	}, func(error) {
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
+		)
+		defer cancel()
+
+		if err := adminServer.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
+		}
+
+		logger.Info("admin server shut down")
+	})
+
+	if err := group.Run(); err != nil {
+		return err
+	}
+
+	logger.Info("shutdown complete")
+
+	return nil
 }
 
 func advertiseAddrFromBindAddr(bindAddr string) (string, error) {
