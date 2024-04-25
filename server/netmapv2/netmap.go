@@ -57,6 +57,12 @@ func (m *NetworkMap) Node(id string) (*Node, bool) {
 	return node.Copy(), true
 }
 
+// LocalID returns the ID of the local node.
+func (m *NetworkMap) LocalID() string {
+	// localID is immutable so don't need a mutex.
+	return m.localID
+}
+
 // LocalNode returns the state of the local node.
 func (m *NetworkMap) LocalNode() *Node {
 	m.mu.RLock()
@@ -196,44 +202,47 @@ func (m *NetworkMap) AddNode(node *Node) {
 }
 
 // RemoveNode removes the node with the given ID from the netmap.
-func (m *NetworkMap) RemoveNode(id string) {
+func (m *NetworkMap) RemoveNode(id string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if id == m.localID {
 		m.logger.Warn("remove node: cannot remove local node")
-		return
+		return false
 	}
 
 	node, ok := m.nodes[id]
 	if !ok {
 		m.logger.Warn("remove node: node not in netmap")
-		return
+		return false
 	}
 
 	delete(m.nodes, id)
 	m.removeMetricsEntry(node.Status)
+
+	return true
 }
 
 // UpdateRemoteStatus sets the status of the remote node with the given ID.
-func (m *NetworkMap) UpdateRemoteStatus(id string, status NodeStatus) {
+func (m *NetworkMap) UpdateRemoteStatus(id string, status NodeStatus) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if id == m.localID {
 		m.logger.Warn("update remote status: cannot update local node")
-		return
+		return false
 	}
 
 	n, ok := m.nodes[id]
 	if !ok {
 		m.logger.Warn("update remote status: node not in netmap")
-		return
+		return false
 	}
 
 	oldStatus := n.Status
 	n.Status = status
 	m.updateMetricsEntry(oldStatus, status)
+	return true
 }
 
 // UpdateRemoteEndpoint sets the number of listeners for the active endpoint
@@ -242,19 +251,19 @@ func (m *NetworkMap) UpdateRemoteEndpoint(
 	id string,
 	endpointID string,
 	listeners int,
-) {
+) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if id == m.localID {
 		m.logger.Warn("update remote endpoint: cannot update local node")
-		return
+		return false
 	}
 
 	n, ok := m.nodes[id]
 	if !ok {
 		m.logger.Warn("update remote endpoint: node not in netmap")
-		return
+		return false
 	}
 
 	if n.Endpoints == nil {
@@ -262,28 +271,32 @@ func (m *NetworkMap) UpdateRemoteEndpoint(
 	}
 
 	n.Endpoints[endpointID] = listeners
+
+	return true
 }
 
 // RemoveRemoteEndpoint removes the active endpoint from the node with the
 // given ID.
-func (m *NetworkMap) RemoveRemoteEndpoint(id string, endpointID string) {
+func (m *NetworkMap) RemoveRemoteEndpoint(id string, endpointID string) bool {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	if id == m.localID {
 		m.logger.Warn("remove remote endpoint: cannot update local node")
-		return
+		return false
 	}
 
 	n, ok := m.nodes[id]
 	if !ok {
 		m.logger.Warn("remove remote endpoint: node not in netmap")
-		return
+		return false
 	}
 
 	if n.Endpoints != nil {
 		delete(n.Endpoints, endpointID)
 	}
+
+	return true
 }
 
 func (m *NetworkMap) Metrics() *Metrics {

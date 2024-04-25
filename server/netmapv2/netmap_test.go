@@ -15,6 +15,8 @@ func TestNetworkMap_LocalNode(t *testing.T) {
 	}
 	m := NewNetworkMap(localNode.Copy(), log.NewNopLogger())
 
+	assert.Equal(t, "local", m.LocalID())
+
 	n, ok := m.Node("local")
 	assert.True(t, ok)
 	assert.Equal(t, localNode, n)
@@ -170,7 +172,7 @@ func TestNetworkMap_RemoveNode(t *testing.T) {
 			Status: NodeStatusLeaving,
 		}
 		m.AddNode(newNode)
-		m.RemoveNode(newNode.ID)
+		assert.True(t, m.RemoveNode(newNode.ID))
 		_, ok := m.Node("remote")
 		assert.False(t, ok)
 
@@ -185,7 +187,7 @@ func TestNetworkMap_RemoveNode(t *testing.T) {
 		m := NewNetworkMap(localNode.Copy(), log.NewNopLogger())
 
 		// Attempting to delete the local node should have no affect.
-		m.RemoveNode(localNode.ID)
+		assert.False(t, m.RemoveNode(localNode.ID))
 		assert.Equal(t, localNode, m.LocalNode())
 	})
 }
@@ -203,7 +205,7 @@ func TestNetworkMap_UpdateRemoteStatus(t *testing.T) {
 			Status: NodeStatusJoining,
 		}
 		m.AddNode(newNode)
-		m.UpdateRemoteStatus("remote", NodeStatusActive)
+		assert.True(t, m.UpdateRemoteStatus("remote", NodeStatusActive))
 
 		n, _ := m.Node("remote")
 		assert.Equal(t, NodeStatusActive, n.Status)
@@ -217,7 +219,7 @@ func TestNetworkMap_UpdateRemoteStatus(t *testing.T) {
 		m := NewNetworkMap(localNode.Copy(), log.NewNopLogger())
 
 		// Attempting to update the local node should have no affect.
-		m.UpdateRemoteStatus("local", NodeStatusLeaving)
+		assert.False(t, m.UpdateRemoteStatus("local", NodeStatusLeaving))
 		assert.Equal(t, localNode, m.LocalNode())
 	})
 }
@@ -235,7 +237,7 @@ func TestNetworkMap_UpdateRemoteEndpoint(t *testing.T) {
 			Status: NodeStatusJoining,
 		}
 		m.AddNode(newNode)
-		m.UpdateRemoteEndpoint("remote", "my-endpoint", 7)
+		assert.True(t, m.UpdateRemoteEndpoint("remote", "my-endpoint", 7))
 
 		n, _ := m.Node("remote")
 		assert.Equal(t, 7, n.Endpoints["my-endpoint"])
@@ -249,7 +251,7 @@ func TestNetworkMap_UpdateRemoteEndpoint(t *testing.T) {
 		m := NewNetworkMap(localNode.Copy(), log.NewNopLogger())
 
 		// Attempting to update the local node should have no affect.
-		m.UpdateRemoteEndpoint("local", "my-endpoint", 7)
+		assert.False(t, m.UpdateRemoteEndpoint("local", "my-endpoint", 7))
 		assert.Equal(t, localNode, m.LocalNode())
 	})
 }
@@ -267,8 +269,8 @@ func TestNetworkMap_RemoveRemoteEndpoint(t *testing.T) {
 			Status: NodeStatusJoining,
 		}
 		m.AddNode(newNode)
-		m.UpdateRemoteEndpoint("remote", "my-endpoint", 7)
-		m.RemoveRemoteEndpoint("remote", "my-endpoint")
+		assert.True(t, m.UpdateRemoteEndpoint("remote", "my-endpoint", 7))
+		assert.True(t, m.RemoveRemoteEndpoint("remote", "my-endpoint"))
 
 		n, _ := m.Node("remote")
 		assert.Equal(t, 0, n.Endpoints["my-endpoint"])
@@ -285,7 +287,7 @@ func TestNetworkMap_RemoveRemoteEndpoint(t *testing.T) {
 		m := NewNetworkMap(localNode.Copy(), log.NewNopLogger())
 
 		// Attempting to update the local node should have no affect.
-		m.RemoveRemoteEndpoint("local", "my-endpoint")
+		assert.False(t, m.RemoveRemoteEndpoint("local", "my-endpoint"))
 		assert.Equal(t, localNode, m.LocalNode())
 	})
 }
