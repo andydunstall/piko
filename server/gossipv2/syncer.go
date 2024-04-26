@@ -143,7 +143,7 @@ func (s *syncer) OnDown(_ string) {
 	// TODO(andydunstall): See above.
 }
 
-func (s *syncer) OnUpsert(nodeID, key, value string) {
+func (s *syncer) OnUpsertKey(nodeID, key, value string) {
 	if nodeID == s.networkMap.LocalID() {
 		s.logger.Warn(
 			"node upsert state; same id as local node",
@@ -243,7 +243,7 @@ func (s *syncer) OnUpsert(nodeID, key, value string) {
 	}
 }
 
-func (s *syncer) OnDelete(nodeID, key string) {
+func (s *syncer) OnDeleteKey(nodeID, key string) {
 	if nodeID == s.networkMap.LocalID() {
 		s.logger.Warn(
 			"node delete state; same id as local node",

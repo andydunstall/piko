@@ -142,10 +142,10 @@ func TestSyncer_UpdateRemoteNode(t *testing.T) {
 		sync.Sync(gossiper)
 
 		sync.OnJoin("remote")
-		sync.OnUpsert("remote", "proxy_addr", "10.26.104.98:8000")
-		sync.OnUpsert("remote", "admin_addr", "10.26.104.98:8001")
-		sync.OnUpsert("remote", "endpoint:my-endpoint", "5")
-		sync.OnUpsert("remote", "status", string(netmap.NodeStatusActive))
+		sync.OnUpsertKey("remote", "proxy_addr", "10.26.104.98:8000")
+		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
+		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
+		sync.OnUpsertKey("remote", "status", string(netmap.NodeStatusActive))
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
@@ -175,9 +175,9 @@ func TestSyncer_UpdateRemoteNode(t *testing.T) {
 		sync.Sync(gossiper)
 
 		sync.OnJoin("remote")
-		sync.OnUpsert("remote", "proxy_addr", "10.26.104.98:8000")
-		sync.OnUpsert("remote", "admin_addr", "10.26.104.98:8001")
-		sync.OnUpsert("remote", "endpoint:my-endpoint", "5")
+		sync.OnUpsertKey("remote", "proxy_addr", "10.26.104.98:8000")
+		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
+		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
 
 		// We don't have the node status therefore it is still pending.
 		_, ok := m.Node("remote")
@@ -200,9 +200,9 @@ func TestSyncer_UpdateRemoteNode(t *testing.T) {
 
 		// Updates to the local node should have no affect.
 		sync.OnJoin("local")
-		sync.OnUpsert("local", "proxy_addr", "10.26.104.98:8000")
-		sync.OnUpsert("local", "admin_addr", "10.26.104.98:8001")
-		sync.OnUpsert("local", "status", string(netmap.NodeStatusActive))
+		sync.OnUpsertKey("local", "proxy_addr", "10.26.104.98:8000")
+		sync.OnUpsertKey("local", "admin_addr", "10.26.104.98:8001")
+		sync.OnUpsertKey("local", "status", string(netmap.NodeStatusActive))
 
 		assert.Equal(t, localNode, m.LocalNode())
 	})
@@ -222,17 +222,17 @@ func TestSyncer_UpdateRemoteNode(t *testing.T) {
 		sync.Sync(gossiper)
 
 		sync.OnJoin("remote")
-		sync.OnUpsert("remote", "proxy_addr", "10.26.104.98:8000")
-		sync.OnUpsert("remote", "admin_addr", "10.26.104.98:8001")
-		sync.OnUpsert("remote", "endpoint:my-endpoint", "5")
-		sync.OnUpsert("remote", "status", string(netmap.NodeStatusActive))
+		sync.OnUpsertKey("remote", "proxy_addr", "10.26.104.98:8000")
+		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
+		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
+		sync.OnUpsertKey("remote", "status", string(netmap.NodeStatusActive))
 
 		_, ok := m.Node("remote")
 		assert.True(t, ok)
 
-		sync.OnUpsert("remote", "status", string(netmap.NodeStatusLeaving))
-		sync.OnUpsert("remote", "endpoint:my-endpoint-2", "8")
-		sync.OnDelete("remote", "endpoint:my-endpoint")
+		sync.OnUpsertKey("remote", "status", string(netmap.NodeStatusLeaving))
+		sync.OnUpsertKey("remote", "endpoint:my-endpoint-2", "8")
+		sync.OnDeleteKey("remote", "endpoint:my-endpoint")
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
@@ -262,10 +262,10 @@ func TestSyncer_UpdateRemoteNode(t *testing.T) {
 		sync.Sync(gossiper)
 
 		sync.OnJoin("remote")
-		sync.OnUpsert("remote", "proxy_addr", "10.26.104.98:8000")
-		sync.OnUpsert("remote", "admin_addr", "10.26.104.98:8001")
-		sync.OnUpsert("remote", "endpoint:my-endpoint", "5")
-		sync.OnUpsert("remote", "status", string(netmap.NodeStatusActive))
+		sync.OnUpsertKey("remote", "proxy_addr", "10.26.104.98:8000")
+		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
+		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
+		sync.OnUpsertKey("remote", "status", string(netmap.NodeStatusActive))
 
 		sync.OnLeave("remote")
 

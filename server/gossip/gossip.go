@@ -337,11 +337,11 @@ func (w *kiteWatcher) OnDown(memberID string) {
 	w.gossip.onRemoteDown(memberID)
 }
 
-func (w *kiteWatcher) OnUpsert(memberID, key, value string) {
+func (w *kiteWatcher) OnUpsertKey(memberID, key, value string) {
 	w.gossip.onRemoteUpsert(memberID, key, value)
 }
 
-func (w *kiteWatcher) OnDelete(memberID, key string) {
+func (w *kiteWatcher) OnDeleteKey(memberID, key string) {
 	w.gossip.onRemoteDelete(memberID, key)
 }
 
