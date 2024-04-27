@@ -71,7 +71,7 @@ func (c *Client) NetmapNode(nodeID string) (*netmap.Node, error) {
 }
 
 func (c *Client) GossipMembers() ([]*kite.MemberMeta, error) {
-	r, err := c.request("/status/gossip/members")
+	r, err := c.request("/status/gossip/nodes")
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (c *Client) GossipMembers() ([]*kite.MemberMeta, error) {
 }
 
 func (c *Client) GossipMember(memberID string) (*kite.MemberState, error) {
-	r, err := c.request("/status/gossip/members/" + memberID)
+	r, err := c.request("/status/gossip/nodes/" + memberID)
 	if err != nil {
 		return nil, err
 	}

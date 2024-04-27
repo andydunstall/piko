@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/andydunstall/pico/pkg/log"
-	netmap "github.com/andydunstall/pico/server/netmapv2"
+	"github.com/andydunstall/pico/server/netmap"
 	"github.com/stretchr/testify/assert"
 )
 

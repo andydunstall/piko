@@ -1,12 +1,10 @@
 package netmap
 
 import (
-	"strconv"
-	"strings"
 	"sync"
 
 	"github.com/andydunstall/pico/pkg/log"
-	"go.uber.org/zap"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // NetworkMap represents the known state of the cluster as seen by the local
@@ -18,31 +16,37 @@ type NetworkMap struct {
 	localID string
 	nodes   map[string]*Node
 
-	localUpsertSubscribers []func(key, value string)
+	localEndpointSubscribers []func(endpointID string, listeners int)
 
 	// mu protects the above fields.
 	mu sync.RWMutex
 
+	metrics *Metrics
+
 	logger log.Logger
 }
 
-func NewNetworkMap(localNode *Node, logger log.Logger) *NetworkMap {
+func NewNetworkMap(
+	localNode *Node,
+	logger log.Logger,
+) *NetworkMap {
+	// The local node is always active.
+	localNode.Status = NodeStatusActive
 	nodes := make(map[string]*Node)
 	nodes[localNode.ID] = localNode
-	return &NetworkMap{
+
+	m := &NetworkMap{
 		localID: localNode.ID,
 		nodes:   nodes,
+		metrics: NewMetrics(),
 		logger:  logger.WithSubsystem("netmap"),
 	}
+	m.addMetricsEntry(localNode.Status)
+	return m
 }
 
-func (m *NetworkMap) LocalNode() *Node {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	return m.nodes[m.localID].Copy()
-}
-
+// Node returns the known state of the node with the given ID, or false if the
+// node is unknown.
 func (m *NetworkMap) Node(id string) (*Node, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -54,6 +58,25 @@ func (m *NetworkMap) Node(id string) (*Node, bool) {
 	return node.Copy(), true
 }
 
+// LocalID returns the ID of the local node.
+func (m *NetworkMap) LocalID() string {
+	// localID is immutable so don't need a mutex.
+	return m.localID
+}
+
+// LocalNode returns the state of the local node.
+func (m *NetworkMap) LocalNode() *Node {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	node, ok := m.nodes[m.localID]
+	if !ok {
+		panic("local node not in netmap")
+	}
+	return node.Copy()
+}
+
+// Nodes returns the state of the known nodes.
 func (m *NetworkMap) Nodes() []*Node {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -65,186 +88,214 @@ func (m *NetworkMap) Nodes() []*Node {
 	return nodes
 }
 
-func (m *NetworkMap) UpdateLocalStatus(status NodeStatus) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.nodes[m.localID].Status = status
-
-	for _, f := range m.localUpsertSubscribers {
-		f("status", string(status))
-	}
-
-	m.logger.Debug(
-		"updated local status",
-		zap.String("status", string(status)),
-	)
-}
-
-func (m *NetworkMap) AddLocalEndpoint(endpointID string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	numListeners := m.nodes[m.localID].AddEndpoint(endpointID)
-
-	key := "endpoint:" + endpointID
-	for _, f := range m.localUpsertSubscribers {
-		f(key, strconv.Itoa(numListeners))
-	}
-
-	m.logger.Debug(
-		"added local endpoint",
-		zap.String("endpoint-id", endpointID),
-		zap.Int("num-listeners", numListeners),
-	)
-}
-
-func (m *NetworkMap) RemoveLocalEndpoint(endpointID string) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	numListeners := m.nodes[m.localID].RemoveEndpoint(endpointID)
-
-	key := "endpoint:" + endpointID
-	for _, f := range m.localUpsertSubscribers {
-		if numListeners > 0 {
-			f(key, strconv.Itoa(numListeners))
-		} else {
-			f(key, "")
-		}
-	}
-
-	m.logger.Debug(
-		"removed local endpoint",
-		zap.String("endpoint-id", endpointID),
-		zap.Int("num-listeners", numListeners),
-	)
-}
-
-func (m *NetworkMap) AddRemote(node *Node) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.nodes[node.ID] = node
-
-	m.logger.Debug(
-		"add remote ",
-		zap.String("node-id", node.ID),
-		zap.String("status", string(node.Status)),
-	)
-}
-
-func (m *NetworkMap) RemoveRemote(nodeID string) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	if _, ok := m.nodes[nodeID]; ok {
-		delete(m.nodes, nodeID)
-		m.logger.Debug(
-			"remove remote ",
-			zap.String("node-id", nodeID),
-		)
-		return true
-	}
-	return false
-}
-
-func (m *NetworkMap) UpsertRemote(nodeID, key, value string) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	node, ok := m.nodes[nodeID]
-	if !ok {
-		return false
-	}
-
-	m.nodes[node.ID] = node
-
-	switch key {
-	case "status":
-		node.Status = NodeStatus(value)
-
-		m.logger.Debug(
-			"update remote; status updated ",
-			zap.String("node-id", nodeID),
-			zap.String("status", string(node.Status)),
-		)
-	default:
-		if strings.HasPrefix(key, "endpoint:") {
-			endpointID, _ := strings.CutPrefix(key, "endpoint:")
-			numListeners, err := strconv.Atoi(value)
-			if err != nil {
-				m.logger.Error(
-					"invalid endpoint: num listeners",
-					zap.String("node-id", node.ID),
-					zap.Error(err),
-				)
-			}
-			if node.Endpoints == nil {
-				node.Endpoints = make(map[string]int)
-			}
-			node.Endpoints[endpointID] = numListeners
-
-			m.logger.Debug(
-				"update remote; endpoint updated ",
-				zap.String("node-id", nodeID),
-				zap.String("endpoint-id", endpointID),
-			)
-		} else {
-			m.logger.Error(
-				"unknown key",
-				zap.String("node-id", node.ID),
-				zap.String("key", key),
-			)
-		}
-	}
-
-	return true
-}
-
-func (m *NetworkMap) DeleteRemoteState(nodeID, key string) bool {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	node, ok := m.nodes[nodeID]
-	if !ok {
-		return false
-	}
-
-	if strings.HasPrefix(key, "endpoint:") {
-		endpointID, _ := strings.CutPrefix(key, "endpoint:")
-		if node.Endpoints != nil {
-			delete(node.Endpoints, endpointID)
-		}
-	} else {
-		m.logger.Error(
-			"unknown key",
-			zap.String("node-id", node.ID),
-			zap.String("key", key),
-		)
-	}
-
-	return true
-}
-
-// OnLocalUpsert subscribes to updates to the local node. The callback must not
-// block.
-func (m *NetworkMap) OnLocalUpsert(f func(key, value string)) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.localUpsertSubscribers = append(m.localUpsertSubscribers, f)
-}
-
 func (m *NetworkMap) LookupEndpoint(endpointID string) (*Node, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	for _, node := range m.nodes {
-		if numListeners, ok := node.Endpoints[endpointID]; ok && numListeners > 0 {
+		if listeners, ok := node.Endpoints[endpointID]; ok && listeners > 0 {
 			return node.Copy(), true
 		}
 	}
 
 	return nil, false
+}
+
+// AddLocalEndpoint adds the active endpoint to the local node state.
+func (m *NetworkMap) AddLocalEndpoint(endpointID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	node, ok := m.nodes[m.localID]
+	if !ok {
+		panic("local node not in netmap")
+	}
+
+	if node.Endpoints == nil {
+		node.Endpoints = make(map[string]int)
+	}
+
+	node.Endpoints[endpointID] = node.Endpoints[endpointID] + 1
+
+	for _, f := range m.localEndpointSubscribers {
+		f(endpointID, node.Endpoints[endpointID])
+	}
+}
+
+// RemoveLocalEndpoint removes the active endpoint from the local node state.
+func (m *NetworkMap) RemoveLocalEndpoint(endpointID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	node, ok := m.nodes[m.localID]
+	if !ok {
+		panic("local node not in netmap")
+	}
+
+	if node.Endpoints == nil {
+		node.Endpoints = make(map[string]int)
+	}
+
+	listeners, ok := node.Endpoints[endpointID]
+	if !ok || listeners == 0 {
+		m.logger.Warn("remove local endpoint: endpoint not found")
+		return
+	}
+
+	if listeners > 1 {
+		node.Endpoints[endpointID] = listeners - 1
+	} else {
+		delete(node.Endpoints, endpointID)
+	}
+
+	for _, f := range m.localEndpointSubscribers {
+		f(endpointID, node.Endpoints[endpointID])
+	}
+}
+
+// OnLocalEndpointUpdate subscribes to changes to the local nodes active
+// endpoints.
+//
+// The callback is called with the netmap mutex locked so must not block or
+// call back to the netmap.
+func (m *NetworkMap) OnLocalEndpointUpdate(f func(endpointID string, listeners int)) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.localEndpointSubscribers = append(m.localEndpointSubscribers, f)
+}
+
+// AddNode adds the given node to the netmap.
+func (m *NetworkMap) AddNode(node *Node) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if node.ID == m.localID {
+		m.logger.Warn("add node: cannot add local node")
+		return
+	}
+
+	if _, ok := m.nodes[node.ID]; ok {
+		// If already in the netmap update the node but warn as this should
+		// not happen.
+		m.logger.Warn("add node: node already in netmap")
+	}
+
+	m.nodes[node.ID] = node
+	m.addMetricsEntry(node.Status)
+}
+
+// RemoveNode removes the node with the given ID from the netmap.
+func (m *NetworkMap) RemoveNode(id string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if id == m.localID {
+		m.logger.Warn("remove node: cannot remove local node")
+		return false
+	}
+
+	node, ok := m.nodes[id]
+	if !ok {
+		m.logger.Warn("remove node: node not in netmap")
+		return false
+	}
+
+	delete(m.nodes, id)
+	m.removeMetricsEntry(node.Status)
+
+	return true
+}
+
+// UpdateRemoteStatus sets the status of the remote node with the given ID.
+func (m *NetworkMap) UpdateRemoteStatus(id string, status NodeStatus) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if id == m.localID {
+		m.logger.Warn("update remote status: cannot update local node")
+		return false
+	}
+
+	n, ok := m.nodes[id]
+	if !ok {
+		m.logger.Warn("update remote status: node not in netmap")
+		return false
+	}
+
+	oldStatus := n.Status
+	n.Status = status
+	m.updateMetricsEntry(oldStatus, status)
+	return true
+}
+
+// UpdateRemoteEndpoint sets the number of listeners for the active endpoint
+// for the node with the given ID.
+func (m *NetworkMap) UpdateRemoteEndpoint(
+	id string,
+	endpointID string,
+	listeners int,
+) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if id == m.localID {
+		m.logger.Warn("update remote endpoint: cannot update local node")
+		return false
+	}
+
+	n, ok := m.nodes[id]
+	if !ok {
+		m.logger.Warn("update remote endpoint: node not in netmap")
+		return false
+	}
+
+	if n.Endpoints == nil {
+		n.Endpoints = make(map[string]int)
+	}
+
+	n.Endpoints[endpointID] = listeners
+
+	return true
+}
+
+// RemoveRemoteEndpoint removes the active endpoint from the node with the
+// given ID.
+func (m *NetworkMap) RemoveRemoteEndpoint(id string, endpointID string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	if id == m.localID {
+		m.logger.Warn("remove remote endpoint: cannot update local node")
+		return false
+	}
+
+	n, ok := m.nodes[id]
+	if !ok {
+		m.logger.Warn("remove remote endpoint: node not in netmap")
+		return false
+	}
+
+	if n.Endpoints != nil {
+		delete(n.Endpoints, endpointID)
+	}
+
+	return true
+}
+
+func (m *NetworkMap) Metrics() *Metrics {
+	return m.metrics
+}
+
+func (m *NetworkMap) updateMetricsEntry(oldStatus NodeStatus, newStatus NodeStatus) {
+	m.removeMetricsEntry(oldStatus)
+	m.addMetricsEntry(newStatus)
+}
+
+func (m *NetworkMap) addMetricsEntry(s NodeStatus) {
+	m.metrics.Entries.With(prometheus.Labels{"status": string(s)}).Inc()
+}
+
+func (m *NetworkMap) removeMetricsEntry(s NodeStatus) {
+	m.metrics.Entries.With(prometheus.Labels{"status": string(s)}).Dec()
 }

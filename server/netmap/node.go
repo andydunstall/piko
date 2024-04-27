@@ -9,71 +9,63 @@ var (
 	alphaNumericChars = []byte("abcdefghijklmnopqrstuvwxyz1234567890")
 )
 
+// NodeStatus contains the known status of a node.
 type NodeStatus string
 
 const (
-	NodeStatusJoining NodeStatus = "joining"
-	NodeStatusActive  NodeStatus = "active"
+	// NodeStatusActive means the node is healthy and accepting traffic.
+	NodeStatusActive NodeStatus = "active"
+	// NodeStatusDown means the node is considered down.
+	NodeStatusDown NodeStatus = "down"
+	// NodeStatusLeft means the node has left the cluster.
+	NodeStatusLeft NodeStatus = "left"
 )
 
 // Node represents the known state about a node in the cluster.
+//
+// Note to ensure updates are propagated, never update a node directly, only
+// ever update via the NetworkMap.
 type Node struct {
 	// ID is a unique identifier for the node in the cluster.
+	//
+	// The ID is immutable.
 	ID string `json:"id"`
 
+	// Status contains the known status of the node.
 	Status NodeStatus `json:"status"`
 
 	// ProxyAddr is the advertised proxy address.
+	//
+	// The address is immutable.
 	ProxyAddr string `json:"proxy_addr"`
-	// AdminAddr is the advertised admin address.
-	AdminAddr string `json:"admin_addr"`
-	// GossipAddr is the advertised gossip address.
-	GossipAddr string `json:"gossip_addr"`
 
-	// Endpoints contains the active endpoints on the node (endpoints with at
-	// least one upstream listener). This maps the active endpoint ID to the
-	// number of listeners for that endpoint.
+	// AdminAddr is the advertised admin address.
+	//
+	// The address is immutable.
+	AdminAddr string `json:"admin_addr"`
+
+	// Endpoints contains the known active endpoints on the node (endpoints
+	// with at least one upstream listener).
+	//
+	// This maps the endpoint ID to the number of known listeners for that
+	// endpoint.
 	Endpoints map[string]int `json:"endpoints"`
 }
 
-func (n *Node) AddEndpoint(endpointID string) int {
-	if n.Endpoints == nil {
-		n.Endpoints = make(map[string]int)
-	}
-
-	n.Endpoints[endpointID] = n.Endpoints[endpointID] + 1
-	return n.Endpoints[endpointID]
-}
-
-func (n *Node) RemoveEndpoint(endpointID string) int {
-	if n.Endpoints == nil {
-		return 0
-	}
-
-	numListeners, ok := n.Endpoints[endpointID]
-	if !ok {
-		return 0
-	}
-	if numListeners > 1 {
-		n.Endpoints[endpointID] = numListeners - 1
-		return n.Endpoints[endpointID]
-	}
-	delete(n.Endpoints, endpointID)
-	return 0
-}
-
 func (n *Node) Copy() *Node {
-	endpoints := make(map[string]int)
-	for endpointID, numListeners := range n.Endpoints {
-		endpoints[endpointID] = numListeners
+	var endpoints map[string]int
+	if len(n.Endpoints) > 0 {
+		endpoints = make(map[string]int)
+		for endpointID, listeners := range n.Endpoints {
+			endpoints[endpointID] = listeners
+		}
 	}
 	return &Node{
-		ID:         n.ID,
-		Status:     n.Status,
-		ProxyAddr:  n.ProxyAddr,
-		AdminAddr:  n.AdminAddr,
-		GossipAddr: n.GossipAddr,
-		Endpoints:  endpoints,
+		ID:        n.ID,
+		Status:    n.Status,
+		ProxyAddr: n.ProxyAddr,
+		AdminAddr: n.AdminAddr,
+		Endpoints: endpoints,
 	}
 }
 

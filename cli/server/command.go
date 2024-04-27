@@ -13,9 +13,7 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/gossip"
-	gossipv2 "github.com/andydunstall/pico/server/gossipv2"
 	"github.com/andydunstall/pico/server/netmap"
-	netmapv2 "github.com/andydunstall/pico/server/netmapv2"
 	"github.com/andydunstall/pico/server/proxy"
 	adminserver "github.com/andydunstall/pico/server/server/admin"
 	proxyserver "github.com/andydunstall/pico/server/server/proxy"
@@ -24,7 +22,6 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 func NewCommand() *cobra.Command {
@@ -273,198 +270,31 @@ func run(conf *config.Config, logger log.Logger) error {
 	logger.Info("starting pico server", zap.Any("conf", conf))
 
 	registry := prometheus.NewRegistry()
+	adminServer := adminserver.NewServer(
+		conf.Admin.BindAddr,
+		registry,
+		logger,
+	)
 
 	networkMap := netmap.NewNetworkMap(&netmap.Node{
-		ID:         conf.Cluster.NodeID,
-		Status:     netmap.NodeStatusJoining,
-		ProxyAddr:  conf.Proxy.AdvertiseAddr,
-		AdminAddr:  conf.Admin.AdvertiseAddr,
-		GossipAddr: conf.Gossip.AdvertiseAddr,
-	}, logger)
-	g, err := gossip.NewGossip(
-		conf.Gossip.BindAddr,
-		networkMap,
-		registry,
-		logger,
-	)
-	if err != nil {
-		logger.Error("failed to start gossip: %w", zap.Error(err))
-		os.Exit(1)
-	}
-	defer g.Close()
-
-	if len(conf.Cluster.Join) > 0 {
-		if err := g.Join(conf.Cluster.Join); err != nil {
-			logger.Warn(
-				"failed to join cluster",
-				zap.Strings("join", conf.Cluster.Join),
-				zap.Error(err),
-			)
-		} else {
-			logger.Info(
-				"joined cluster",
-				zap.Strings("join", conf.Cluster.Join),
-			)
-		}
-	}
-
-	adminServer := adminserver.NewServer(
-		conf.Admin.BindAddr,
-		registry,
-		logger,
-	)
-
-	networkMapStatus := netmap.NewStatus(networkMap)
-	adminServer.AddStatus("/netmap", networkMapStatus)
-
-	gossipStatus := gossip.NewStatus(g)
-	adminServer.AddStatus("/gossip", gossipStatus)
-
-	p := proxy.NewProxy(networkMap, registry, logger)
-	proxyServer := proxyserver.NewServer(
-		conf.Proxy.BindAddr,
-		p,
-		&conf.Proxy,
-		registry,
-		logger,
-	)
-
-	proxyStatus := proxy.NewStatus(p)
-	adminServer.AddStatus("/proxy", proxyStatus)
-
-	ctx, cancel := signal.NotifyContext(
-		context.Background(), syscall.SIGINT, syscall.SIGTERM,
-	)
-	defer cancel()
-
-	group, ctx := errgroup.WithContext(ctx)
-	group.Go(func() error {
-		if err := adminServer.Serve(); err != nil {
-			return fmt.Errorf("admin server serve: %w", err)
-		}
-		return nil
-	})
-	group.Go(func() error {
-		<-ctx.Done()
-
-		logger.Info("shutting down admin server")
-
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
-		)
-		defer cancel()
-
-		if err := adminServer.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
-		}
-		return nil
-	})
-	group.Go(func() error {
-		if err := proxyServer.Serve(); err != nil {
-			return fmt.Errorf("proxy server serve: %w", err)
-		}
-		return nil
-	})
-	group.Go(func() error {
-		<-ctx.Done()
-
-		logger.Info("shutting down proxy server")
-
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
-		)
-		defer cancel()
-
-		if err := proxyServer.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
-		}
-		return nil
-	})
-	group.Go(func() error {
-		ticker := time.NewTicker(time.Minute)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case <-ticker.C:
-				// Periodically attempt to sync with the configured members.
-				// This helps prevent a net split.
-				if len(conf.Cluster.Join) > 0 {
-					if err := g.Join(conf.Cluster.Join); err != nil {
-						logger.Warn(
-							"failed to join cluster",
-							zap.Strings("join", conf.Cluster.Join),
-							zap.Error(err),
-						)
-					}
-				}
-			case <-ctx.Done():
-				return nil
-			}
-		}
-	})
-	group.Go(func() error {
-		<-ctx.Done()
-
-		logger.Info("leaving cluster")
-
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
-		)
-		defer cancel()
-
-		// Leave as soon as we receive the shutdown signal to avoid receiving
-		// forward proxy requests.
-		if err := g.Leave(shutdownCtx); err != nil {
-			logger.Warn("failed to leave cluster", zap.Error(err))
-		}
-		return nil
-	})
-
-	networkMap.UpdateLocalStatus(netmap.NodeStatusActive)
-
-	if err := group.Wait(); err != nil {
-		logger.Error("failed to run server", zap.Error(err))
-	}
-
-	logger.Info("shutdown complete")
-
-	return nil
-}
-
-// nolint
-func runv2(conf *config.Config, logger log.Logger) error {
-	logger.Info("starting pico server", zap.Any("conf", conf))
-
-	registry := prometheus.NewRegistry()
-	adminServer := adminserver.NewServer(
-		conf.Admin.BindAddr,
-		registry,
-		logger,
-	)
-
-	networkMap := netmapv2.NewNetworkMap(&netmapv2.Node{
 		ID:        conf.Cluster.NodeID,
 		ProxyAddr: conf.Proxy.AdvertiseAddr,
 		AdminAddr: conf.Admin.AdvertiseAddr,
 	}, logger)
 	networkMap.Metrics().Register(registry)
-	adminServer.AddStatus("/netmap", netmapv2.NewStatus(networkMap))
+	adminServer.AddStatus("/netmap", netmap.NewStatus(networkMap))
 
-	gossip, err := gossipv2.NewGossip(networkMap, conf, logger)
+	gossiper, err := gossip.NewGossip(networkMap, conf, logger)
 	if err != nil {
 		return fmt.Errorf("gossip: %w", err)
 	}
-	defer gossip.Close()
-	adminServer.AddStatus("/gossip", gossipv2.NewStatus(gossip))
+	defer gossiper.Close()
+	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
 
 	// Attempt to join an existing cluster. Note if 'join' is a domain that
 	// doesn't map to any entries (except ourselves), then join will succeed
 	// since it means we're the first member.
-	nodeIDs, err := gossip.Join(conf.Cluster.Join)
+	nodeIDs, err := gossiper.Join(conf.Cluster.Join)
 	if err != nil {
 		return fmt.Errorf("join cluster: %w", err)
 	}
@@ -474,6 +304,16 @@ func runv2(conf *config.Config, logger log.Logger) error {
 			zap.Strings("node-ids", nodeIDs),
 		)
 	}
+
+	p := proxy.NewProxy(networkMap, registry, logger)
+	proxyServer := proxyserver.NewServer(
+		conf.Proxy.BindAddr,
+		p,
+		&conf.Proxy,
+		registry,
+		logger,
+	)
+	adminServer.AddStatus("/proxy", proxy.NewStatus(p))
 
 	var group rungroup.Group
 
@@ -487,9 +327,15 @@ func runv2(conf *config.Config, logger log.Logger) error {
 			zap.String("signal", sig.String()),
 		)
 
+		leaveCtx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
+		)
+		defer cancel()
+
 		// Leave as soon as we receive the shutdown signal to avoid receiving
 		// forward proxy requests.
-		if err := gossip.Leave(); err != nil {
+		if err := gossiper.Leave(leaveCtx); err != nil {
 			logger.Warn("failed to gracefully leave cluster", zap.Error(err))
 		} else {
 			logger.Info("left cluster")
@@ -497,6 +343,26 @@ func runv2(conf *config.Config, logger log.Logger) error {
 
 		return nil
 	}, func(error) {
+	})
+
+	// Proxy server.
+	group.Add(func() error {
+		if err := proxyServer.Serve(); err != nil {
+			return fmt.Errorf("proxy server serve: %w", err)
+		}
+		return nil
+	}, func(error) {
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
+		)
+		defer cancel()
+
+		if err := proxyServer.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown proxy server", zap.Error(err))
+		}
+
+		logger.Info("proxy server shut down")
 	})
 
 	// Admin server.

@@ -4,7 +4,6 @@ import (
 	"net/http"
 	"sort"
 
-	"github.com/andydunstall/kite"
 	"github.com/andydunstall/pico/server/status"
 	"github.com/gin-gonic/gin"
 )
@@ -20,29 +19,28 @@ func NewStatus(gossip *Gossip) *Status {
 }
 
 func (s *Status) Register(group *gin.RouterGroup) {
-	group.GET("/members", s.listMembersRoute)
-	group.GET("/members/:id", s.getMemberRoute)
+	group.GET("/nodes", s.listNodesRoute)
+	group.GET("/nodes/:id", s.getNodeRoute)
 }
 
-func (s *Status) listMembersRoute(c *gin.Context) {
-	members := s.gossip.MembersMetadata(kite.MemberFilter{
-		Local: true,
+func (s *Status) listNodesRoute(c *gin.Context) {
+	nodes := s.gossip.NodesMetadata()
+
+	// Sort by node ID.
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].ID < nodes[j].ID
 	})
-	c.JSON(http.StatusOK, members)
+
+	c.JSON(http.StatusOK, nodes)
 }
 
-func (s *Status) getMemberRoute(c *gin.Context) {
+func (s *Status) getNodeRoute(c *gin.Context) {
 	id := c.Param("id")
-	state, ok := s.gossip.MemberState(id)
+	state, ok := s.gossip.NodeState(id)
 	if !ok {
 		c.Status(http.StatusNotFound)
 		return
 	}
-
-	// Sort state by version.
-	sort.Slice(state.State, func(i, j int) bool {
-		return state.State[i].Version < state.State[j].Version
-	})
 
 	c.JSON(http.StatusOK, state)
 }

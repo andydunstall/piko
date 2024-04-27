@@ -7,7 +7,7 @@ import (
 
 	"github.com/andydunstall/kite"
 	"github.com/andydunstall/pico/pkg/log"
-	netmap "github.com/andydunstall/pico/server/netmapv2"
+	"github.com/andydunstall/pico/server/netmap"
 	"go.uber.org/zap"
 )
 
