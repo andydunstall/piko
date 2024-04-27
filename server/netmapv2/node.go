@@ -1,17 +1,13 @@
 package netmap
 
-// NodeStatus contains the known status as set by the node itself.
+// NodeStatus contains the known status of a node.
 type NodeStatus string
 
 const (
-	// NodeStatusJoining means the node is joining the cluster though is not
-	// yet accepting traffic.
-	NodeStatusJoining NodeStatus = "joining"
 	// NodeStatusActive means the node is healthy and accepting traffic.
 	NodeStatusActive NodeStatus = "active"
-	// NodeStatusLeaving means the node is leaving the cluster and no longer
-	// accepting traffic.
-	NodeStatusLeaving NodeStatus = "leaving"
+	// NodeStatusDown means the node is considered down.
+	NodeStatusDown NodeStatus = "down"
 	// NodeStatusLeft means the node has left the cluster.
 	NodeStatusLeft NodeStatus = "left"
 )
@@ -26,7 +22,7 @@ type Node struct {
 	// The ID is immutable.
 	ID string `json:"id"`
 
-	// Status contains the node status as set by the node itself.
+	// Status contains the known status of the node.
 	Status NodeStatus `json:"status"`
 
 	// ProxyAddr is the advertised proxy address.

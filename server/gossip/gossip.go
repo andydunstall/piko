@@ -333,6 +333,10 @@ func (w *kiteWatcher) OnHealthy(_ string) {
 	// TODO(andydunstall)
 }
 
+func (w *kiteWatcher) OnExpired(_ string) {
+	// TODO(andydunstall)
+}
+
 func (w *kiteWatcher) OnDown(memberID string) {
 	w.gossip.onRemoteDown(memberID)
 }

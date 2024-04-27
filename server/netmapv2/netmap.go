@@ -16,7 +16,6 @@ type NetworkMap struct {
 	localID string
 	nodes   map[string]*Node
 
-	localStatusSubscribers   []func(NodeStatus)
 	localEndpointSubscribers []func(endpointID string, listeners int)
 
 	// mu protects the above fields.
@@ -31,6 +30,8 @@ func NewNetworkMap(
 	localNode *Node,
 	logger log.Logger,
 ) *NetworkMap {
+	// The local node is always active.
+	localNode.Status = NodeStatusActive
 	nodes := make(map[string]*Node)
 	nodes[localNode.ID] = localNode
 
@@ -85,36 +86,6 @@ func (m *NetworkMap) Nodes() []*Node {
 		nodes = append(nodes, node.Copy())
 	}
 	return nodes
-}
-
-// UpdateLocalStatus sets the status of the local node.
-func (m *NetworkMap) UpdateLocalStatus(status NodeStatus) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	node, ok := m.nodes[m.localID]
-	if !ok {
-		panic("local node not in netmap")
-	}
-
-	oldStatus := node.Status
-	node.Status = status
-	m.updateMetricsEntry(oldStatus, status)
-
-	for _, f := range m.localStatusSubscribers {
-		f(node.Status)
-	}
-}
-
-// OnLocalStatusUpdate subscribes to changes to the local node status.
-//
-// The callback is called with the netmap mutex locked so must not block or
-// call back to the netmap.
-func (m *NetworkMap) OnLocalStatusUpdate(f func(NodeStatus)) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	m.localStatusSubscribers = append(m.localStatusSubscribers, f)
 }
 
 // AddLocalEndpoint adds the active endpoint to the local node state.

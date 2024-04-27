@@ -448,7 +448,6 @@ func runv2(conf *config.Config, logger log.Logger) error {
 
 	networkMap := netmapv2.NewNetworkMap(&netmapv2.Node{
 		ID:        conf.Cluster.NodeID,
-		Status:    netmapv2.NodeStatusActive,
 		ProxyAddr: conf.Proxy.AdvertiseAddr,
 		AdminAddr: conf.Admin.AdvertiseAddr,
 	}, logger)
@@ -487,8 +486,6 @@ func runv2(conf *config.Config, logger log.Logger) error {
 			"received shutdown signal",
 			zap.String("signal", sig.String()),
 		)
-
-		networkMap.UpdateLocalStatus(netmapv2.NodeStatusLeft)
 
 		// Leave as soon as we receive the shutdown signal to avoid receiving
 		// forward proxy requests.
