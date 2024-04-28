@@ -62,12 +62,14 @@ connection. Each listener is identified by an endpoint ID.
 
 Pico may be hosted as a cluster of servers for fault tolerance and scalability.
 
-The server has three ports:
+The server has four ports:
 * Proxy port (`8000`): Listens for requests from downstream clients which
 are forwarded to upstream listeners
 * Upstream port (`8001`): Listens for connections from upstream listeners
 * Admin port (`8002`): Listeners for admin requests to inspect the server
 status
+* Gossip port (`7000`): Used for inter-node gossip traffic to discover the
+status of each node in the cluster
 
 The proxy and upstream ports are separate since they downstream clients and
 upstream listeners will typically be on different networks. Such as you may
@@ -105,9 +107,8 @@ This section describes how to run both the Pico server and agent locally. In
 production you'd host the server remotely as a cluster, though this is still
 useful to demo Pico.
 
-Start by either downloading the `pico` binary from the releases page, or to
-build Pico directly you can clone the repo and run `make pico` (which requires
-Go 1.21 or later).
+Start by building Pico with `make pico`, which builds Pico at `build/pico`
+(which requires Go 1.21 or later).
 
 ### Server
 Start the server with `pico server`, which will listen for proxy requests at
@@ -142,7 +143,15 @@ You can also inspect the server status using `pico status`. Such as to view the
 endpoints registered to this server use `pico status proxy endpoints`.
 
 ## Docs
+
 See [docs](./docs) for details on deploying and managing Pico, plus details on
 the Pico architecture:
 - Deploy
+  - [Kubernetes](./docs/deploy/kubernetes.md)
   - [Observability](./docs/deploy/observability.md)
+
+## Limitations
+
+Pico is currently only a proof of concept so is not yet suitable for
+production. It likely contains bugs and is missing important features like
+authentication.

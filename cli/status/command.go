@@ -21,10 +21,10 @@ Examples:
   pico status netmap members
 
   # Inspect the upstream listeners connected to this node.
-  pico status proxy listeners
+  pico status proxy endpoints
 
   # Inspect the status of server 10.26.104.56:8002.
-  pico status proxy listeners --server 10.26.104.56:8002
+  pico status proxy endpoints --server 10.26.104.56:8002
 `,
 	}
 

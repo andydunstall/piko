@@ -34,12 +34,6 @@ func NewCommand() *cobra.Command {
 The Pico server is responsible for proxying requests from downstream clients to
 registered upstream listeners.
 
-The server has three ports:
-* Proxy: Accepts connections from downstream clients and routes requests to
-upstream listeners
-* Upstream: Accepts connections from upstream listeners to register endpoints
-* Admin: Used to inspect the status of the server
-
 Pico may run as a cluster of nodes for fault tolerance and scalability. Use
 '--cluster.join' to configure addresses of existing members in the cluster
 to join.

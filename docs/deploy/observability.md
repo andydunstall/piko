@@ -30,3 +30,13 @@ list. Such as `gossip` will match `gossip` but not `gossip.kite`.
 
 ## Metrics
 The Pico server exposes Prometheus on the admin port at `/metrics`.
+
+## Status
+Pico includes a status CLI to inspect a Pico server. Servers register endpoints
+at `/status` on the admin port that `pico status` then queries.
+
+Such as to view the endpoints registers on a server use
+`pico status proxy endpoints`. Or to inspect the set of known nodes in the
+cluster use `pico status netmap nodes`.
+
+Configure the server URL with `--server`.
