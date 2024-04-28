@@ -122,7 +122,7 @@ Next start a service you would like to route requests to, such as
 port `3000`.
 
 Next you can start Pico agent with
-`pico agent --listeners my-endpoint-123/localhost:3000` which registers a
+`pico agent --endpoints my-endpoint-123/localhost:3000` which registers a
 listener with endpoint ID `my-endpoint-123` and forwards requests to
 `localhost:3000`.
 

@@ -23,27 +23,26 @@ func NewCommand() *cobra.Command {
 		Long: `Start the Pico agent.
 
 The Pico agent is a CLI that runs alongside your upstream service that
-registers one or more listeners.
+registers one or more endpoints.
 
 The agent will open an outbound connection to a Pico server for each of the
-configured listener. This connection is kept open and is used to receive
-proxied requets from the server which are then forwarded to the configured
-address, then the response is sent back to the Pico server.
+configured endpoints. This connection is kept open and is used to receive
+proxied requests from the server which are then forwarded to the configured
+address.
 
 Such as if you have a service running at 'localhost:3000', you can register
 endpoint 'my-endpoint' that forwards requests to that local service.
 
 Examples:
-  # Register a listener with endpoint ID 'my-endpoint-123' that forwards
-  # requests to 'localhost:3000'.
-  pico agent --listener my-endpoint-123/localhost:3000
+  # Register an endpoint with ID 'my-endpoint-123' that forwards requests to
+  # to 'localhost:3000'.
+  pico agent --endpoints my-endpoint-123/localhost:3000
 
-  # Register multiple listeners.
-  pico agent --listener my-endpoint-123/localhost:3000 \
-      --listener my-endpoint-xyz/localhost:6000
+  # Register multiple endpoints.
+  pico agent --endpoints my-endpoint-1/localhost:3000 my-endpoint-2/localhost:6000
 
   # Specify the Pico server address.
-  pico agent --listener my-endpoint-123/localhost:3000 \
+  pico agent --endpoints my-endpoint-123/localhost:3000 \
       --server.url https://pico.example.com
 `,
 	}
@@ -51,25 +50,23 @@ Examples:
 	var conf config.Config
 
 	cmd.Flags().StringSliceVar(
-		&conf.Listeners,
-		"listeners",
+		&conf.Endpoints,
+		"endpoints",
 		nil,
 		`
-The listeners to register with the Pico server.
+The endpoints to register with the Pico server.
 
-Each listener registers with an endpoint ID and forward address. The agent
-will open a outbound connection to the server for each listener and register
-that listener for the endpoint ID. Pico will then forward requests for that
-endpoint ID to the agent via the outbound connection, then the agent forwards
-the request on to the registered forward address.
+Each endpoint has an ID and forwarding address. The agent will register the
+endpoint with the Pico server then receive incoming requests for that endpoint
+and forward them to the configured address.
 
-'--listeners' is a comma separated list of listeners with format:
-'<endpoint ID>/<forward addr>'. Such as '--listeners 6ae6db60/localhost:3000'
-will register the listener for endpoint '6ae6db60' then forward incoming
-requests to 'localhost:3000'.
+'--endpoints' is a comma separated list of endpoints with format:
+'<endpoint ID>/<forward addr>'. Such as '--endpoints 6ae6db60/localhost:3000'
+will register the endpoint '6ae6db60' then forward incoming requests to
+'localhost:3000'.
 
-You may register multiple listeners which have their own connection to Pico,
-such as '--listeners 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.`,
+You may register multiple endpoints which have their own connection to Pico,
+such as '--endpoints 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.`,
 	)
 
 	cmd.Flags().StringVar(
@@ -173,9 +170,9 @@ func run(conf *config.Config, logger log.Logger) {
 	defer cancel()
 
 	g, ctx := errgroup.WithContext(ctx)
-	for _, l := range conf.Listeners {
+	for _, e := range conf.Endpoints {
 		// Already verified format in Config.Validate.
-		elems := strings.Split(l, "/")
+		elems := strings.Split(e, "/")
 		endpointID := elems[0]
 		forwardAddr := elems[1]
 

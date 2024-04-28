@@ -50,11 +50,11 @@ func (c *LogConfig) Validate() error {
 }
 
 type Config struct {
-	// Listeners is a list of endpoints and forward addresses to register.
+	// Endpoints is a list of endpoints and forward addresses to register.
 	//
-	// Each listener has format '<endpoint ID>/<forward addr>', such
+	// Each endpoint has format '<endpoint ID>/<forward addr>', such
 	// as 'd3934d4f/localhost:3000'.
-	Listeners []string `json:"listeners"`
+	Endpoints []string `json:"endpoints"`
 
 	Server ServerConfig `json:"server"`
 
@@ -64,12 +64,12 @@ type Config struct {
 }
 
 func (c *Config) Validate() error {
-	if len(c.Listeners) == 0 {
-		return fmt.Errorf("must have at least one listener")
+	if len(c.Endpoints) == 0 {
+		return fmt.Errorf("must have at least one endpoint")
 	}
-	for _, ln := range c.Listeners {
+	for _, ln := range c.Endpoints {
 		if len(strings.Split(ln, "/")) != 2 {
-			return fmt.Errorf("invalid listener: %s", ln)
+			return fmt.Errorf("invalid endpoint: %s", ln)
 		}
 	}
 
