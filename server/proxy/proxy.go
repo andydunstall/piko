@@ -352,7 +352,7 @@ func parseEndpointID(r *http.Request) string {
 		return endpointID
 	}
 
-	host := r.Header.Get("host")
+	host := r.Host
 	if host != "" && strings.Contains(host, ".") {
 		// If a host is given and contains a separator, use the bottom-level
 		// domain as the endpoint ID.
