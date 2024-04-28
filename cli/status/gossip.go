@@ -19,23 +19,23 @@ func newGossipCommand() *cobra.Command {
 		Short: "inspect gossip state",
 	}
 
-	cmd.AddCommand(newGossipMembersCommand())
-	cmd.AddCommand(newGossipMemberCommand())
+	cmd.AddCommand(newGossipNodesCommand())
+	cmd.AddCommand(newGossipNodeCommand())
 
 	return cmd
 }
 
-func newGossipMembersCommand() *cobra.Command {
+func newGossipNodesCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "members",
-		Short: "inspect gossip members",
-		Long: `Inspect gossip members.
+		Use:   "nodes",
+		Short: "inspect gossip nodes",
+		Long: `Inspect gossip nodes.
 
-Queries the server for the metadata for each known gossip member in the
+Queries the server for the metadata for each known gossip node in the
 cluster.
 
 Examples:
-  pico status gossip members
+  pico status gossip nodes
 `,
 	}
 
@@ -56,51 +56,51 @@ Pico server URL. This URL should point to the server admin port.
 			os.Exit(1)
 		}
 
-		showGossipMembers(&conf)
+		showGossipNodes(&conf)
 	}
 
 	return cmd
 }
 
-type gossipMembersOutput struct {
-	Members []*kite.MemberMeta `json:"members"`
+type gossipNodesOutput struct {
+	Nodes []kite.NodeMetadata `json:"nodes"`
 }
 
-func showGossipMembers(conf *config.Config) {
+func showGossipNodes(conf *config.Config) {
 	// The URL has already been validated in conf.
 	url, _ := url.Parse(conf.Server.URL)
 	client := client.NewClient(url)
 	defer client.Close()
 
-	members, err := client.GossipMembers()
+	nodes, err := client.GossipNodes()
 	if err != nil {
-		fmt.Printf("failed to get gossip members: %s\n", err.Error())
+		fmt.Printf("failed to get gossip nodes: %s\n", err.Error())
 		os.Exit(1)
 	}
 
 	// Sort by ID.
-	sort.Slice(members, func(i, j int) bool {
-		return members[i].ID < members[j].ID
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].ID < nodes[j].ID
 	})
 
-	output := gossipMembersOutput{
-		Members: members,
+	output := gossipNodesOutput{
+		Nodes: nodes,
 	}
 	b, _ := yaml.Marshal(output)
 	fmt.Println(string(b))
 }
 
-func newGossipMemberCommand() *cobra.Command {
+func newGossipNodeCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "member",
+		Use:   "node",
 		Args:  cobra.ExactArgs(1),
-		Short: "inspect a gossip member",
-		Long: `Inspect a gossip member.
+		Short: "inspect a gossip node",
+		Long: `Inspect a gossip node.
 
-Queries the server for the known state of the gossip member with the given ID.
+Queries the server for the known state of the gossip node with the given ID.
 
 Examples:
-  pico status gossip member bbc69214
+  pico status gossip node bbc69214
 `,
 	}
 
@@ -121,24 +121,24 @@ Pico server URL. This URL should point to the server admin port.
 			os.Exit(1)
 		}
 
-		showGossipMember(args[0], &conf)
+		showGossipNode(args[0], &conf)
 	}
 
 	return cmd
 }
 
-func showGossipMember(memberID string, conf *config.Config) {
+func showGossipNode(nodeID string, conf *config.Config) {
 	// The URL has already been validated in conf.
 	url, _ := url.Parse(conf.Server.URL)
 	client := client.NewClient(url)
 	defer client.Close()
 
-	member, err := client.GossipMember(memberID)
+	node, err := client.GossipNode(nodeID)
 	if err != nil {
-		fmt.Printf("failed to get gossip member: %s: %s\n", memberID, err.Error())
+		fmt.Printf("failed to get gossip node: %s: %s\n", nodeID, err.Error())
 		os.Exit(1)
 	}
 
-	b, _ := yaml.Marshal(member)
+	b, _ := yaml.Marshal(node)
 	fmt.Println(string(b))
 }

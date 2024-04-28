@@ -368,7 +368,7 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 		sync.OnDown("remote")
 
 		// Marking a node healthy should update the netmap.
-		sync.OnHealthy("remote")
+		sync.OnUp("remote")
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
@@ -402,7 +402,7 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 
 		// Marking down should not remove the pending node.
 		sync.OnDown("remote")
-		sync.OnHealthy("remote")
+		sync.OnUp("remote")
 
 		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
 

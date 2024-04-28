@@ -135,10 +135,10 @@ func (s *syncer) OnLeave(nodeID string) {
 	}
 }
 
-func (s *syncer) OnHealthy(nodeID string) {
+func (s *syncer) OnUp(nodeID string) {
 	if nodeID == s.networkMap.LocalID() {
 		s.logger.Warn(
-			"node healthy; same id as local node",
+			"node up; same id as local node",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -146,7 +146,7 @@ func (s *syncer) OnHealthy(nodeID string) {
 
 	if updated := s.networkMap.UpdateRemoteStatus(nodeID, netmap.NodeStatusActive); updated {
 		s.logger.Info(
-			"node helathy; updated netmap",
+			"node up; updated netmap",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -160,12 +160,12 @@ func (s *syncer) OnHealthy(nodeID string) {
 		pending.Status = netmap.NodeStatusActive
 
 		s.logger.Info(
-			"node healthy; updated pending",
+			"node up; updated pending",
 			zap.String("node-id", nodeID),
 		)
 	} else {
 		s.logger.Warn(
-			"node healthy; unknown node",
+			"node up; unknown node",
 			zap.String("node-id", nodeID),
 		)
 	}

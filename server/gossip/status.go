@@ -24,7 +24,7 @@ func (s *Status) Register(group *gin.RouterGroup) {
 }
 
 func (s *Status) listNodesRoute(c *gin.Context) {
-	nodes := s.gossip.NodesMetadata()
+	nodes := s.gossip.Nodes()
 
 	// Sort by node ID.
 	sort.Slice(nodes, func(i, j int) bool {

@@ -70,28 +70,28 @@ func (c *Client) NetmapNode(nodeID string) (*netmap.Node, error) {
 	return &node, nil
 }
 
-func (c *Client) GossipMembers() ([]*kite.MemberMeta, error) {
+func (c *Client) GossipNodes() ([]kite.NodeMetadata, error) {
 	r, err := c.request("/status/gossip/nodes")
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	var members []*kite.MemberMeta
+	var members []kite.NodeMetadata
 	if err := json.NewDecoder(r).Decode(&members); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 	return members, nil
 }
 
-func (c *Client) GossipMember(memberID string) (*kite.MemberState, error) {
+func (c *Client) GossipNode(memberID string) (*kite.NodeState, error) {
 	r, err := c.request("/status/gossip/nodes/" + memberID)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	var member kite.MemberState
+	var member kite.NodeState
 	if err := json.NewDecoder(r).Decode(&member); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}

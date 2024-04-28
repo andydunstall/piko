@@ -34,10 +34,11 @@ func NewGossip(
 	conf *config.Config,
 	logger log.Logger,
 ) (*Gossip, error) {
+	logger = logger.WithSubsystem("gossip")
 
 	syncer := newSyncer(networkMap, logger)
 	gossiper, err := kite.New(
-		kite.WithMemberID(networkMap.LocalNode().ID),
+		kite.WithNodeID(networkMap.LocalNode().ID),
 		kite.WithBindAddr(conf.Gossip.BindAddr),
 		kite.WithAdvertiseAddr(conf.Gossip.AdvertiseAddr),
 		kite.WithWatcher(syncer),
@@ -52,7 +53,7 @@ func NewGossip(
 		networkMap: networkMap,
 		gossiper:   gossiper,
 		conf:       conf,
-		logger:     logger.WithSubsystem("gossip"),
+		logger:     logger,
 	}, nil
 }
 
@@ -82,16 +83,14 @@ func (g *Gossip) Leave(ctx context.Context) error {
 	}
 }
 
-// NodesMetadata returns the metadata of all known nodes in the cluster.
-func (g *Gossip) NodesMetadata() []kite.MemberMeta {
-	return g.gossiper.MembersMetadata(kite.MemberFilter{
-		Local: true,
-	})
+// Nodes returns the metadata of all known nodes in the cluster.
+func (g *Gossip) Nodes() []kite.NodeMetadata {
+	return g.gossiper.Nodes()
 }
 
 // NodeState returns the known state of the node with the given ID.
-func (g *Gossip) NodeState(id string) (kite.MemberState, bool) {
-	return g.gossiper.MemberState(id)
+func (g *Gossip) NodeState(id string) (*kite.NodeState, bool) {
+	return g.gossiper.Node(id)
 }
 
 func (g *Gossip) Close() error {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"sort"
 
 	"github.com/andydunstall/pico/server/netmap"
 	"github.com/andydunstall/pico/status/client"
@@ -76,6 +77,11 @@ func showNetmapNodes(conf *config.Config) {
 		fmt.Printf("failed to get netmap nodes: %s\n", err.Error())
 		os.Exit(1)
 	}
+
+	// Sort by ID.
+	sort.Slice(nodes, func(i, j int) bool {
+		return nodes[i].ID < nodes[j].ID
+	})
 
 	output := netmapNodesOutput{
 		Nodes: nodes,
