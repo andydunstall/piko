@@ -23,8 +23,8 @@ Examples:
   # Inspect the upstream listeners connected to this node.
   pico status proxy listeners
 
-  # Inspect the status of server 10.26.104.56:8081.
-  pico status proxy listeners --server 10.26.104.56:8081
+  # Inspect the status of server 10.26.104.56:8002.
+  pico status proxy listeners --server 10.26.104.56:8002
 `,
 	}
 

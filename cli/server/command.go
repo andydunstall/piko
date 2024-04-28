@@ -17,6 +17,7 @@ import (
 	"github.com/andydunstall/pico/server/proxy"
 	adminserver "github.com/andydunstall/pico/server/server/admin"
 	proxyserver "github.com/andydunstall/pico/server/server/proxy"
+	upstreamserver "github.com/andydunstall/pico/server/server/upstream"
 	"github.com/hashicorp/go-sockaddr"
 	rungroup "github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -33,9 +34,11 @@ func NewCommand() *cobra.Command {
 The Pico server is responsible for proxying requests from downstream clients to
 registered upstream listeners.
 
-The server has two ports, a 'proxy' port which accepts connections from both
-downstream clients and upstream listeners, and an 'admin' port which is used
-to inspect the status of the server.
+The server has three ports:
+* Proxy: Accepts connections from downstream clients and routes requests to
+upstream listeners
+* Upstream: Accepts connections from upstream listeners to register endpoints
+* Admin: Used to inspect the status of the server
 
 Pico may run as a cluster of nodes for fault tolerance and scalability. Use
 '--cluster.join' to configure addresses of existing members in the cluster
@@ -45,9 +48,9 @@ Examples:
   # Start a Pico server.
   pico server
 
-  # Start a Pico server, listening for proxy connections on :7000 and admin
-  // ocnnections on :9000.
-  pico server --proxy.bind-addr :8000 --admin.bind-addr :9000
+  # Start a Pico server, listening for proxy connections on :7000, upstream
+  # connections on :7001 and admin connections on :7002.
+  pico server --proxy.bind-addr :7000 --upstream.bind-addr :7001 --admin.bind-addr :7002
 
   # Start a Pico server and join an existing cluster by specifying each member.
   pico server --cluster.join 10.26.104.14,10.26.104.75
@@ -64,12 +67,12 @@ Examples:
 	cmd.Flags().StringVar(
 		&conf.Proxy.BindAddr,
 		"proxy.bind-addr",
-		":8080",
+		":8000",
 		`
-The host/port to listen for incoming proxy HTTP and WebSocket connections.
+The host/port to listen for incoming proxy HTTP requests.
 
 If the host is unspecified it defaults to all listeners, such as
-'--proxy.bind-addr :8080' will listen on '0.0.0.0:8080'`,
+'--proxy.bind-addr :8000' will listen on '0.0.0.0:8000'`,
 	)
 	cmd.Flags().StringVar(
 		&conf.Proxy.AdvertiseAddr,
@@ -79,13 +82,13 @@ If the host is unspecified it defaults to all listeners, such as
 Proxy listen address to advertise to other nodes in the cluster. This is the
 address other nodes will used to forward proxy requests.
 
-Such as if the listen address is ':8080', the advertised address may be
-'10.26.104.45:8080' or 'node1.cluster:8080'.
+Such as if the listen address is ':8000', the advertised address may be
+'10.26.104.45:8000' or 'node1.cluster:8000'.
 
 By default, if the bind address includes an IP to bind to that will be used.
-If the bind address does not include an IP (such as ':8080') the nodes
-private IP will be used, such as a bind address of ':8080' may have an
-advertise address of '10.26.104.14:8080'.`,
+If the bind address does not include an IP (such as ':8000') the nodes
+private IP will be used, such as a bind address of ':8000' may have an
+advertise address of '10.26.104.14:8000'.`,
 	)
 	cmd.Flags().IntVar(
 		&conf.Proxy.GatewayTimeout,
@@ -99,14 +102,25 @@ If the upstream does not respond within the given timeout a
 	)
 
 	cmd.Flags().StringVar(
+		&conf.Upstream.BindAddr,
+		"upstream.bind-addr",
+		":8001",
+		`
+The host/port to listen for connections from upstream listeners.
+
+If the host is unspecified it defaults to all listeners, such as
+'--proxy.bind-addr :8001' will listen on '0.0.0.0:8001'`,
+	)
+
+	cmd.Flags().StringVar(
 		&conf.Admin.BindAddr,
 		"admin.bind-addr",
-		":8081",
+		":8002",
 		`
 The host/port to listen for incoming admin connections.
 
 If the host is unspecified it defaults to all listeners, such as
-'--admin.bind-addr :8081' will listen on '0.0.0.0:8081'`,
+'--admin.bind-addr :8002' will listen on '0.0.0.0:8002'`,
 	)
 	cmd.Flags().StringVar(
 		&conf.Admin.AdvertiseAddr,
@@ -116,13 +130,13 @@ If the host is unspecified it defaults to all listeners, such as
 Admin listen address to advertise to other nodes in the cluster. This is the
 address other nodes will used to forward admin requests.
 
-Such as if the listen address is ':8081', the advertised address may be
-'10.26.104.45:8081' or 'node1.cluster:8081'.
+Such as if the listen address is ':8002', the advertised address may be
+'10.26.104.45:8002' or 'node1.cluster:8002'.
 
 By default, if the bind address includes an IP to bind to that will be used.
-If the bind address does not include an IP (such as ':8081') the nodes
-private IP will be used, such as a bind address of ':8081' may have an
-advertise address of '10.26.104.14:8081'.`,
+If the bind address does not include an IP (such as ':8002') the nodes
+private IP will be used, such as a bind address of ':8002' may have an
+advertise address of '10.26.104.14:8002'.`,
 	)
 
 	cmd.Flags().StringVar(
@@ -306,6 +320,8 @@ func run(conf *config.Config, logger log.Logger) error {
 	}
 
 	p := proxy.NewProxy(networkMap, registry, logger)
+	adminServer.AddStatus("/proxy", proxy.NewStatus(p))
+
 	proxyServer := proxyserver.NewServer(
 		conf.Proxy.BindAddr,
 		p,
@@ -313,7 +329,12 @@ func run(conf *config.Config, logger log.Logger) error {
 		registry,
 		logger,
 	)
-	adminServer.AddStatus("/proxy", proxy.NewStatus(p))
+	upstreamServer := upstreamserver.NewServer(
+		conf.Upstream.BindAddr,
+		p,
+		registry,
+		logger,
+	)
 
 	var group rungroup.Group
 
@@ -363,6 +384,26 @@ func run(conf *config.Config, logger log.Logger) error {
 		}
 
 		logger.Info("proxy server shut down")
+	})
+
+	// Upstream server.
+	group.Add(func() error {
+		if err := upstreamServer.Serve(); err != nil {
+			return fmt.Errorf("upstream server serve: %w", err)
+		}
+		return nil
+	}, func(error) {
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
+		)
+		defer cancel()
+
+		if err := upstreamServer.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown upstream server", zap.Error(err))
+		}
+
+		logger.Info("upstream server shut down")
 	})
 
 	// Admin server.

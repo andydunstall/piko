@@ -62,6 +62,18 @@ connection. Each listener is identified by an endpoint ID.
 
 Pico may be hosted as a cluster of servers for fault tolerance and scalability.
 
+The server has three ports:
+* Proxy port (`8000`): Listens for requests from downstream clients which
+are forwarded to upstream listeners
+* Upstream port (`8001`): Listens for connections from upstream listeners
+* Admin port (`8002`): Listeners for admin requests to inspect the server
+status
+
+The proxy and upstream ports are separate since they downstream clients and
+upstream listeners will typically be on different networks. Such as you may
+expose the upstream port to the Internet but only allow requests to the proxy
+port from nodes in the same network.
+
 #### Routing
 Incoming HTTP requests include the endpoint ID to route to in either the `Host`
 header or an `x-pico-endpoint` header, then Pico load balances requests among
@@ -98,8 +110,8 @@ build Pico directly you can clone the repo and run `make pico` (which requires
 Go 1.21 or later).
 
 ### Server
-Start the server with `pico server`, which will listen for proxy reuqests at
-`localhost:8080` by default.
+Start the server with `pico server`, which will listen for proxy requests at
+`localhost:8000` and upstream connections at `localhost:8001` by default.
 
 See `pico server -h` for the available configuration options.
 
@@ -124,7 +136,10 @@ simplest option when running locally is to set the `x-pico-endpoint` header.
 
 Such as to send a HTTP request to your service at `localhost:3000` via endpoint
 `my-endpoint-123`, use
-`curl -H "x-pico-endpoint: my-endpoint-123" http://localhost:8080`.
+`curl -H "x-pico-endpoint: my-endpoint-123" http://localhost:8000`.
+
+You can also inspect the server status using `pico status`. Such as to view the
+endpoints registered to this server use `pico status proxy endpoints`.
 
 ## Docs
 See [docs](./docs) for details on deploying and managing Pico, plus details on

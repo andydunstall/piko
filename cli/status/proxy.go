@@ -42,7 +42,7 @@ Examples:
 	cmd.Flags().StringVar(
 		&conf.Server.URL,
 		"server.url",
-		"http://localhost:8081",
+		"http://localhost:8002",
 		`
 Pico server URL. This URL should point to the server admin port.
 `,

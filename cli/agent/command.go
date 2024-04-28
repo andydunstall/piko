@@ -75,7 +75,7 @@ such as '--listeners 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.`,
 	cmd.Flags().StringVar(
 		&conf.Server.URL,
 		"server.url",
-		"http://localhost:8080",
+		"http://localhost:8001",
 		`
 Pico server URL.
 

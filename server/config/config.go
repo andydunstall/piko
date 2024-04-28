@@ -24,6 +24,18 @@ func (c *ProxyConfig) Validate() error {
 	return nil
 }
 
+type UpstreamConfig struct {
+	// BindAddr is the address to bind to listen for incoming HTTP connections.
+	BindAddr string `json:"bind_addr"`
+}
+
+func (c *UpstreamConfig) Validate() error {
+	if c.BindAddr == "" {
+		return fmt.Errorf("missing bind addr")
+	}
+	return nil
+}
+
 type AdminConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr"`
@@ -90,17 +102,21 @@ func (c *LogConfig) Validate() error {
 }
 
 type Config struct {
-	Proxy   ProxyConfig   `json:"proxy"`
-	Admin   AdminConfig   `json:"admin"`
-	Gossip  GossipConfig  `json:"gossip"`
-	Cluster ClusterConfig `json:"cluster"`
-	Server  ServerConfig  `json:"server"`
-	Log     LogConfig     `json:"log"`
+	Proxy    ProxyConfig    `json:"proxy"`
+	Upstream UpstreamConfig `json:"upstream"`
+	Admin    AdminConfig    `json:"admin"`
+	Gossip   GossipConfig   `json:"gossip"`
+	Cluster  ClusterConfig  `json:"cluster"`
+	Server   ServerConfig   `json:"server"`
+	Log      LogConfig      `json:"log"`
 }
 
 func (c *Config) Validate() error {
 	if err := c.Proxy.Validate(); err != nil {
 		return fmt.Errorf("proxy: %w", err)
+	}
+	if err := c.Upstream.Validate(); err != nil {
+		return fmt.Errorf("upstream: %w", err)
 	}
 	if err := c.Admin.Validate(); err != nil {
 		return fmt.Errorf("admin: %w", err)

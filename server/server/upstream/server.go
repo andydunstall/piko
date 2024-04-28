@@ -2,38 +2,36 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"strings"
 	"time"
 
+	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/pkg/status"
-	"github.com/andydunstall/pico/server/config"
+	"github.com/andydunstall/pico/pkg/rpc"
 	"github.com/andydunstall/pico/server/proxy"
 	"github.com/andydunstall/pico/server/server/middleware"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
-// Server is the HTTP server for the proxy, which proxies all incoming
-// requests.
+// Server is the HTTP server upstream listeners to register endpoints.
 type Server struct {
 	addr string
 
 	router *gin.Engine
 
 	httpServer *http.Server
+	rpcServer  *rpcServer
+
+	websocketUpgrader *websocket.Upgrader
 
 	proxy *proxy.Proxy
 
 	shutdownCtx    context.Context
 	shutdownCancel func()
-
-	conf *config.ProxyConfig
 
 	logger log.Logger
 }
@@ -41,7 +39,6 @@ type Server struct {
 func NewServer(
 	addr string,
 	proxy *proxy.Proxy,
-	conf *config.ProxyConfig,
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
@@ -55,11 +52,12 @@ func NewServer(
 			Addr:    addr,
 			Handler: router,
 		},
-		shutdownCtx:    shutdownCtx,
-		shutdownCancel: shutdownCancel,
-		proxy:          proxy,
-		conf:           conf,
-		logger:         logger.WithSubsystem("proxy.server"),
+		rpcServer:         newRPCServer(),
+		websocketUpgrader: &websocket.Upgrader{},
+		shutdownCtx:       shutdownCtx,
+		shutdownCancel:    shutdownCancel,
+		proxy:             proxy,
+		logger:            logger.WithSubsystem("upstream.server"),
 	}
 
 	// Recover from panics.
@@ -67,7 +65,7 @@ func NewServer(
 
 	server.router.Use(middleware.NewLogger(logger))
 	if registry != nil {
-		router.Use(middleware.NewMetrics("proxy", registry))
+		router.Use(middleware.NewMetrics("upstream", registry))
 	}
 
 	server.registerRoutes()
@@ -89,46 +87,43 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 func (s *Server) registerRoutes() {
-	// Handle not found routes, which includes all proxied endpoints.
-	s.router.NoRoute(s.notFoundRoute)
+	pico := s.router.Group("/pico/v1")
+	pico.GET("/listener/:endpointID", s.listenerRoute)
 }
 
-// proxyRoute handles proxied requests from downstream clients.
-func (s *Server) proxyRoute(c *gin.Context) {
-	ctx, cancel := context.WithTimeout(
-		context.Background(),
-		time.Duration(s.conf.GatewayTimeout)*time.Second,
-	)
-	defer cancel()
+// listenerRoute handles WebSocket connections from upstream listeners.
+func (s *Server) listenerRoute(c *gin.Context) {
+	endpointID := c.Param("endpointID")
 
-	resp, err := s.proxy.Request(ctx, c.Request)
+	wsConn, err := s.websocketUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
-		var errorInfo *status.ErrorInfo
-		if errors.As(err, &errorInfo) {
-			c.JSON(errorInfo.StatusCode, gin.H{"error": errorInfo.Message})
-			return
-		}
-		c.Status(http.StatusInternalServerError)
+		// Upgrade replies to the client so nothing else to do.
+		s.logger.Warn("failed to upgrade websocket", zap.Error(err))
 		return
 	}
+	stream := rpc.NewStream(
+		conn.NewWebsocketConn(wsConn),
+		s.rpcServer.Handler(),
+		s.logger,
+	)
+	defer stream.Close()
 
-	// Write the response status, headers and body.
-	for k, v := range resp.Header {
-		c.Writer.Header()[k] = v
-	}
-	c.Writer.WriteHeader(resp.StatusCode)
-	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
-		s.logger.Warn("failed to write response", zap.Error(err))
-	}
-}
+	s.logger.Debug(
+		"listener connected",
+		zap.String("endpoint-id", endpointID),
+		zap.String("client-ip", c.ClientIP()),
+	)
 
-func (s *Server) notFoundRoute(c *gin.Context) {
-	// All /pico endpoints are reserved. All others are proxied.
-	if strings.HasPrefix(c.Request.URL.Path, "/pico") {
-		c.Status(http.StatusNotFound)
-		return
+	s.proxy.AddUpstream(endpointID, stream)
+	defer s.proxy.RemoveUpstream(endpointID, stream)
+
+	if err := stream.Monitor(
+		s.shutdownCtx,
+		time.Second*10,
+		time.Second*10,
+	); err != nil {
+		s.logger.Debug("listener disconnected", zap.Error(err))
 	}
-	s.proxyRoute(c)
 }
 
 func (s *Server) panicRoute(c *gin.Context, err any) {
