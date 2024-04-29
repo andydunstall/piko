@@ -35,6 +35,18 @@ type ForwarderConfig struct {
 	TimeoutSeconds int `json:"timeout_seconds"`
 }
 
+type AdminConfig struct {
+	// BindAddr is the address to bind to listen for incoming HTTP connections.
+	BindAddr string `json:"bind_addr"`
+}
+
+func (c *AdminConfig) Validate() error {
+	if c.BindAddr == "" {
+		return fmt.Errorf("missing bind addr")
+	}
+	return nil
+}
+
 type LogConfig struct {
 	Level string `json:"level"`
 	// Subsystems enables debug logging on logs the given subsystems (which
@@ -54,13 +66,11 @@ type Config struct {
 	//
 	// Each endpoint has format '<endpoint ID>/<forward addr>', such
 	// as 'd3934d4f/localhost:3000'.
-	Endpoints []string `json:"endpoints"`
-
-	Server ServerConfig `json:"server"`
-
+	Endpoints []string        `json:"endpoints"`
+	Server    ServerConfig    `json:"server"`
 	Forwarder ForwarderConfig `json:"forwarder"`
-
-	Log LogConfig `json:"log"`
+	Admin     AdminConfig     `json:"admin"`
+	Log       LogConfig       `json:"log"`
 }
 
 func (c *Config) Validate() error {
@@ -75,6 +85,9 @@ func (c *Config) Validate() error {
 
 	if err := c.Server.Validate(); err != nil {
 		return fmt.Errorf("server: %w", err)
+	}
+	if err := c.Admin.Validate(); err != nil {
+		return fmt.Errorf("admin: %w", err)
 	}
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)

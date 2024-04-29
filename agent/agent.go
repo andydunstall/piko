@@ -15,13 +15,16 @@ import (
 type Agent struct {
 	conf *config.Config
 
+	metrics *Metrics
+
 	logger log.Logger
 }
 
 func NewAgent(conf *config.Config, logger log.Logger) *Agent {
 	return &Agent{
-		conf:   conf,
-		logger: logger.WithSubsystem("agent"),
+		conf:    conf,
+		metrics: NewMetrics(),
+		logger:  logger.WithSubsystem("agent"),
 	}
 }
 
@@ -33,7 +36,7 @@ func (a *Agent) Run(ctx context.Context) error {
 		endpointID := elems[0]
 		forwardAddr := elems[1]
 
-		endpoint := newEndpoint(endpointID, forwardAddr, a.conf, a.logger)
+		endpoint := newEndpoint(endpointID, forwardAddr, a.conf, a.metrics, a.logger)
 		g.Go(func() error {
 			return endpoint.Run(ctx)
 		})
@@ -43,4 +46,8 @@ func (a *Agent) Run(ctx context.Context) error {
 		return fmt.Errorf("endpoint: %s", err)
 	}
 	return nil
+}
+
+func (a *Agent) Metrics() *Metrics {
+	return a.metrics
 }

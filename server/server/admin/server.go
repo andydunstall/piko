@@ -78,6 +78,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
+func (s *Server) Close() error {
+	return s.httpServer.Close()
+}
+
 func (s *Server) registerRoutes() {
 	s.router.GET("/healthz", s.healthRoute)
 

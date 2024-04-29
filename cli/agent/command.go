@@ -10,7 +10,9 @@ import (
 	"github.com/andydunstall/pico/agent"
 	"github.com/andydunstall/pico/agent/config"
 	"github.com/andydunstall/pico/pkg/log"
+	adminserver "github.com/andydunstall/pico/server/server/admin"
 	rungroup "github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -120,6 +122,17 @@ If the upstream does not respond within the given timeout a
 	)
 
 	cmd.Flags().StringVar(
+		&conf.Admin.BindAddr,
+		"admin.bind-addr",
+		":9000",
+		`
+The host/port to listen for incoming admin connections.
+
+If the host is unspecified it defaults to all listeners, such as
+'--admin.bind-addr :9000' will listen on '0.0.0.0:9000'`,
+	)
+
+	cmd.Flags().StringVar(
 		&conf.Log.Level,
 		"log.level",
 		"info",
@@ -166,7 +179,15 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 func run(conf *config.Config, logger log.Logger) error {
 	logger.Info("starting pico agent", zap.Any("conf", conf))
 
+	registry := prometheus.NewRegistry()
+	adminServer := adminserver.NewServer(
+		conf.Admin.BindAddr,
+		registry,
+		logger,
+	)
+
 	agent := agent.NewAgent(conf, logger)
+	agent.Metrics().Register(registry)
 
 	var group rungroup.Group
 
@@ -198,6 +219,20 @@ func run(conf *config.Config, logger log.Logger) error {
 		return nil
 	}, func(error) {
 		agentCancel()
+	})
+
+	// Admin server.
+	group.Add(func() error {
+		if err := adminServer.Serve(); err != nil {
+			return fmt.Errorf("admin server serve: %w", err)
+		}
+		return nil
+	}, func(error) {
+		if err := adminServer.Close(); err != nil {
+			logger.Warn("failed to close server", zap.Error(err))
+		}
+
+		logger.Info("admin server shut down")
 	})
 
 	if err := group.Run(); err != nil {

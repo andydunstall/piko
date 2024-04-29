@@ -26,6 +26,8 @@ type endpoint struct {
 
 	conf *config.Config
 
+	metrics *Metrics
+
 	logger log.Logger
 }
 
@@ -33,18 +35,22 @@ func newEndpoint(
 	endpointID string,
 	forwardAddr string,
 	conf *config.Config,
+	metrics *Metrics,
 	logger log.Logger,
 ) *endpoint {
 	e := &endpoint{
 		endpointID:  endpointID,
 		forwardAddr: forwardAddr,
 		forwarder: newForwarder(
+			endpointID,
 			forwardAddr,
 			time.Duration(conf.Forwarder.TimeoutSeconds)*time.Second,
+			metrics,
 			logger,
 		),
-		conf:   conf,
-		logger: logger.WithSubsystem("listener"),
+		conf:    conf,
+		metrics: metrics,
+		logger:  logger.WithSubsystem("listener"),
 	}
 	e.rpcServer = newRPCServer(e, logger)
 	return e
