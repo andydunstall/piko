@@ -333,31 +333,37 @@ func run(conf *config.Config, logger log.Logger) error {
 	var group rungroup.Group
 
 	// Termination handler.
+	signalCtx, signalCancel := context.WithCancel(context.Background())
 	signalCh := make(chan os.Signal, 1)
 	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
 	group.Add(func() error {
-		sig := <-signalCh
-		logger.Info(
-			"received shutdown signal",
-			zap.String("signal", sig.String()),
-		)
+		select {
+		case sig := <-signalCh:
+			logger.Info(
+				"received shutdown signal",
+				zap.String("signal", sig.String()),
+			)
 
-		leaveCtx, cancel := context.WithTimeout(
-			context.Background(),
-			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
-		)
-		defer cancel()
+			leaveCtx, cancel := context.WithTimeout(
+				context.Background(),
+				time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
+			)
+			defer cancel()
 
-		// Leave as soon as we receive the shutdown signal to avoid receiving
-		// forward proxy requests.
-		if err := gossiper.Leave(leaveCtx); err != nil {
-			logger.Warn("failed to gracefully leave cluster", zap.Error(err))
-		} else {
-			logger.Info("left cluster")
+			// Leave as soon as we receive the shutdown signal to avoid receiving
+			// forward proxy requests.
+			if err := gossiper.Leave(leaveCtx); err != nil {
+				logger.Warn("failed to gracefully leave cluster", zap.Error(err))
+			} else {
+				logger.Info("left cluster")
+			}
+
+			return nil
+		case <-signalCtx.Done():
+			return nil
 		}
-
-		return nil
 	}, func(error) {
+		signalCancel()
 	})
 
 	// Proxy server.
