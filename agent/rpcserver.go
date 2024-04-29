@@ -14,16 +14,16 @@ import (
 )
 
 type rpcServer struct {
-	listener *Listener
+	endpoint *endpoint
 
 	rpcHandler *rpc.Handler
 
 	logger log.Logger
 }
 
-func newRPCServer(listener *Listener, logger log.Logger) *rpcServer {
+func newRPCServer(endpoint *endpoint, logger log.Logger) *rpcServer {
 	server := &rpcServer{
-		listener:   listener,
+		endpoint:   endpoint,
 		rpcHandler: rpc.NewHandler(),
 		logger:     logger.WithSubsystem("rpc.server"),
 	}
@@ -65,7 +65,7 @@ func (s *rpcServer) ProxyHTTP(b []byte) []byte {
 		)
 	}
 
-	httpResp, err := s.listener.ProxyHTTP(httpReq)
+	httpResp, err := s.endpoint.ProxyHTTP(httpReq)
 	if err != nil {
 		if errors.Is(err, errUpstreamTimeout) {
 			s.logger.Error("proxy http rpc; upstream timeout", zap.Error(err))

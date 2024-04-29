@@ -5,15 +5,14 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/andydunstall/pico/agent"
 	"github.com/andydunstall/pico/agent/config"
 	"github.com/andydunstall/pico/pkg/log"
+	rungroup "github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 func NewCommand() *cobra.Command {
@@ -155,37 +154,57 @@ Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 			os.Exit(1)
 		}
 
-		run(&conf, logger)
+		if err := run(&conf, logger); err != nil {
+			logger.Error("failed to run server", zap.Error(err))
+			os.Exit(1)
+		}
 	}
 
 	return cmd
 }
 
-func run(conf *config.Config, logger log.Logger) {
+func run(conf *config.Config, logger log.Logger) error {
 	logger.Info("starting pico agent", zap.Any("conf", conf))
 
-	ctx, cancel := signal.NotifyContext(
-		context.Background(), syscall.SIGINT, syscall.SIGTERM,
-	)
-	defer cancel()
+	agent := agent.NewAgent(conf, logger)
 
-	g, ctx := errgroup.WithContext(ctx)
-	for _, e := range conf.Endpoints {
-		// Already verified format in Config.Validate.
-		elems := strings.Split(e, "/")
-		endpointID := elems[0]
-		forwardAddr := elems[1]
+	var group rungroup.Group
 
-		listener := agent.NewListener(endpointID, forwardAddr, conf, logger)
-		g.Go(func() error {
-			return listener.Run(ctx)
-		})
-	}
+	// Termination handler.
+	signalCtx, signalCancel := context.WithCancel(context.Background())
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	group.Add(func() error {
+		select {
+		case sig := <-signalCh:
+			logger.Info(
+				"received shutdown signal",
+				zap.String("signal", sig.String()),
+			)
+			return nil
+		case <-signalCtx.Done():
+			return nil
+		}
+	}, func(error) {
+		signalCancel()
+	})
 
-	if err := g.Wait(); err != nil {
-		logger.Error("failed to run agent", zap.Error(err))
-		os.Exit(1)
+	// Agent.
+	agentCtx, agentCancel := context.WithCancel(context.Background())
+	group.Add(func() error {
+		if err := agent.Run(agentCtx); err != nil {
+			return fmt.Errorf("agent: %w", err)
+		}
+		return nil
+	}, func(error) {
+		agentCancel()
+	})
+
+	if err := group.Run(); err != nil {
+		return err
 	}
 
 	logger.Info("shutdown complete")
+
+	return nil
 }

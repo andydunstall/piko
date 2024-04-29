@@ -14,10 +14,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// Listener is responsible for registering a listener with Pico for the given
-// endpoint ID, then forwarding incoming requests to the given forward
-// address.
-type Listener struct {
+// endpoint is responsible for registering with the Pico server then forwarding
+// incoming requests to the forward address.
+type endpoint struct {
 	endpointID  string
 	forwardAddr string
 
@@ -30,8 +29,13 @@ type Listener struct {
 	logger log.Logger
 }
 
-func NewListener(endpointID string, forwardAddr string, conf *config.Config, logger log.Logger) *Listener {
-	l := &Listener{
+func newEndpoint(
+	endpointID string,
+	forwardAddr string,
+	conf *config.Config,
+	logger log.Logger,
+) *endpoint {
+	e := &endpoint{
 		endpointID:  endpointID,
 		forwardAddr: forwardAddr,
 		forwarder: newForwarder(
@@ -42,30 +46,30 @@ func NewListener(endpointID string, forwardAddr string, conf *config.Config, log
 		conf:   conf,
 		logger: logger.WithSubsystem("listener"),
 	}
-	l.rpcServer = newRPCServer(l, logger)
-	return l
+	e.rpcServer = newRPCServer(e, logger)
+	return e
 }
 
-func (l *Listener) Run(ctx context.Context) error {
-	l.logger.Info(
-		"starting listener",
-		zap.String("endpoint-id", l.endpointID),
-		zap.String("forward-addr", l.forwardAddr),
+func (e *endpoint) Run(ctx context.Context) error {
+	e.logger.Info(
+		"starting endpoint",
+		zap.String("endpoint-id", e.endpointID),
+		zap.String("forward-addr", e.forwardAddr),
 	)
 
 	for {
-		stream, err := l.connect(ctx)
+		stream, err := e.connect(ctx)
 		if err != nil {
 			return fmt.Errorf("connect: %w", err)
 		}
 		defer stream.Close()
 
-		l.logger.Debug("connected to server", zap.String("url", l.serverURL()))
+		e.logger.Debug("connected to server", zap.String("url", e.serverURL()))
 
 		if err := stream.Monitor(
 			ctx,
-			time.Duration(l.conf.Server.HeartbeatIntervalSeconds)*time.Second,
-			time.Duration(l.conf.Server.HeartbeatTimeoutSeconds)*time.Second,
+			time.Duration(e.conf.Server.HeartbeatIntervalSeconds)*time.Second,
+			time.Duration(e.conf.Server.HeartbeatTimeoutSeconds)*time.Second,
 		); err != nil {
 			if ctx.Err() != nil {
 				// Shutdown.
@@ -73,24 +77,24 @@ func (l *Listener) Run(ctx context.Context) error {
 			}
 
 			// Reconnect.
-			l.logger.Warn("disconnected", zap.Error(err))
+			e.logger.Warn("disconnected", zap.Error(err))
 		}
 	}
 }
 
-func (l *Listener) ProxyHTTP(r *http.Request) (*http.Response, error) {
-	return l.forwarder.Forward(r)
+func (e *endpoint) ProxyHTTP(r *http.Request) (*http.Response, error) {
+	return e.forwarder.Forward(r)
 }
 
-func (l *Listener) connect(ctx context.Context) (*rpc.Stream, error) {
+func (e *endpoint) connect(ctx context.Context) (*rpc.Stream, error) {
 	backoff := time.Second
 	for {
-		conn, err := conn.DialWebsocket(ctx, l.serverURL())
+		conn, err := conn.DialWebsocket(ctx, e.serverURL())
 		if err == nil {
-			return rpc.NewStream(conn, l.rpcServer.Handler(), l.logger), nil
+			return rpc.NewStream(conn, e.rpcServer.Handler(), e.logger), nil
 		}
 
-		l.logger.Warn(
+		e.logger.Warn(
 			"failed to connect to server; retrying",
 			zap.Duration("backoff", backoff),
 			zap.Error(err),
@@ -109,10 +113,10 @@ func (l *Listener) connect(ctx context.Context) (*rpc.Stream, error) {
 	}
 }
 
-func (l *Listener) serverURL() string {
+func (e *endpoint) serverURL() string {
 	// Already verified URL in Config.Validate.
-	url, _ := url.Parse(l.conf.Server.URL)
-	url.Path = "/pico/v1/listener/" + l.endpointID
+	url, _ := url.Parse(e.conf.Server.URL)
+	url.Path = "/pico/v1/listener/" + e.endpointID
 	if url.Scheme == "http" {
 		url.Scheme = "ws"
 	}
