@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/andydunstall/pico/pkg/log"
+	"github.com/spf13/pflag"
 )
 
 type ServerConfig struct {
@@ -47,20 +50,6 @@ func (c *AdminConfig) Validate() error {
 	return nil
 }
 
-type LogConfig struct {
-	Level string `json:"level"`
-	// Subsystems enables debug logging on logs the given subsystems (which
-	// overrides level).
-	Subsystems []string `json:"subsystems"`
-}
-
-func (c *LogConfig) Validate() error {
-	if c.Level == "" {
-		return fmt.Errorf("missing level")
-	}
-	return nil
-}
-
 type Config struct {
 	// Endpoints is a list of endpoints and forward addresses to register.
 	//
@@ -70,7 +59,7 @@ type Config struct {
 	Server    ServerConfig    `json:"server"`
 	Forwarder ForwarderConfig `json:"forwarder"`
 	Admin     AdminConfig     `json:"admin"`
-	Log       LogConfig       `json:"log"`
+	Log       log.Config      `json:"log"`
 }
 
 func (c *Config) Validate() error {
@@ -93,4 +82,89 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("log: %w", err)
 	}
 	return nil
+}
+
+func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
+	fs.StringSliceVar(
+		&c.Endpoints,
+		"endpoints",
+		nil,
+		`
+The endpoints to register with the Pico server.
+
+Each endpoint has an ID and forwarding address. The agent will register the
+endpoint with the Pico server then receive incoming requests for that endpoint
+and forward them to the configured address.
+
+'--endpoints' is a comma separated list of endpoints with format:
+'<endpoint ID>/<forward addr>'. Such as '--endpoints 6ae6db60/localhost:3000'
+will register the endpoint '6ae6db60' then forward incoming requests to
+'localhost:3000'.
+
+You may register multiple endpoints which have their own connection to Pico,
+such as '--endpoints 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.`,
+	)
+
+	fs.StringVar(
+		&c.Server.URL,
+		"server.url",
+		"http://localhost:8001",
+		`
+Pico server URL.
+
+The listener will add path /pico/v1/listener/:endpoint_id to the given URL,
+so if you include a path it will be used as a prefix.
+
+Note Pico connects to the server with WebSockets, so will replace http/https
+with ws/wss (you can configure either).`,
+	)
+	fs.IntVar(
+		&c.Server.HeartbeatIntervalSeconds,
+		"server.heartbeat-interval-seconds",
+		10,
+		`
+Heartbeat interval in seconds.
+
+To verify the connection to the server is ok, the listener sends a
+heartbeat to the upstream at the '--server.heartbeat-interval-seconds'
+interval, with a timeout of '--server.heartbeat-timeout-seconds'.`,
+	)
+	fs.IntVar(
+		&c.Server.HeartbeatTimeoutSeconds,
+		"server.heartbeat-timeout-seconds",
+		10,
+		`
+Heartbeat timeout in seconds.,
+
+To verify the connection to the server is ok, the listener sends a
+heartbeat to the upstream at the '--server.heartbeat-interval-seconds'
+interval, with a timeout of '--server.heartbeat-timeout-seconds'.`,
+	)
+
+	fs.IntVar(
+		&c.Forwarder.TimeoutSeconds,
+		"forwarder.timeout",
+		10,
+		`
+Forwarder timeout in seconds.
+
+This is the timeout between a listener receiving a request from Pico then
+forwarding it to the configured forward address, and receiving a response.
+
+If the upstream does not respond within the given timeout a
+'504 Gateway Timeout' is returned to the client.`,
+	)
+
+	fs.StringVar(
+		&c.Admin.BindAddr,
+		"admin.bind-addr",
+		":9000",
+		`
+The host/port to listen for incoming admin connections.
+
+If the host is unspecified it defaults to all listeners, such as
+'--admin.bind-addr :9000' will listen on '0.0.0.0:9000'`,
+	)
+
+	c.Log.RegisterFlags(fs)
 }

@@ -13,6 +13,10 @@ type Metrics struct {
 	// forward address in seconds. Labelled by response status code and
 	// endpoint ID.
 	ForwardRequestLatency *prometheus.HistogramVec
+
+	// ServerConnectionErrorsTotal is the total number of errors attempting to
+	// connect to the server.
+	ServerConnectionErrorsTotal prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
