@@ -29,7 +29,28 @@ sub:
 		assert.NoError(t, err)
 
 		var conf fakeConfig
-		assert.NoError(t, Load(f.Name(), &conf))
+		assert.NoError(t, Load(f.Name(), &conf, false))
+
+		assert.Equal(t, "val1", conf.Foo)
+		assert.Equal(t, "val2", conf.Bar)
+		assert.Equal(t, 5, conf.Sub.Car)
+	})
+
+	t.Run("expand env", func(t *testing.T) {
+		f, err := os.CreateTemp("", "pico")
+		assert.NoError(t, err)
+
+		_ = os.Setenv("PICO_VAL1", "val1")
+		_ = os.Setenv("PICO_VAL2", "val2")
+
+		_, err = f.WriteString(`foo: $PICO_VAL1
+bar: ${PICO_VAL2}
+sub:
+  car: ${PICO_VAL3:5}`)
+		assert.NoError(t, err)
+
+		var conf fakeConfig
+		assert.NoError(t, Load(f.Name(), &conf, true))
 
 		assert.Equal(t, "val1", conf.Foo)
 		assert.Equal(t, "val2", conf.Bar)
@@ -44,11 +65,11 @@ sub:
 		assert.NoError(t, err)
 
 		var conf fakeConfig
-		assert.Error(t, Load(f.Name(), &conf))
+		assert.Error(t, Load(f.Name(), &conf, false))
 	})
 
 	t.Run("not found", func(t *testing.T) {
 		var conf fakeConfig
-		assert.Error(t, Load("notfound", &conf))
+		assert.Error(t, Load("notfound", &conf, false))
 	})
 }

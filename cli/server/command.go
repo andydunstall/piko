@@ -68,12 +68,27 @@ Examples:
 YAML config file path.`,
 	)
 
+	var configExpandEnv bool
+	cmd.Flags().BoolVar(
+		&configExpandEnv,
+		"config.expand-env",
+		false,
+		`
+Whether to expand environment variables in the config file.
+
+This will replaces references to ${VAR} or $VAR with the corresponding
+environment variable. The replacement is case-sensitive.
+
+References to undefined variables will be replaced with an empty string. A
+default value can be given using form ${VAR:default}.`,
+	)
+
 	// Register flags and set default values.
 	conf.RegisterFlags(cmd.Flags())
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if configPath != "" {
-			if err := picoconfig.Load(configPath, &conf); err != nil {
+			if err := picoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
 				fmt.Printf("load config: %s\n", err.Error())
 				os.Exit(1)
 			}
