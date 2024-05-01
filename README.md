@@ -149,8 +149,9 @@ curl --connect-to my-endpoint.example.com:8000:localhost:8000 http://my-endpoint
 ## Docs
 
 See [docs](./docs) for details on deploying and managing Pico:
-  - [Kubernetes](./docs/deploy/kubernetes.md)
-  - [Observability](./docs/deploy/observability.md)
+- [Configure](./docs/deploy/configure.md)
+- [Kubernetes](./docs/deploy/kubernetes.md)
+- [Observability](./docs/deploy/observability.md)
 
 ## Limitations
 
