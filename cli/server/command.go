@@ -106,7 +106,11 @@ default value can be given using form ${VAR:default}.`,
 		}
 
 		if conf.Cluster.NodeID == "" {
-			conf.Cluster.NodeID = netmap.GenerateNodeID()
+			nodeID := netmap.GenerateNodeID()
+			if conf.Cluster.NodeIDPrefix != "" {
+				nodeID = conf.Cluster.NodeIDPrefix + nodeID
+			}
+			conf.Cluster.NodeID = nodeID
 		}
 
 		if conf.Proxy.AdvertiseAddr == "" {

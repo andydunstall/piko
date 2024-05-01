@@ -75,6 +75,10 @@ type ClusterConfig struct {
 	// NodeID is a unique identifier for this node in the cluster.
 	NodeID string `json:"node_id" yaml:"node_id"`
 
+	// NodeIDPrefix is a node ID prefix, where Pico will generate the rest of
+	// the node ID to ensure uniqueness.
+	NodeIDPrefix string `json:"node_id_prefix" yaml:"node_id_prefix"`
+
 	// Join contians a list of addresses of members in the cluster to join.
 	Join []string `json:"join" yaml:"join"`
 }
@@ -249,6 +253,20 @@ A unique identifier for the node in the cluster.
 
 By default a random ID will be generated for the node.`,
 	)
+	fs.StringVar(
+		&c.Cluster.NodeIDPrefix,
+		"cluster.node-id-prefix",
+		"",
+		`
+A prefix for the node ID.
+
+Pico will generate a unique random identifier for the node and append it to
+the given prefix.
+
+Such as you could use the node or pod  name as a prefix, then add a unique
+identifier to ensure the node ID is unique across restarts.`,
+	)
+
 	fs.StringSliceVar(
 		&c.Cluster.Join,
 		"cluster.join",

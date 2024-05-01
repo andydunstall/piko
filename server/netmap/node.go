@@ -70,7 +70,7 @@ func (n *Node) Copy() *Node {
 }
 
 func GenerateNodeID() string {
-	b := make([]byte, 10)
+	b := make([]byte, 6)
 	for i := range b {
 		n, err := rand.Int(rand.Reader, big.NewInt(int64(len(alphaNumericChars))))
 		if err != nil {
