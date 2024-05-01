@@ -11,9 +11,9 @@ import (
 
 type ServerConfig struct {
 	// URL is the server URL.
-	URL                      string `json:"url"`
-	HeartbeatIntervalSeconds int    `json:"heartbeat_interval_seconds"`
-	HeartbeatTimeoutSeconds  int    `json:"heartbeat_timeout_seconds"`
+	URL                      string `json:"url" yaml:"url"`
+	HeartbeatIntervalSeconds int    `json:"heartbeat_interval_seconds" yaml:"heartbeat_interval_seconds"`
+	HeartbeatTimeoutSeconds  int    `json:"heartbeat_timeout_seconds" yaml:"heartbeat_timeout_seconds"`
 }
 
 func (c *ServerConfig) Validate() error {
@@ -35,12 +35,12 @@ func (c *ServerConfig) Validate() error {
 // ForwarderConfig contains the configuration for how to forward requests
 // from Pico.
 type ForwarderConfig struct {
-	TimeoutSeconds int `json:"timeout_seconds"`
+	TimeoutSeconds int `json:"timeout_seconds" yaml:"timeout_seconds"`
 }
 
 type AdminConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
-	BindAddr string `json:"bind_addr"`
+	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
 }
 
 func (c *AdminConfig) Validate() error {
@@ -55,11 +55,11 @@ type Config struct {
 	//
 	// Each endpoint has format '<endpoint ID>/<forward addr>', such
 	// as 'd3934d4f/localhost:3000'.
-	Endpoints []string        `json:"endpoints"`
-	Server    ServerConfig    `json:"server"`
-	Forwarder ForwarderConfig `json:"forwarder"`
-	Admin     AdminConfig     `json:"admin"`
-	Log       log.Config      `json:"log"`
+	Endpoints []string        `json:"endpoints" yaml:"endpoints"`
+	Server    ServerConfig    `json:"server" yaml:"server"`
+	Forwarder ForwarderConfig `json:"forwarder" yaml:"forwarder"`
+	Admin     AdminConfig     `json:"admin" yaml:"admin"`
+	Log       log.Config      `json:"log" yaml:"log"`
 }
 
 func (c *Config) Validate() error {

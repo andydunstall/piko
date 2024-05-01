@@ -9,11 +9,11 @@ import (
 type Config struct {
 	// Level is the minimum record level to log. Either 'debug', 'info', 'warn'
 	// or 'error'.
-	Level string `json:"level"`
+	Level string `json:"level" yaml:"level"`
 
 	// Subsystems enables debug logging on log records whose 'subsystem'
 	// matches one of the given values (overrides `Level`).
-	Subsystems []string `json:"subsystems"`
+	Subsystems []string `json:"subsystems" yaml:"subsystems"`
 }
 
 func (c *Config) Validate() error {

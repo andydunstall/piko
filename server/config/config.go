@@ -9,14 +9,14 @@ import (
 
 type ProxyConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
-	BindAddr string `json:"bind_addr"`
+	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
 
 	// AdvertiseAddr is the address to advertise to other nodes.
-	AdvertiseAddr string `json:"advertise_addr"`
+	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
 
 	// GatewayTimeout is the timeout in seconds of forwarding requests to an
 	// upstream listener.
-	GatewayTimeout int `json:"gateway_timeout"`
+	GatewayTimeout int `json:"gateway_timeout" yaml:"gateway_timeout"`
 }
 
 func (c *ProxyConfig) Validate() error {
@@ -31,7 +31,7 @@ func (c *ProxyConfig) Validate() error {
 
 type UpstreamConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
-	BindAddr string `json:"bind_addr"`
+	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
 }
 
 func (c *UpstreamConfig) Validate() error {
@@ -43,10 +43,10 @@ func (c *UpstreamConfig) Validate() error {
 
 type AdminConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
-	BindAddr string `json:"bind_addr"`
+	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
 
 	// AdvertiseAddr is the address to advertise to other nodes.
-	AdvertiseAddr string `json:"advertise_addr"`
+	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
 }
 
 func (c *AdminConfig) Validate() error {
@@ -58,10 +58,10 @@ func (c *AdminConfig) Validate() error {
 
 type GossipConfig struct {
 	// BindAddr is the address to bind to listen for gossip traffic.
-	BindAddr string `json:"bind_addr"`
+	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
 
 	// AdvertiseAddr is the address to advertise to other nodes.
-	AdvertiseAddr string `json:"advertise_addr"`
+	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
 }
 
 func (c *GossipConfig) Validate() error {
@@ -73,16 +73,16 @@ func (c *GossipConfig) Validate() error {
 
 type ClusterConfig struct {
 	// NodeID is a unique identifier for this node in the cluster.
-	NodeID string `json:"node_id"`
+	NodeID string `json:"node_id" yaml:"node_id"`
 
 	// Join contians a list of addresses of members in the cluster to join.
-	Join []string `json:"join"`
+	Join []string `json:"join" yaml:"join"`
 }
 
 type ServerConfig struct {
 	// GracefulShutdownTimeout is the timeout to allow for graceful shutdown
 	// of the server in seconds.
-	GracefulShutdownTimeout int `json:"graceful_shutdown_timeout"`
+	GracefulShutdownTimeout int `json:"graceful_shutdown_timeout" yaml:"graceful_shutdown_timeout"`
 }
 
 func (c *ServerConfig) Validate() error {
@@ -93,13 +93,13 @@ func (c *ServerConfig) Validate() error {
 }
 
 type Config struct {
-	Proxy    ProxyConfig    `json:"proxy"`
-	Upstream UpstreamConfig `json:"upstream"`
-	Admin    AdminConfig    `json:"admin"`
-	Gossip   GossipConfig   `json:"gossip"`
-	Cluster  ClusterConfig  `json:"cluster"`
-	Server   ServerConfig   `json:"server"`
-	Log      log.Config     `json:"log"`
+	Proxy    ProxyConfig    `json:"proxy" yaml:"proxy"`
+	Upstream UpstreamConfig `json:"upstream" yaml:"upstream"`
+	Admin    AdminConfig    `json:"admin" yaml:"admin"`
+	Gossip   GossipConfig   `json:"gossip" yaml:"gossip"`
+	Cluster  ClusterConfig  `json:"cluster" yaml:"cluster"`
+	Server   ServerConfig   `json:"server" yaml:"server"`
+	Log      log.Config     `json:"log" yaml:"log"`
 }
 
 func (c *Config) Validate() error {

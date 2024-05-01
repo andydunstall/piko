@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	picoconfig "github.com/andydunstall/pico/pkg/config"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/gossip"
@@ -58,10 +59,26 @@ Examples:
 
 	var conf config.Config
 
+	var configPath string
+	cmd.Flags().StringVar(
+		&configPath,
+		"config.path",
+		"",
+		`
+YAML config file path.`,
+	)
+
 	// Register flags and set default values.
 	conf.RegisterFlags(cmd.Flags())
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
+		if configPath != "" {
+			if err := picoconfig.Load(configPath, &conf); err != nil {
+				fmt.Printf("load config: %s\n", err.Error())
+				os.Exit(1)
+			}
+		}
+
 		if err := conf.Validate(); err != nil {
 			fmt.Printf("invalid config: %s\n", err.Error())
 			os.Exit(1)
