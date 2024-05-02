@@ -165,7 +165,7 @@ func run(conf *config.Config, logger log.Logger) error {
 	networkMap.Metrics().Register(registry)
 	adminServer.AddStatus("/netmap", netmap.NewStatus(networkMap))
 
-	gossiper, err := gossip.NewGossip(networkMap, conf, logger)
+	gossiper, err := gossip.NewGossip(networkMap, conf.Gossip, logger)
 	if err != nil {
 		return fmt.Errorf("gossip: %w", err)
 	}

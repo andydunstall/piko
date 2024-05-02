@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/pico/server/gossip"
 	"github.com/spf13/pflag"
 )
 
@@ -56,21 +57,6 @@ func (c *AdminConfig) Validate() error {
 	return nil
 }
 
-type GossipConfig struct {
-	// BindAddr is the address to bind to listen for gossip traffic.
-	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
-
-	// AdvertiseAddr is the address to advertise to other nodes.
-	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
-}
-
-func (c *GossipConfig) Validate() error {
-	if c.BindAddr == "" {
-		return fmt.Errorf("missing bind addr")
-	}
-	return nil
-}
-
 type ClusterConfig struct {
 	// NodeID is a unique identifier for this node in the cluster.
 	NodeID string `json:"node_id" yaml:"node_id"`
@@ -100,7 +86,7 @@ type Config struct {
 	Proxy    ProxyConfig    `json:"proxy" yaml:"proxy"`
 	Upstream UpstreamConfig `json:"upstream" yaml:"upstream"`
 	Admin    AdminConfig    `json:"admin" yaml:"admin"`
-	Gossip   GossipConfig   `json:"gossip" yaml:"gossip"`
+	Gossip   gossip.Config  `json:"gossip" yaml:"gossip"`
 	Cluster  ClusterConfig  `json:"cluster" yaml:"cluster"`
 	Server   ServerConfig   `json:"server" yaml:"server"`
 	Log      log.Config     `json:"log" yaml:"log"`
@@ -204,34 +190,6 @@ private IP will be used, such as a bind address of ':8002' may have an
 advertise address of '10.26.104.14:8002'.`,
 	)
 
-	fs.StringVar(
-		&c.Gossip.BindAddr,
-		"gossip.bind-addr",
-		":7000",
-		`
-The host/port to listen for inter-node gossip traffic.
-
-If the host is unspecified it defaults to all listeners, such as
-'--gossip.bind-addr :7000' will listen on '0.0.0.0:7000'`,
-	)
-
-	fs.StringVar(
-		&c.Gossip.AdvertiseAddr,
-		"gossip.advertise-addr",
-		"",
-		`
-Gossip listen address to advertise to other nodes in the cluster. This is the
-address other nodes will used to gossip with the node.
-
-Such as if the listen address is ':7000', the advertised address may be
-'10.26.104.45:7000' or 'node1.cluster:7000'.
-
-By default, if the bind address includes an IP to bind to that will be used.
-If the bind address does not include an IP (such as ':7000') the nodes
-private IP will be used, such as a bind address of ':7000' may have an
-advertise address of '10.26.104.14:7000'.`,
-	)
-
 	fs.IntVar(
 		&c.Server.GracefulShutdownTimeout,
 		"server.graceful-shutdown-timeout",
@@ -285,6 +243,8 @@ port is given, the gossip port of this node is used.
 Note each node propagates membership information to the other known nodes,
 so the initial set of configured members only needs to be a subset of nodes.`,
 	)
+
+	c.Gossip.RegisterFlags(fs)
 
 	c.Log.RegisterFlags(fs)
 }

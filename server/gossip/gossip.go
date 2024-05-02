@@ -6,7 +6,6 @@ import (
 
 	"github.com/andydunstall/kite"
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/netmap"
 )
 
@@ -24,14 +23,14 @@ type Gossip struct {
 	// updates.
 	gossiper *kite.Kite
 
-	conf *config.Config
+	conf Config
 
 	logger log.Logger
 }
 
 func NewGossip(
 	networkMap *netmap.NetworkMap,
-	conf *config.Config,
+	conf Config,
 	logger log.Logger,
 ) (*Gossip, error) {
 	logger = logger.WithSubsystem("gossip")
@@ -39,8 +38,8 @@ func NewGossip(
 	syncer := newSyncer(networkMap, logger)
 	gossiper, err := kite.New(
 		kite.WithNodeID(networkMap.LocalNode().ID),
-		kite.WithBindAddr(conf.Gossip.BindAddr),
-		kite.WithAdvertiseAddr(conf.Gossip.AdvertiseAddr),
+		kite.WithBindAddr(conf.BindAddr),
+		kite.WithAdvertiseAddr(conf.AdvertiseAddr),
 		kite.WithWatcher(syncer),
 		kite.WithLogger(logger.WithSubsystem("gossip.kite")),
 	)
