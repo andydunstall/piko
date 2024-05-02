@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -110,8 +111,13 @@ func run(conf *config.Config, logger log.Logger) error {
 	logger.Info("starting pico agent", zap.Any("conf", conf))
 
 	registry := prometheus.NewRegistry()
+
+	adminLn, err := net.Listen("tcp", conf.Admin.BindAddr)
+	if err != nil {
+		return fmt.Errorf("admin listen: %s: %w", conf.Admin.BindAddr, err)
+	}
 	adminServer := adminserver.NewServer(
-		conf.Admin.BindAddr,
+		adminLn,
 		registry,
 		logger,
 	)

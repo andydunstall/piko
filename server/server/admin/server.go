@@ -3,6 +3,7 @@ package admin
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/andydunstall/pico/pkg/log"
@@ -17,7 +18,7 @@ import (
 // Server is the admin HTTP server, which exposes endpoints for metrics, health
 // and inspecting the node status.
 type Server struct {
-	addr string
+	ln net.Listener
 
 	router *gin.Engine
 
@@ -29,16 +30,16 @@ type Server struct {
 }
 
 func NewServer(
-	addr string,
+	ln net.Listener,
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
 	router := gin.New()
 	server := &Server{
-		addr:   addr,
+		ln:     ln,
 		router: router,
 		httpServer: &http.Server{
-			Addr:    addr,
+			Addr:    ln.Addr().String(),
 			Handler: router,
 		},
 		registry: registry,
@@ -46,7 +47,7 @@ func NewServer(
 	}
 
 	// Recover from panics.
-	server.router.Use(gin.CustomRecovery(server.panicRoute))
+	server.router.Use(gin.CustomRecoveryWithWriter(nil, server.panicRoute))
 
 	server.router.Use(middleware.NewLogger(logger))
 	if registry != nil {
@@ -64,9 +65,9 @@ func (s *Server) AddStatus(route string, handler status.Handler) {
 }
 
 func (s *Server) Serve() error {
-	s.logger.Info("starting http server", zap.String("addr", s.addr))
+	s.logger.Info("starting http server", zap.String("addr", s.ln.Addr().String()))
 
-	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := s.httpServer.Serve(s.ln); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("http serve: %w", err)
 	}
 	return nil
@@ -83,7 +84,7 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) registerRoutes() {
-	s.router.GET("/healthz", s.healthRoute)
+	s.router.GET("/health", s.healthRoute)
 
 	if s.registry != nil {
 		s.router.GET("/metrics", s.metricsHandler())

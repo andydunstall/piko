@@ -5,30 +5,33 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/status"
 	"github.com/andydunstall/pico/server/config"
-	"github.com/andydunstall/pico/server/proxy"
 	"github.com/andydunstall/pico/server/server/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
+type Proxy interface {
+	Request(ctx context.Context, r *http.Request) (*http.Response, error)
+}
+
 // Server is the HTTP server for the proxy, which proxies all incoming
 // requests.
 type Server struct {
-	addr string
+	ln net.Listener
 
 	router *gin.Engine
 
 	httpServer *http.Server
 
-	proxy *proxy.Proxy
+	proxy Proxy
 
 	shutdownCtx    context.Context
 	shutdownCancel func()
@@ -39,8 +42,8 @@ type Server struct {
 }
 
 func NewServer(
-	addr string,
-	proxy *proxy.Proxy,
+	ln net.Listener,
+	proxy Proxy,
 	conf *config.ProxyConfig,
 	registry *prometheus.Registry,
 	logger log.Logger,
@@ -49,10 +52,10 @@ func NewServer(
 
 	router := gin.New()
 	server := &Server{
-		addr:   addr,
+		ln:     ln,
 		router: router,
 		httpServer: &http.Server{
-			Addr:    addr,
+			Addr:    ln.Addr().String(),
 			Handler: router,
 		},
 		shutdownCtx:    shutdownCtx,
@@ -63,7 +66,7 @@ func NewServer(
 	}
 
 	// Recover from panics.
-	server.router.Use(gin.CustomRecovery(server.panicRoute))
+	server.router.Use(gin.CustomRecoveryWithWriter(nil, server.panicRoute))
 
 	server.router.Use(middleware.NewLogger(logger))
 	if registry != nil {
@@ -76,9 +79,9 @@ func NewServer(
 }
 
 func (s *Server) Serve() error {
-	s.logger.Info("starting http server", zap.String("addr", s.addr))
+	s.logger.Info("starting http server", zap.String("addr", s.ln.Addr().String()))
 
-	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := s.httpServer.Serve(s.ln); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("http serve: %w", err)
 	}
 	return nil
@@ -123,11 +126,6 @@ func (s *Server) proxyRoute(c *gin.Context) {
 }
 
 func (s *Server) notFoundRoute(c *gin.Context) {
-	// All /pico endpoints are reserved. All others are proxied.
-	if strings.HasPrefix(c.Request.URL.Path, "/pico") {
-		c.Status(http.StatusNotFound)
-		return
-	}
 	s.proxyRoute(c)
 }
 

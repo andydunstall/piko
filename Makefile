@@ -6,6 +6,14 @@ pico:
 	mkdir -p build
 	go build -o build/pico main.go
 
+.PHONY: unit-test
+unit-test:
+	go test ./...
+
+.PHONY: integration-test
+integration-test:
+	go test ./... -tags integration
+
 .PHONY: fmt
 fmt:
 	go fmt ./...

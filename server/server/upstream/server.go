@@ -3,13 +3,13 @@ package server
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
 	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
-	"github.com/andydunstall/pico/server/proxy"
 	"github.com/andydunstall/pico/server/server/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -17,9 +17,14 @@ import (
 	"go.uber.org/zap"
 )
 
+type Proxy interface {
+	AddUpstream(endpointID string, stream *rpc.Stream)
+	RemoveUpstream(endpointID string, stream *rpc.Stream)
+}
+
 // Server is the HTTP server upstream listeners to register endpoints.
 type Server struct {
-	addr string
+	ln net.Listener
 
 	router *gin.Engine
 
@@ -28,7 +33,7 @@ type Server struct {
 
 	websocketUpgrader *websocket.Upgrader
 
-	proxy *proxy.Proxy
+	proxy Proxy
 
 	shutdownCtx    context.Context
 	shutdownCancel func()
@@ -37,8 +42,8 @@ type Server struct {
 }
 
 func NewServer(
-	addr string,
-	proxy *proxy.Proxy,
+	ln net.Listener,
+	proxy Proxy,
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
@@ -46,10 +51,10 @@ func NewServer(
 
 	router := gin.New()
 	server := &Server{
-		addr:   addr,
+		ln:     ln,
 		router: router,
 		httpServer: &http.Server{
-			Addr:    addr,
+			Addr:    ln.Addr().String(),
 			Handler: router,
 		},
 		rpcServer:         newRPCServer(),
@@ -61,7 +66,7 @@ func NewServer(
 	}
 
 	// Recover from panics.
-	server.router.Use(gin.CustomRecovery(server.panicRoute))
+	server.router.Use(gin.CustomRecoveryWithWriter(nil, server.panicRoute))
 
 	server.router.Use(middleware.NewLogger(logger))
 	if registry != nil {
@@ -74,9 +79,9 @@ func NewServer(
 }
 
 func (s *Server) Serve() error {
-	s.logger.Info("starting http server", zap.String("addr", s.addr))
+	s.logger.Info("starting http server", zap.String("addr", s.ln.Addr().String()))
 
-	if err := s.httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+	if err := s.httpServer.Serve(s.ln); err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("http serve: %w", err)
 	}
 	return nil
