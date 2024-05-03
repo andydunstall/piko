@@ -28,11 +28,11 @@ func newFakeProxy() *fakeProxy {
 	}
 }
 
-func (p *fakeProxy) AddUpstream(endpointID string, _ *rpc.Stream) {
+func (p *fakeProxy) AddUpstream(endpointID string, _ rpc.Stream) {
 	p.addUpstreamCh <- endpointID
 }
 
-func (p *fakeProxy) RemoveUpstream(endpointID string, _ *rpc.Stream) {
+func (p *fakeProxy) RemoveUpstream(endpointID string, _ rpc.Stream) {
 	p.removeUpstreamCh <- endpointID
 }
 

@@ -23,15 +23,15 @@ import (
 )
 
 type localEndpoint struct {
-	streams   []*rpc.Stream
+	streams   []rpc.Stream
 	nextIndex int
 }
 
-func (e *localEndpoint) AddUpstream(s *rpc.Stream) {
+func (e *localEndpoint) AddUpstream(s rpc.Stream) {
 	e.streams = append(e.streams, s)
 }
 
-func (e *localEndpoint) RemoveUpstream(s *rpc.Stream) bool {
+func (e *localEndpoint) RemoveUpstream(s rpc.Stream) bool {
 	for i := 0; i != len(e.streams); i++ {
 		if e.streams[i] == s {
 			e.streams = append(e.streams[:i], e.streams[i+1:]...)
@@ -45,7 +45,7 @@ func (e *localEndpoint) RemoveUpstream(s *rpc.Stream) bool {
 	return len(e.streams) == 0
 }
 
-func (e *localEndpoint) Next() *rpc.Stream {
+func (e *localEndpoint) Next() rpc.Stream {
 	if len(e.streams) == 0 {
 		return nil
 	}
@@ -144,7 +144,7 @@ func (p *Proxy) Request(ctx context.Context, r *http.Request) (*http.Response, e
 	return resp, nil
 }
 
-func (p *Proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
+func (p *Proxy) AddUpstream(endpointID string, stream rpc.Stream) {
 	p.networkMap.AddLocalEndpoint(endpointID)
 
 	p.mu.Lock()
@@ -166,7 +166,7 @@ func (p *Proxy) AddUpstream(endpointID string, stream *rpc.Stream) {
 	p.metrics.Listeners.Inc()
 }
 
-func (p *Proxy) RemoveUpstream(endpointID string, stream *rpc.Stream) {
+func (p *Proxy) RemoveUpstream(endpointID string, stream rpc.Stream) {
 	p.networkMap.RemoveLocalEndpoint(endpointID)
 
 	p.mu.Lock()
@@ -216,13 +216,13 @@ func (p *Proxy) request(
 
 	return nil, &status.ErrorInfo{
 		StatusCode: http.StatusServiceUnavailable,
-		Message:    "no upstream found",
+		Message:    "endpoint not found",
 	}
 }
 
 // lookupLocalListener looks up an RPC stream for an upstream listener for this
 // endpoint.
-func (p *Proxy) lookupLocalListener(endpointID string) (*rpc.Stream, bool) {
+func (p *Proxy) lookupLocalListener(endpointID string) (rpc.Stream, bool) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -236,7 +236,7 @@ func (p *Proxy) lookupLocalListener(endpointID string) (*rpc.Stream, bool) {
 
 func (p *Proxy) requestLocal(
 	ctx context.Context,
-	stream *rpc.Stream,
+	stream rpc.Stream,
 	r *http.Request,
 ) (*http.Response, error) {
 	// Write the HTTP request to a buffer.
@@ -257,13 +257,13 @@ func (p *Proxy) requestLocal(
 		if errors.Is(err, context.DeadlineExceeded) {
 			return nil, &status.ErrorInfo{
 				StatusCode: http.StatusGatewayTimeout,
-				Message:    "upstream timeout",
+				Message:    "endpoint timeout",
 			}
 		}
 
 		return nil, &status.ErrorInfo{
 			StatusCode: http.StatusServiceUnavailable,
-			Message:    "upstream unreachable",
+			Message:    "endpoint unreachable",
 		}
 	}
 
@@ -346,6 +346,8 @@ func (p *Proxy) requestRemote(
 	return resp, nil
 }
 
+// parseEndpointID returns the endpoint ID from the HTTP request, or an empty
+// string if no endpoint ID is specified.
 func parseEndpointID(r *http.Request) string {
 	endpointID := r.Header.Get("x-pico-endpoint")
 	if endpointID != "" {

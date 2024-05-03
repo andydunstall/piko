@@ -18,8 +18,8 @@ import (
 )
 
 type Proxy interface {
-	AddUpstream(endpointID string, stream *rpc.Stream)
-	RemoveUpstream(endpointID string, stream *rpc.Stream)
+	AddUpstream(endpointID string, stream rpc.Stream)
+	RemoveUpstream(endpointID string, stream rpc.Stream)
 }
 
 // Server is the HTTP server upstream listeners to register endpoints.

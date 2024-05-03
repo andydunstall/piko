@@ -31,7 +31,18 @@ type message struct {
 //
 // Incoming RPC requests are handled in their own goroutine to avoid blocking
 // the stream.
-type Stream struct {
+type Stream interface {
+	Addr() string
+	RPC(ctx context.Context, rpcType Type, req []byte) ([]byte, error)
+	Monitor(
+		ctx context.Context,
+		interval time.Duration,
+		timeout time.Duration,
+	) error
+	Close() error
+}
+
+type stream struct {
 	conn    conn.Conn
 	handler *Handler
 
@@ -56,8 +67,8 @@ type Stream struct {
 
 // NewStream creates an RPC stream on top of the given message-oriented
 // connection.
-func NewStream(conn conn.Conn, handler *Handler, logger log.Logger) *Stream {
-	stream := &Stream{
+func NewStream(conn conn.Conn, handler *Handler, logger log.Logger) Stream {
+	stream := &stream{
 		conn:             conn,
 		handler:          handler,
 		nextMessageID:    atomic.NewUint64(0),
@@ -73,7 +84,7 @@ func NewStream(conn conn.Conn, handler *Handler, logger log.Logger) *Stream {
 	return stream
 }
 
-func (s *Stream) Addr() string {
+func (s *stream) Addr() string {
 	return s.conn.Addr()
 }
 
@@ -81,7 +92,7 @@ func (s *Stream) Addr() string {
 // an error.
 //
 // RPC is thread safe.
-func (s *Stream) RPC(ctx context.Context, rpcType Type, req []byte) ([]byte, error) {
+func (s *stream) RPC(ctx context.Context, rpcType Type, req []byte) ([]byte, error) {
 	header := &header{
 		RPCType: rpcType,
 		ID:      s.nextMessageID.Inc(),
@@ -117,7 +128,7 @@ func (s *Stream) RPC(ctx context.Context, rpcType Type, req []byte) ([]byte, err
 }
 
 // Monitor monitors the stream is healthy using heartbeats.
-func (s *Stream) Monitor(
+func (s *stream) Monitor(
 	ctx context.Context,
 	interval time.Duration,
 	timeout time.Duration,
@@ -141,11 +152,11 @@ func (s *Stream) Monitor(
 	}
 }
 
-func (s *Stream) Close() error {
+func (s *stream) Close() error {
 	return s.closeStream(ErrStreamClosed)
 }
 
-func (s *Stream) reader() {
+func (s *stream) reader() {
 	defer s.recoverPanic("reader()")
 
 	for {
@@ -192,7 +203,7 @@ func (s *Stream) reader() {
 	}
 }
 
-func (s *Stream) writer() {
+func (s *stream) writer() {
 	defer s.recoverPanic("writer()")
 
 	for {
@@ -216,7 +227,7 @@ func (s *Stream) writer() {
 	}
 }
 
-func (s *Stream) write(req *message) error {
+func (s *stream) write(req *message) error {
 	w, err := s.conn.NextWriter()
 	if err != nil {
 		return err
@@ -232,7 +243,7 @@ func (s *Stream) write(req *message) error {
 	return w.Close()
 }
 
-func (s *Stream) closeStream(err error) error {
+func (s *stream) closeStream(err error) error {
 	// Only shutdown once.
 	if !s.shutdown.CompareAndSwap(false, true) {
 		return ErrStreamClosed
@@ -254,7 +265,7 @@ func (s *Stream) closeStream(err error) error {
 	return nil
 }
 
-func (s *Stream) handleRequest(m *message) {
+func (s *stream) handleRequest(m *message) {
 	handlerFunc, ok := s.handler.Find(m.Header.RPCType)
 	if !ok {
 		// If no handler is found, send a 'not supported' error to the client.
@@ -303,7 +314,7 @@ func (s *Stream) handleRequest(m *message) {
 	}
 }
 
-func (s *Stream) handleResponse(m *message) {
+func (s *stream) handleResponse(m *message) {
 	// If no handler is found, it means RPC has already returned so discard
 	// the response.
 	ch, ok := s.findResponseHandler(m.Header.ID)
@@ -312,27 +323,27 @@ func (s *Stream) handleResponse(m *message) {
 	}
 }
 
-func (s *Stream) recoverPanic(prefix string) {
+func (s *stream) recoverPanic(prefix string) {
 	if r := recover(); r != nil {
 		_ = s.closeStream(fmt.Errorf("panic: %s: %v", prefix, r))
 	}
 }
 
-func (s *Stream) registerResponseHandler(id uint64, ch chan<- *message) {
+func (s *stream) registerResponseHandler(id uint64, ch chan<- *message) {
 	s.responseHandlersMu.Lock()
 	defer s.responseHandlersMu.Unlock()
 
 	s.responseHandlers[id] = ch
 }
 
-func (s *Stream) unregisterResponseHandler(id uint64) {
+func (s *stream) unregisterResponseHandler(id uint64) {
 	s.responseHandlersMu.Lock()
 	defer s.responseHandlersMu.Unlock()
 
 	delete(s.responseHandlers, id)
 }
 
-func (s *Stream) findResponseHandler(id uint64) (chan<- *message, bool) {
+func (s *stream) findResponseHandler(id uint64) (chan<- *message, bool) {
 	s.responseHandlersMu.Lock()
 	defer s.responseHandlersMu.Unlock()
 
@@ -340,7 +351,7 @@ func (s *Stream) findResponseHandler(id uint64) (chan<- *message, bool) {
 	return ch, ok
 }
 
-func (s *Stream) heartbeat(ctx context.Context, timeout time.Duration) error {
+func (s *stream) heartbeat(ctx context.Context, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 

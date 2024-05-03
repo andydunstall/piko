@@ -92,7 +92,7 @@ func (e *endpoint) ProxyHTTP(r *http.Request) (*http.Response, error) {
 	return e.forwarder.Forward(r)
 }
 
-func (e *endpoint) connect(ctx context.Context) (*rpc.Stream, error) {
+func (e *endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 	backoff := time.Second
 	for {
 		conn, err := conn.DialWebsocket(ctx, e.serverURL())

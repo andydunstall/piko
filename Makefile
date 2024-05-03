@@ -8,11 +8,11 @@ pico:
 
 .PHONY: unit-test
 unit-test:
-	go test ./...
+	go test ./... -v
 
 .PHONY: integration-test
 integration-test:
-	go test ./... -tags integration
+	go test ./... -tags integration -v
 
 .PHONY: fmt
 fmt:
