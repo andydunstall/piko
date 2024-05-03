@@ -93,6 +93,10 @@ func (m *NetworkMap) LookupEndpoint(endpointID string) (*Node, bool) {
 	defer m.mu.RUnlock()
 
 	for _, node := range m.nodes {
+		if node.ID == m.localID {
+			// Ignore ourselves.
+			continue
+		}
 		if listeners, ok := node.Endpoints[endpointID]; ok && listeners > 0 {
 			return node.Copy(), true
 		}

@@ -2,3 +2,5 @@ pico
 !pico/
 
 build/
+
+coverage.out
