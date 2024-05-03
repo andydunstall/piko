@@ -2,7 +2,6 @@ package server
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -10,7 +9,6 @@ import (
 	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/pkg/status"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -19,7 +17,7 @@ import (
 )
 
 type Proxy interface {
-	Request(ctx context.Context, r *http.Request) (*http.Response, error)
+	Request(ctx context.Context, r *http.Request) *http.Response
 }
 
 // Server is the HTTP server for the proxy, which proxies all incoming
@@ -104,17 +102,7 @@ func (s *Server) proxyRoute(c *gin.Context) {
 	)
 	defer cancel()
 
-	resp, err := s.proxy.Request(ctx, c.Request)
-	if err != nil {
-		var errorInfo *status.ErrorInfo
-		if errors.As(err, &errorInfo) {
-			c.JSON(errorInfo.StatusCode, gin.H{"error": errorInfo.Message})
-			return
-		}
-		c.Status(http.StatusInternalServerError)
-		return
-	}
-
+	resp := s.proxy.Request(ctx, c.Request)
 	// Write the response status, headers and body.
 	for k, v := range resp.Header {
 		c.Writer.Header()[k] = v

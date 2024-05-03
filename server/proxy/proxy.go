@@ -1,354 +1,177 @@
 package proxy
 
 import (
-	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
-	"fmt"
+	"io"
 	"net/http"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/andydunstall/pico/api"
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/pkg/rpc"
-	"github.com/andydunstall/pico/pkg/status"
 	"github.com/andydunstall/pico/server/netmap"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
-type localEndpoint struct {
-	streams   []rpc.Stream
-	nextIndex int
-}
+var (
+	errEndpointNotFound = errors.New("not endpoint found")
+)
 
-func (e *localEndpoint) AddUpstream(s rpc.Stream) {
-	e.streams = append(e.streams, s)
-}
-
-func (e *localEndpoint) RemoveUpstream(s rpc.Stream) bool {
-	for i := 0; i != len(e.streams); i++ {
-		if e.streams[i] == s {
-			e.streams = append(e.streams[:i], e.streams[i+1:]...)
-			if len(e.streams) == 0 {
-				return true
-			}
-			e.nextIndex %= len(e.streams)
-			return false
-		}
-	}
-	return len(e.streams) == 0
-}
-
-func (e *localEndpoint) Next() rpc.Stream {
-	if len(e.streams) == 0 {
-		return nil
-	}
-
-	s := e.streams[e.nextIndex]
-	e.nextIndex++
-	e.nextIndex %= len(e.streams)
-	return s
-}
-
-func (e *localEndpoint) UpstreamAddrs() []string {
-	var addrs []string
-	for _, stream := range e.streams {
-		addrs = append(addrs, stream.Addr())
-	}
-	return addrs
-}
-
-// Proxy is responsible for forwarding requests to upstream listeners.
+// Proxy is responsible for forwarding requests to upstream endpoints.
 type Proxy struct {
-	localEndpoints map[string]*localEndpoint
+	local  *localProxy
+	remote *remoteProxy
 
-	mu sync.Mutex
-
-	client *http.Client
-
-	networkMap *netmap.NetworkMap
-
-	metrics *metrics
-	logger  log.Logger
+	logger log.Logger
 }
 
-func NewProxy(
-	networkMap *netmap.NetworkMap,
-	registry *prometheus.Registry,
-	logger log.Logger,
-) *Proxy {
-	metrics := newMetrics()
-	if registry != nil {
-		metrics.Register(registry)
+func NewProxy(networkMap *netmap.NetworkMap, opts ...Option) *Proxy {
+	options := defaultOptions()
+	for _, opt := range opts {
+		opt.apply(&options)
 	}
+
+	logger := options.logger.WithSubsystem("proxy")
 	return &Proxy{
-		localEndpoints: make(map[string]*localEndpoint),
-		networkMap:     networkMap,
-		client:         &http.Client{},
-		metrics:        metrics,
-		logger:         logger.WithSubsystem("proxy"),
+		local:  newLocalProxy(logger),
+		remote: newRemoteProxy(networkMap, options.forwarder, logger),
+		logger: logger,
 	}
 }
 
-func (p *Proxy) Request(ctx context.Context, r *http.Request) (*http.Response, error) {
-	endpointID := parseEndpointID(r)
+// Request forwards the given HTTP request to an upstream endpoint and returns
+// the response.
+//
+// If the request fails returns a response with status:
+// - Missing endpoint ID: 401 (Bad request)
+// - Upstream unreachable: 503 (Service unavailable)
+// - Timeout: 504 (Gateway timeout)
+func (p *Proxy) Request(
+	ctx context.Context,
+	r *http.Request,
+) *http.Response {
+	// Whether the request was forwarded from another Pico node.
+	forwarded := r.Header.Get("x-pico-forward") == "true"
+
+	logger := p.logger.With(
+		zap.String("host", r.Host),
+		zap.String("method", r.Method),
+		zap.String("path", r.URL.Path),
+	)
+
+	endpointID := endpointIDFromRequest(r)
 	if endpointID == "" {
-		p.logger.Warn(
-			"failed to proxy request: missing endpoint id",
-			zap.String("path", r.URL.Path),
-			zap.String("method", r.Method),
-		)
-		p.metrics.ErrorsTotal.Inc()
-		return nil, &status.ErrorInfo{
-			StatusCode: http.StatusServiceUnavailable,
-			Message:    "missing endpoint id",
-		}
+		logger.Warn("request: missing endpoint id")
+		return errorResponse(http.StatusBadRequest, "missing pico endpoint id")
 	}
 
 	start := time.Now()
-	resp, err := p.request(ctx, endpointID, r)
-	if err != nil {
-		p.logger.Warn(
-			"failed to proxy request",
-			zap.String("endpoint-id", endpointID),
-			zap.String("path", r.URL.Path),
-			zap.String("method", r.Method),
-			zap.Error(err),
+
+	// Attempt to send to an endpoint connected to the local node.
+	resp, err := p.local.Request(ctx, endpointID, r)
+	if err == nil {
+		logger.Debug(
+			"request: forwarded to local conn",
+			zap.Duration("latency", time.Since(start)),
 		)
-		p.metrics.ErrorsTotal.Inc()
-		return nil, err
+		return resp
 	}
-
-	p.logger.Debug(
-		"proxied request",
-		zap.String("endpoint-id", endpointID),
-		zap.String("path", r.URL.Path),
-		zap.String("method", r.Method),
-		zap.Int("status", resp.StatusCode),
-		zap.Duration("latency", time.Since(start)),
-	)
-
-	p.metrics.RequestsTotal.With(prometheus.Labels{
-		"status": strconv.Itoa(resp.StatusCode),
-	}).Inc()
-	p.metrics.RequestLatency.With(prometheus.Labels{
-		"status": strconv.Itoa(resp.StatusCode),
-	}).Observe(float64(time.Since(start).Milliseconds()) / 1000)
-
-	return resp, nil
-}
-
-func (p *Proxy) AddUpstream(endpointID string, stream rpc.Stream) {
-	p.networkMap.AddLocalEndpoint(endpointID)
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	e, ok := p.localEndpoints[endpointID]
-	if !ok {
-		e = &localEndpoint{}
-	}
-
-	e.AddUpstream(stream)
-	p.localEndpoints[endpointID] = e
-
-	p.logger.Info(
-		"added upstream",
-		zap.String("endpoint-id", endpointID),
-	)
-
-	p.metrics.Listeners.Inc()
-}
-
-func (p *Proxy) RemoveUpstream(endpointID string, stream rpc.Stream) {
-	p.networkMap.RemoveLocalEndpoint(endpointID)
-
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	endpoint, ok := p.localEndpoints[endpointID]
-	if !ok {
-		return
-	}
-	endpoint.RemoveUpstream(stream)
-
-	p.logger.Info(
-		"removed upstream",
-		zap.String("endpoint-id", endpointID),
-	)
-
-	p.metrics.Listeners.Dec()
-}
-
-// LocalEndpoints returns a mapping from endpoint ID to listener addresses for
-// all local registered endpoints.
-func (p *Proxy) LocalEndpoints() map[string][]string {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	endpoints := make(map[string][]string)
-	for endpointID, endpoint := range p.localEndpoints {
-		endpoints[endpointID] = endpoint.UpstreamAddrs()
-	}
-	return endpoints
-}
-
-func (p *Proxy) request(
-	ctx context.Context,
-	endpointID string,
-	r *http.Request,
-) (*http.Response, error) {
-	listenerStream, ok := p.lookupLocalListener(endpointID)
-	if ok {
-		return p.requestLocal(ctx, listenerStream, r)
-	}
-
-	node, ok := p.networkMap.LookupEndpoint(endpointID)
-	if ok {
-		return p.requestRemote(ctx, node.ProxyAddr, r)
-	}
-
-	return nil, &status.ErrorInfo{
-		StatusCode: http.StatusServiceUnavailable,
-		Message:    "endpoint not found",
-	}
-}
-
-// lookupLocalListener looks up an RPC stream for an upstream listener for this
-// endpoint.
-func (p *Proxy) lookupLocalListener(endpointID string) (rpc.Stream, bool) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-
-	endpoint, ok := p.localEndpoints[endpointID]
-	if !ok {
-		return nil, false
-	}
-	stream := endpoint.Next()
-	return stream, true
-}
-
-func (p *Proxy) requestLocal(
-	ctx context.Context,
-	stream rpc.Stream,
-	r *http.Request,
-) (*http.Response, error) {
-	// Write the HTTP request to a buffer.
-	var buffer bytes.Buffer
-	if err := r.Write(&buffer); err != nil {
-		return nil, fmt.Errorf("encode http request: %w", err)
-	}
-
-	protoReq := &api.ProxyHttpReq{
-		HttpReq: buffer.Bytes(),
-	}
-	payload, err := proto.Marshal(protoReq)
-	if err != nil {
-		return nil, fmt.Errorf("encode proto request: %w", err)
-	}
-	b, err := stream.RPC(ctx, rpc.TypeProxyHTTP, payload)
-	if err != nil {
+	if !errors.Is(err, errEndpointNotFound) {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, &status.ErrorInfo{
-				StatusCode: http.StatusGatewayTimeout,
-				Message:    "endpoint timeout",
-			}
+			logger.Warn("request: endpoint timeout", zap.Error(err))
+
+			return errorResponse(
+				http.StatusGatewayTimeout,
+				"endpoint timeout",
+			)
 		}
 
-		return nil, &status.ErrorInfo{
-			StatusCode: http.StatusServiceUnavailable,
-			Message:    "endpoint unreachable",
-		}
+		logger.Warn("request: endpoint unreachable", zap.Error(err))
+		return errorResponse(
+			http.StatusServiceUnavailable,
+			"endpoint unreachable",
+		)
 	}
 
-	var protoResp api.ProxyHttpResp
-	if err := proto.Unmarshal(b, &protoResp); err != nil {
-		return nil, fmt.Errorf("decode proto response: %w", err)
+	// If the request is from another Pico node though we don't have a
+	// connection for the endpoint, we don't forward again but return an
+	// error.
+	if forwarded {
+		logger.Warn("request: endpoint not found")
+		return errorResponse(http.StatusServiceUnavailable, "endpoint not found")
 	}
 
-	if protoResp.Error != nil && protoResp.Error.Status != api.ProxyHttpStatus_OK {
-		switch protoResp.Error.Status {
-		case api.ProxyHttpStatus_UPSTREAM_TIMEOUT:
-			return nil, &status.ErrorInfo{
-				StatusCode: http.StatusGatewayTimeout,
-				Message:    "upstream timeout",
-			}
-		case api.ProxyHttpStatus_UPSTREAM_UNREACHABLE:
-			return nil, &status.ErrorInfo{
-				StatusCode: http.StatusGatewayTimeout,
-				Message:    "upstream unreachable",
-			}
-		default:
-			return nil, fmt.Errorf("upstream: %s", protoResp.Error.Message)
-		}
-	}
+	// Set the 'x-pico-forward' before forwarding to a remote node.
+	r.Header.Set("x-pico-forward", "true")
 
-	httpResp, err := http.ReadResponse(
-		bufio.NewReader(bytes.NewReader(protoResp.HttpResp)), r,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("decode http response: %w", err)
-	}
-	return httpResp, nil
-}
-
-func (p *Proxy) requestRemote(
-	ctx context.Context,
-	addr string,
-	req *http.Request,
-) (*http.Response, error) {
-	// TODO(andydunstall): Need to limit the number of hops.
-
-	req = req.WithContext(ctx)
-
-	req.URL.Scheme = "http"
-	req.URL.Host = addr
-	req.RequestURI = ""
-
-	resp, err := p.client.Do(req)
-	if err != nil {
-		p.logger.Warn(
-			"failed to forward request",
-			zap.String("method", req.Method),
-			zap.String("host", req.URL.Host),
-			zap.String("path", req.URL.Path),
-			zap.Error(err),
+	// Attempt to send the request to a Pico node with a connection for the
+	// endpoint.
+	resp, err = p.remote.Request(ctx, endpointID, r)
+	if err == nil {
+		logger.Debug(
+			"request: forwarded to remote",
+			zap.Duration("latency", time.Since(start)),
 		)
 
+		return resp
+	}
+	if !errors.Is(err, errEndpointNotFound) {
 		if errors.Is(err, context.DeadlineExceeded) {
-			return nil, &status.ErrorInfo{
-				StatusCode: http.StatusGatewayTimeout,
-				Message:    "upstream timeout",
-			}
+			logger.Warn("request: endpoint timeout", zap.Error(err))
+
+			return errorResponse(
+				http.StatusGatewayTimeout,
+				"endpoint timeout",
+			)
 		}
-		return nil, &status.ErrorInfo{
-			StatusCode: http.StatusGatewayTimeout,
-			Message:    "upstream unreachable",
-		}
+
+		logger.Warn("request: endpoint unreachable", zap.Error(err))
+		return errorResponse(
+			http.StatusServiceUnavailable,
+			"endpoint unreachable",
+		)
 	}
 
-	// TODO(andydunstall): Add metrics and extend logging.
-
-	p.logger.Debug(
-		"forward",
-		zap.String("method", req.Method),
-		zap.String("host", req.URL.Host),
-		zap.String("path", req.URL.Path),
-		zap.Int("status", resp.StatusCode),
-	)
-
-	return resp, nil
+	logger.Warn("request: endpoint not found")
+	return errorResponse(http.StatusServiceUnavailable, "endpoint not found")
 }
 
-// parseEndpointID returns the endpoint ID from the HTTP request, or an empty
-// string if no endpoint ID is specified.
-func parseEndpointID(r *http.Request) string {
+// AddConn registers a connection for an endpoint.
+func (p *Proxy) AddConn(conn Conn) {
+	p.logger.Info(
+		"add conn",
+		zap.String("endpoint-id", conn.EndpointID()),
+		zap.String("addr", conn.Addr()),
+	)
+	p.local.AddConn(conn)
+	p.remote.AddConn(conn)
+}
+
+// RemoveConn removes a connection for an endpoint.
+func (p *Proxy) RemoveConn(conn Conn) {
+	p.logger.Info(
+		"remove conn",
+		zap.String("endpoint-id", conn.EndpointID()),
+		zap.String("addr", conn.Addr()),
+	)
+	p.local.RemoveConn(conn)
+	p.remote.RemoveConn(conn)
+}
+
+// ConnAddrs returns a mapping of endpoint ID to connection address for
+// all local connected endpoints.
+func (p *Proxy) ConnAddrs() map[string][]string {
+	return p.local.ConnAddrs()
+}
+
+// endpointIDFromRequest returns the endpoint ID from the HTTP request, or an
+// empty string if no endpoint ID is specified.
+//
+// This will check both the 'x-pico-endpoint' header and 'Host' header, where
+// x-pico-endpoint takes precedence.
+func endpointIDFromRequest(r *http.Request) string {
 	endpointID := r.Header.Get("x-pico-endpoint")
 	if endpointID != "" {
 		return endpointID
@@ -365,4 +188,19 @@ func parseEndpointID(r *http.Request) string {
 	}
 
 	return ""
+}
+
+type errorMessage struct {
+	Error string `json:"error"`
+}
+
+func errorResponse(statusCode int, message string) *http.Response {
+	m := &errorMessage{
+		Error: message,
+	}
+	b, _ := json.Marshal(m)
+	return &http.Response{
+		StatusCode: statusCode,
+		Body:       io.NopCloser(bytes.NewReader(b)),
+	}
 }

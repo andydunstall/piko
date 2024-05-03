@@ -1,214 +1,337 @@
 package proxy
 
 import (
-	"bufio"
-	"bytes"
 	"context"
-	"errors"
+	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"testing"
-	"time"
 
-	"github.com/andydunstall/pico/api"
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/pkg/rpc"
-	"github.com/andydunstall/pico/pkg/status"
 	"github.com/andydunstall/pico/server/netmap"
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/proto"
 )
 
-type fakeStream struct {
-	rpcHandler func(rpcType rpc.Type, req []byte) ([]byte, error)
+type fakeConn struct {
+	endpointID string
+	addr       string
+	handler    func(r *http.Request) (*http.Response, error)
 }
 
-func (s *fakeStream) Addr() string {
-	return ""
+func (c *fakeConn) EndpointID() string {
+	return c.endpointID
 }
 
-func (s *fakeStream) RPC(_ context.Context, rpcType rpc.Type, req []byte) ([]byte, error) {
-	return s.rpcHandler(rpcType, req)
+func (c *fakeConn) Addr() string {
+	return c.addr
 }
 
-func (s *fakeStream) Monitor(
+func (c *fakeConn) Request(
 	_ context.Context,
-	_ time.Duration,
-	_ time.Duration,
-) error {
-	return nil
+	r *http.Request,
+) (*http.Response, error) {
+	return c.handler(r)
 }
 
-func (s *fakeStream) Close() error {
-	return nil
+type fakeForwarder struct {
+	handler func(addr string, r *http.Request) (*http.Response, error)
 }
 
-func TestProxy_Request(t *testing.T) {
-	t.Run("local endpoint ok", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(&netmap.Node{
-			ID:     "local",
-			Status: netmap.NodeStatusActive,
-		}, log.NewNopLogger())
-		proxy := NewProxy(networkMap, nil, log.NewNopLogger())
+func (f *fakeForwarder) Request(
+	_ context.Context,
+	addr string,
+	r *http.Request,
+) (*http.Response, error) {
+	return f.handler(addr, r)
+}
 
-		rpcHandler := func(rpcType rpc.Type, req []byte) ([]byte, error) {
-			assert.Equal(t, rpc.TypeProxyHTTP, rpcType)
+func TestProxy(t *testing.T) {
+	t.Run("forward request remote ok", func(t *testing.T) {
+		networkMap := netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger())
+		networkMap.AddNode(&netmap.Node{
+			ID:        "node-1",
+			ProxyAddr: "1.2.3.4:1234",
+			Endpoints: map[string]int{
+				"my-endpoint": 5,
+			},
+		})
 
-			var protoReq api.ProxyHttpReq
-			assert.NoError(t, proto.Unmarshal(req, &protoReq))
-
-			httpReq, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(protoReq.HttpReq)))
-			assert.NoError(t, err)
-			assert.Equal(t, "/foo", httpReq.URL.Path)
-
-			header := make(http.Header)
-			header.Add("h1", "v1")
-			header.Add("h2", "v2")
-			header.Add("h3", "v3")
-			body := bytes.NewReader([]byte("foo"))
-			httpResp := &http.Response{
+		handler := func(addr string, r *http.Request) (*http.Response, error) {
+			assert.Equal(t, "1.2.3.4:1234", addr)
+			assert.Equal(t, "true", r.Header.Get("x-pico-forward"))
+			return &http.Response{
 				StatusCode: http.StatusOK,
-				Header:     header,
-				Body:       io.NopCloser(body),
-			}
-			var buffer bytes.Buffer
-			assert.NoError(t, httpResp.Write(&buffer))
-
-			protoResp := &api.ProxyHttpResp{
-				HttpResp: buffer.Bytes(),
-			}
-			payload, err := proto.Marshal(protoResp)
-			assert.NoError(t, err)
-
-			return payload, nil
+			}, nil
 		}
-		stream := &fakeStream{rpcHandler: rpcHandler}
+		forwarder := &fakeForwarder{
+			handler: handler,
+		}
+		proxy := NewProxy(networkMap, WithForwarder(forwarder))
 
-		proxy.AddUpstream("my-endpoint", stream)
-
-		resp, err := proxy.Request(context.TODO(), &http.Request{
+		header := make(http.Header)
+		resp := proxy.Request(context.TODO(), &http.Request{
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host: "my-endpoint.pico.com:8000",
+			Host:   "my-endpoint.pico.com",
+			Header: header,
 		})
-		assert.NoError(t, err)
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
-		assert.Equal(t, "v1", resp.Header.Get("h1"))
-		assert.Equal(t, "v2", resp.Header.Get("h2"))
-		assert.Equal(t, "v3", resp.Header.Get("h3"))
-
-		buf := new(bytes.Buffer)
-		//nolint
-		buf.ReadFrom(resp.Body)
-		assert.Equal(t, []byte("foo"), buf.Bytes())
 	})
 
-	t.Run("endpoint unreachable", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(&netmap.Node{
-			ID:     "local",
-			Status: netmap.NodeStatusActive,
-		}, log.NewNopLogger())
-		proxy := NewProxy(networkMap, nil, log.NewNopLogger())
+	t.Run("forward request remote endpoint timeout", func(t *testing.T) {
+		networkMap := netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger())
+		networkMap.AddNode(&netmap.Node{
+			ID:        "node-1",
+			ProxyAddr: "1.2.3.4:1234",
+			Endpoints: map[string]int{
+				"my-endpoint": 5,
+			},
+		})
 
-		rpcHandler := func(rpcType rpc.Type, req []byte) ([]byte, error) {
-			return nil, fmt.Errorf("unreachable")
+		handler := func(addr string, r *http.Request) (*http.Response, error) {
+			return nil, fmt.Errorf("error: %w", context.DeadlineExceeded)
 		}
-		stream := &fakeStream{rpcHandler: rpcHandler}
-
-		proxy.AddUpstream("my-endpoint", stream)
-
-		_, err := proxy.Request(context.TODO(), &http.Request{
-			URL: &url.URL{
-				Path: "/foo",
-			},
-			Host: "my-endpoint.pico.com:8000",
-		})
-
-		var errorInfo *status.ErrorInfo
-		assert.Error(t, err)
-		assert.True(t, errors.As(err, &errorInfo))
-		assert.Equal(t, http.StatusServiceUnavailable, errorInfo.StatusCode)
-		assert.Equal(t, "endpoint unreachable", errorInfo.Message)
-	})
-
-	t.Run("endpoint timeout", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(&netmap.Node{
-			ID:     "local",
-			Status: netmap.NodeStatusActive,
-		}, log.NewNopLogger())
-		proxy := NewProxy(networkMap, nil, log.NewNopLogger())
-
-		rpcHandler := func(rpcType rpc.Type, req []byte) ([]byte, error) {
-			return nil, fmt.Errorf("unreachable: %w", context.DeadlineExceeded)
+		forwarder := &fakeForwarder{
+			handler: handler,
 		}
-		stream := &fakeStream{rpcHandler: rpcHandler}
+		proxy := NewProxy(networkMap, WithForwarder(forwarder))
 
-		proxy.AddUpstream("my-endpoint", stream)
-
-		_, err := proxy.Request(context.TODO(), &http.Request{
+		header := make(http.Header)
+		resp := proxy.Request(context.TODO(), &http.Request{
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host: "my-endpoint.pico.com:8000",
+			Host:   "my-endpoint.pico.com",
+			Header: header,
 		})
 
-		var errorInfo *status.ErrorInfo
-		assert.Error(t, err)
-		assert.True(t, errors.As(err, &errorInfo))
-		assert.Equal(t, http.StatusGatewayTimeout, errorInfo.StatusCode)
-		assert.Equal(t, "endpoint timeout", errorInfo.Message)
+		assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
+
+		var m errorMessage
+		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+		assert.Equal(t, "endpoint timeout", m.Error)
 	})
 
-	t.Run("endpoint not found", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(&netmap.Node{
-			ID:     "local",
-			Status: netmap.NodeStatusActive,
-		}, log.NewNopLogger())
-		proxy := NewProxy(networkMap, nil, log.NewNopLogger())
+	t.Run("forward request remote endpoint unreachable", func(t *testing.T) {
+		networkMap := netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger())
+		networkMap.AddNode(&netmap.Node{
+			ID:        "node-1",
+			ProxyAddr: "1.2.3.4:1234",
+			Endpoints: map[string]int{
+				"my-endpoint": 5,
+			},
+		})
 
-		_, err := proxy.Request(context.TODO(), &http.Request{
+		handler := func(addr string, r *http.Request) (*http.Response, error) {
+			return nil, fmt.Errorf("unknown error")
+		}
+		forwarder := &fakeForwarder{
+			handler: handler,
+		}
+		proxy := NewProxy(networkMap, WithForwarder(forwarder))
+
+		header := make(http.Header)
+		resp := proxy.Request(context.TODO(), &http.Request{
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host: "my-endpoint.pico.com:8000",
+			Host:   "my-endpoint.pico.com",
+			Header: header,
 		})
+		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 
-		var errorInfo *status.ErrorInfo
-		assert.Error(t, err)
-		assert.True(t, errors.As(err, &errorInfo))
-		assert.Equal(t, http.StatusServiceUnavailable, errorInfo.StatusCode)
-		assert.Equal(t, "endpoint not found", errorInfo.Message)
+		var m errorMessage
+		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+		assert.Equal(t, "endpoint unreachable", m.Error)
 	})
 
-	t.Run("missing endpoint id", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(&netmap.Node{
-			ID:     "local",
-			Status: netmap.NodeStatusActive,
-		}, log.NewNopLogger())
-		proxy := NewProxy(networkMap, nil, log.NewNopLogger())
+	t.Run("forward request remote endpoint not found", func(t *testing.T) {
+		proxy := NewProxy(
+			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+		)
 
-		_, err := proxy.Request(context.TODO(), &http.Request{
+		header := make(http.Header)
+		resp := proxy.Request(context.TODO(), &http.Request{
+			URL: &url.URL{
+				Path: "/foo",
+			},
+			Host:   "my-endpoint.pico.com",
+			Header: header,
+		})
+
+		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+
+		var m errorMessage
+		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+		assert.Equal(t, "endpoint not found", m.Error)
+	})
+
+	t.Run("forward local ok", func(t *testing.T) {
+		handler := func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+			}, nil
+		}
+		conn := &fakeConn{
+			endpointID: "my-endpoint",
+			addr:       "1.1.1.1",
+			handler:    handler,
+		}
+
+		proxy := NewProxy(
+			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+		)
+
+		proxy.AddConn(conn)
+
+		resp := proxy.Request(context.TODO(), &http.Request{
+			URL: &url.URL{
+				Path: "/foo",
+			},
+			Host: "my-endpoint.pico.com",
+		})
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("forward request local endpoint timeout", func(t *testing.T) {
+		handler := func(r *http.Request) (*http.Response, error) {
+			return nil, fmt.Errorf("error: %w", context.DeadlineExceeded)
+		}
+		conn := &fakeConn{
+			endpointID: "my-endpoint",
+			addr:       "1.1.1.1",
+			handler:    handler,
+		}
+
+		proxy := NewProxy(
+			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+		)
+
+		proxy.AddConn(conn)
+
+		resp := proxy.Request(context.TODO(), &http.Request{
+			URL: &url.URL{
+				Path: "/foo",
+			},
+			Host: "my-endpoint.pico.com",
+		})
+		assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
+
+		var m errorMessage
+		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+		assert.Equal(t, "endpoint timeout", m.Error)
+	})
+
+	t.Run("forward request local endpoint unreachable", func(t *testing.T) {
+		handler := func(r *http.Request) (*http.Response, error) {
+			return nil, fmt.Errorf("unknown error")
+		}
+		conn := &fakeConn{
+			endpointID: "my-endpoint",
+			addr:       "1.1.1.1",
+			handler:    handler,
+		}
+
+		proxy := NewProxy(
+			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+		)
+
+		proxy.AddConn(conn)
+
+		resp := proxy.Request(context.TODO(), &http.Request{
+			URL: &url.URL{
+				Path: "/foo",
+			},
+			Host: "my-endpoint.pico.com",
+		})
+		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+
+		var m errorMessage
+		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+		assert.Equal(t, "endpoint unreachable", m.Error)
+	})
+
+	t.Run("forward request local endpoint not found", func(t *testing.T) {
+		proxy := NewProxy(
+			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+		)
+
+		header := make(http.Header)
+		// Set forward header to avoid being forwarded to a remote node.
+		header.Set("x-pico-forward", "true")
+		req := &http.Request{
+			URL: &url.URL{
+				Path: "/foo",
+			},
+			Host:   "my-endpoint.pico.com",
+			Header: header,
+		}
+
+		resp := proxy.Request(context.TODO(), req)
+		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+		var m errorMessage
+		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+		assert.Equal(t, "endpoint not found", m.Error)
+
+		conn := &fakeConn{
+			endpointID: "my-endpoint",
+		}
+		proxy.AddConn(conn)
+		proxy.RemoveConn(conn)
+
+		resp = proxy.Request(context.TODO(), req)
+		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+		assert.Equal(t, "endpoint not found", m.Error)
+	})
+
+	t.Run("add conn", func(t *testing.T) {
+		networkMap := netmap.NewNetworkMap(
+			&netmap.Node{
+				ID: "local",
+			}, log.NewNopLogger(),
+		)
+		proxy := NewProxy(networkMap)
+
+		conn := &fakeConn{
+			endpointID: "my-endpoint",
+		}
+		proxy.AddConn(conn)
+		// Verify the netmap was updated.
+		assert.Equal(t, map[string]int{
+			"my-endpoint": 1,
+		}, networkMap.LocalNode().Endpoints)
+
+		proxy.RemoveConn(conn)
+		assert.Equal(t, 0, len(networkMap.LocalNode().Endpoints))
+	})
+
+	t.Run("missing endpoint", func(t *testing.T) {
+		proxy := NewProxy(
+			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+		)
+
+		resp := proxy.Request(context.TODO(), &http.Request{
 			URL: &url.URL{
 				Path: "/foo",
 			},
 			Host: "localhost:9000",
 		})
 
-		var errorInfo *status.ErrorInfo
-		assert.Error(t, err)
-		assert.True(t, errors.As(err, &errorInfo))
-		assert.Equal(t, http.StatusServiceUnavailable, errorInfo.StatusCode)
-		assert.Equal(t, "missing endpoint id", errorInfo.Message)
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
+
+		var m errorMessage
+		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
+		assert.Equal(t, "missing pico endpoint id", m.Error)
 	})
 }
 
-func TestProxy_ParseEndpointID(t *testing.T) {
+func TestEndpointIDFromRequest(t *testing.T) {
 	t.Run("host header", func(t *testing.T) {
-		endpointID := parseEndpointID(&http.Request{
+		endpointID := endpointIDFromRequest(&http.Request{
 			Host: "my-endpoint.pico.com:9000",
 		})
 		assert.Equal(t, "my-endpoint", endpointID)
@@ -217,15 +340,17 @@ func TestProxy_ParseEndpointID(t *testing.T) {
 	t.Run("x-pico-endpoint header", func(t *testing.T) {
 		header := make(http.Header)
 		header.Add("x-pico-endpoint", "my-endpoint")
-		endpointID := parseEndpointID(&http.Request{
-			Host:   "localhost:9000",
+		endpointID := endpointIDFromRequest(&http.Request{
+			// Even though the host header is provided, 'x-pico-endpoint'
+			// takes precedence.
+			Host:   "another-endpoint.pico.com:9000",
 			Header: header,
 		})
 		assert.Equal(t, "my-endpoint", endpointID)
 	})
 
 	t.Run("no endpoint", func(t *testing.T) {
-		endpointID := parseEndpointID(&http.Request{
+		endpointID := endpointIDFromRequest(&http.Request{
 			Host: "localhost:9000",
 		})
 		assert.Equal(t, "", endpointID)

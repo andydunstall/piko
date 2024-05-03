@@ -3,14 +3,14 @@ package agent
 import (
 	"bufio"
 	"bytes"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 
-	"github.com/andydunstall/pico/api"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/proto"
 )
 
 type rpcServer struct {
@@ -45,50 +45,18 @@ func (s *rpcServer) Heartbeat(b []byte) []byte {
 func (s *rpcServer) ProxyHTTP(b []byte) []byte {
 	s.logger.Debug("proxy http rpc")
 
-	var protoReq api.ProxyHttpReq
-	if err := proto.Unmarshal(b, &protoReq); err != nil {
-		s.logger.Error("proxy http rpc; failed to decode proto request", zap.Error(err))
+	var httpResp *http.Response
 
-		return s.proxyHTTPError(
-			api.ProxyHttpStatus_INTERNAL_ERROR,
-			"decode proto request",
-		)
-	}
-
-	httpReq, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(protoReq.HttpReq)))
+	httpReq, err := http.ReadRequest(bufio.NewReader(bytes.NewReader(b)))
 	if err != nil {
 		s.logger.Error("proxy http rpc; failed to decode http request", zap.Error(err))
 
-		return s.proxyHTTPError(
-			api.ProxyHttpStatus_INTERNAL_ERROR,
-			"decode http request",
+		httpResp = errorResponse(
+			http.StatusInternalServerError,
+			"internal error",
 		)
-	}
-
-	httpResp, err := s.endpoint.ProxyHTTP(httpReq)
-	if err != nil {
-		if errors.Is(err, errUpstreamTimeout) {
-			s.logger.Error("proxy http rpc; upstream timeout", zap.Error(err))
-
-			return s.proxyHTTPError(
-				api.ProxyHttpStatus_UPSTREAM_TIMEOUT,
-				"upstream timeout",
-			)
-		} else if errors.Is(err, errUpstreamUnreachable) {
-			s.logger.Error("proxy http rpc; upstream unreachable", zap.Error(err))
-
-			return s.proxyHTTPError(
-				api.ProxyHttpStatus_UPSTREAM_UNREACHABLE,
-				"upstream unreachable",
-			)
-		} else {
-			s.logger.Error("proxy http rpc; internal error", zap.Error(err))
-
-			return s.proxyHTTPError(
-				api.ProxyHttpStatus_INTERNAL_ERROR,
-				err.Error(),
-			)
-		}
+	} else {
+		httpResp = s.proxyHTTP(httpReq)
 	}
 
 	defer httpResp.Body.Close()
@@ -96,40 +64,58 @@ func (s *rpcServer) ProxyHTTP(b []byte) []byte {
 	var buffer bytes.Buffer
 	if err := httpResp.Write(&buffer); err != nil {
 		s.logger.Error("proxy http rpc; failed to encode http response", zap.Error(err))
-
-		return s.proxyHTTPError(
-			api.ProxyHttpStatus_INTERNAL_ERROR,
-			"failed to encode http response",
-		)
+		return nil
 	}
 
-	protoResp := &api.ProxyHttpResp{
-		HttpResp: buffer.Bytes(),
-	}
-	payload, err := proto.Marshal(protoResp)
-	if err != nil {
-		// This should never happen, so the only remaining action is to
-		// panic.
-		panic("failed to encode proto response: " + err.Error())
-	}
+	// TODO(andydunstall): Add header for internal errors.
 
 	s.logger.Debug("proxy http rpc; ok", zap.String("path", httpReq.URL.Path))
 
-	return payload
+	return buffer.Bytes()
 }
 
-func (s *rpcServer) proxyHTTPError(status api.ProxyHttpStatus, message string) []byte {
-	resp := &api.ProxyHttpResp{
-		Error: &api.ProxyHttpError{
-			Status:  status,
-			Message: message,
-		},
-	}
-	payload, err := proto.Marshal(resp)
+func (s *rpcServer) proxyHTTP(r *http.Request) *http.Response {
+	s.logger.Debug("proxy http rpc")
+
+	httpResp, err := s.endpoint.ProxyHTTP(r)
 	if err != nil {
-		// This should never happen, so the only remaining action is to
-		// panic.
-		panic("failed to encode proto response: " + err.Error())
+		if errors.Is(err, errUpstreamTimeout) {
+			s.logger.Warn("proxy http rpc; upstream timeout", zap.Error(err))
+
+			return errorResponse(
+				http.StatusGatewayTimeout,
+				"upstream timeout",
+			)
+		} else if errors.Is(err, errUpstreamUnreachable) {
+			s.logger.Warn("proxy http rpc; upstream unreachable", zap.Error(err))
+
+			return errorResponse(
+				http.StatusServiceUnavailable,
+				"upstream unreachable",
+			)
+		} else {
+			s.logger.Error("proxy http rpc; internal error", zap.Error(err))
+
+			return errorResponse(
+				http.StatusInternalServerError,
+				"internal error",
+			)
+		}
 	}
-	return payload
+	return httpResp
+}
+
+type errorMessage struct {
+	Error string `json:"error"`
+}
+
+func errorResponse(statusCode int, message string) *http.Response {
+	m := &errorMessage{
+		Error: message,
+	}
+	b, _ := json.Marshal(m)
+	return &http.Response{
+		StatusCode: statusCode,
+		Body:       io.NopCloser(bytes.NewReader(b)),
+	}
 }

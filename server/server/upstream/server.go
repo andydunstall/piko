@@ -10,6 +10,7 @@ import (
 	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
+	proxy "github.com/andydunstall/pico/server/proxy"
 	"github.com/andydunstall/pico/server/server/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -18,8 +19,8 @@ import (
 )
 
 type Proxy interface {
-	AddUpstream(endpointID string, stream rpc.Stream)
-	RemoveUpstream(endpointID string, stream rpc.Stream)
+	AddConn(conn proxy.Conn)
+	RemoveConn(conn proxy.Conn)
 }
 
 // Server is the HTTP server upstream listeners to register endpoints.
@@ -119,8 +120,9 @@ func (s *Server) listenerRoute(c *gin.Context) {
 		zap.String("client-ip", c.ClientIP()),
 	)
 
-	s.proxy.AddUpstream(endpointID, stream)
-	defer s.proxy.RemoveUpstream(endpointID, stream)
+	conn := proxy.NewRPCConn(endpointID, stream)
+	s.proxy.AddConn(conn)
+	defer s.proxy.RemoveConn(conn)
 
 	if err := stream.Monitor(
 		s.shutdownCtx,

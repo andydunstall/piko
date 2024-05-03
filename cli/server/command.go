@@ -15,7 +15,7 @@ import (
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/gossip"
 	"github.com/andydunstall/pico/server/netmap"
-	"github.com/andydunstall/pico/server/proxy"
+	proxy "github.com/andydunstall/pico/server/proxy"
 	adminserver "github.com/andydunstall/pico/server/server/admin"
 	proxyserver "github.com/andydunstall/pico/server/server/proxy"
 	upstreamserver "github.com/andydunstall/pico/server/server/upstream"
@@ -191,7 +191,7 @@ func run(conf *config.Config, logger log.Logger) error {
 		)
 	}
 
-	p := proxy.NewProxy(networkMap, registry, logger)
+	p := proxy.NewProxy(networkMap, proxy.WithLogger(logger))
 	adminServer.AddStatus("/proxy", proxy.NewStatus(p))
 
 	proxyLn, err := net.Listen("tcp", conf.Proxy.BindAddr)

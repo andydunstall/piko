@@ -22,7 +22,7 @@ func (s *Status) Register(group *gin.RouterGroup) {
 }
 
 func (s *Status) listEndpointsRoute(c *gin.Context) {
-	endpoints := s.proxy.LocalEndpoints()
+	endpoints := s.proxy.ConnAddrs()
 	c.JSON(http.StatusOK, endpoints)
 }
 

@@ -105,6 +105,19 @@ func (p *localProxy) RemoveConn(conn Conn) {
 	}
 }
 
+func (p *localProxy) ConnAddrs() map[string][]string {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	c := make(map[string][]string)
+	for endpointID, endpoint := range p.endpoints {
+		for _, conn := range endpoint.conns {
+			c[endpointID] = append(c[endpointID], conn.Addr())
+		}
+	}
+	return c
+}
+
 func (p *localProxy) findConn(endpointID string) Conn {
 	p.mu.Lock()
 	defer p.mu.Unlock()

@@ -11,6 +11,7 @@ import (
 	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
+	proxy "github.com/andydunstall/pico/server/proxy"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -28,15 +29,15 @@ func newFakeProxy() *fakeProxy {
 	}
 }
 
-func (p *fakeProxy) AddUpstream(endpointID string, _ rpc.Stream) {
-	p.addUpstreamCh <- endpointID
+func (p *fakeProxy) AddConn(conn proxy.Conn) {
+	p.addUpstreamCh <- conn.EndpointID()
 }
 
-func (p *fakeProxy) RemoveUpstream(endpointID string, _ rpc.Stream) {
-	p.removeUpstreamCh <- endpointID
+func (p *fakeProxy) RemoveConn(conn proxy.Conn) {
+	p.removeUpstreamCh <- conn.EndpointID()
 }
 
-func TestServer_AddUpstream(t *testing.T) {
+func TestServer_AddConn(t *testing.T) {
 	upstreamLn, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 
