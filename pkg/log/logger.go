@@ -229,7 +229,10 @@ func (c *core) Enabled(lvl zapcore.Level) bool {
 }
 
 func (c *core) With(fields []zap.Field) zapcore.Core {
-	return c.core.With(fields)
+	inner := c.core.With(fields)
+	return &core{
+		core: inner,
+	}
 }
 
 func (c *core) Check(ent zapcore.Entry, ce *zapcore.CheckedEntry) *zapcore.CheckedEntry {
