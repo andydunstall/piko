@@ -28,6 +28,9 @@ type Server struct {
 	upstreamLn net.Listener
 	adminLn    net.Listener
 
+	gossipStreamLn net.Listener
+	gossipPacketLn net.PacketConn
+
 	conf *config.Config
 
 	logger log.Logger
@@ -49,6 +52,19 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		return nil, fmt.Errorf("upstream listen: %s: %w", conf.Upstream.BindAddr, err)
 	}
 
+	gossipStreamLn, err := net.Listen("tcp", conf.Gossip.BindAddr)
+	if err != nil {
+		return nil, fmt.Errorf("gossip listen: %s: %w", conf.Gossip.BindAddr, err)
+	}
+
+	gossipPacketLn, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   gossipStreamLn.Addr().(*net.TCPAddr).IP,
+		Port: gossipStreamLn.Addr().(*net.TCPAddr).Port,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("gossip listen: %s: %w", conf.Gossip.BindAddr, err)
+	}
+
 	if conf.Cluster.NodeID == "" {
 		nodeID := netmap.GenerateNodeID()
 		if conf.Cluster.NodeIDPrefix != "" {
@@ -62,6 +78,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	conf.Proxy.BindAddr = proxyLn.Addr().String()
 	conf.Upstream.BindAddr = upstreamLn.Addr().String()
 	conf.Admin.BindAddr = adminLn.Addr().String()
+	conf.Gossip.BindAddr = gossipStreamLn.Addr().String()
 
 	if conf.Proxy.AdvertiseAddr == "" {
 		advertiseAddr, err := advertiseAddrFromBindAddr(conf.Proxy.BindAddr)
@@ -87,13 +104,23 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		}
 		conf.Admin.AdvertiseAddr = advertiseAddr
 	}
+	if conf.Gossip.AdvertiseAddr == "" {
+		advertiseAddr, err := advertiseAddrFromBindAddr(conf.Gossip.BindAddr)
+		if err != nil {
+			logger.Error("invalid configuration", zap.Error(err))
+			os.Exit(1)
+		}
+		conf.Gossip.AdvertiseAddr = advertiseAddr
+	}
 
 	return &Server{
-		proxyLn:    proxyLn,
-		upstreamLn: upstreamLn,
-		adminLn:    adminLn,
-		conf:       conf,
-		logger:     logger,
+		proxyLn:        proxyLn,
+		upstreamLn:     upstreamLn,
+		adminLn:        adminLn,
+		gossipStreamLn: gossipStreamLn,
+		gossipPacketLn: gossipPacketLn,
+		conf:           conf,
+		logger:         logger,
 	}, nil
 }
 
@@ -116,7 +143,13 @@ func (s *Server) Run(ctx context.Context) error {
 	networkMap.Metrics().Register(registry)
 	adminServer.AddStatus("/netmap", netmap.NewStatus(networkMap))
 
-	gossiper, err := gossip.NewGossip(networkMap, s.conf.Gossip, s.logger)
+	gossiper, err := gossip.NewGossip(
+		networkMap,
+		s.gossipStreamLn,
+		s.gossipPacketLn,
+		s.conf.Gossip,
+		s.logger,
+	)
 	if err != nil {
 		return fmt.Errorf("gossip: %w", err)
 	}

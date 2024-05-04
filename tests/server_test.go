@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestServer(t *testing.T) {
+func TestServer_AdminAPI(t *testing.T) {
 	serverConf := defaultServerConfig()
 	server, err := server.NewServer(serverConf, log.NewNopLogger())
 	require.NoError(t, err)
@@ -25,9 +25,18 @@ func TestServer(t *testing.T) {
 		require.NoError(t, server.Run(ctx))
 	}()
 
-	t.Run("health status", func(t *testing.T) {
+	t.Run("health", func(t *testing.T) {
 		resp, err := http.Get(
 			"http://" + serverConf.Admin.AdvertiseAddr + "/health",
+		)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("metrics", func(t *testing.T) {
+		resp, err := http.Get(
+			"http://" + serverConf.Admin.AdvertiseAddr + "/metrics",
 		)
 		assert.NoError(t, err)
 		defer resp.Body.Close()

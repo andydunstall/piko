@@ -3,6 +3,7 @@ package gossip
 import (
 	"context"
 	"fmt"
+	"net"
 
 	"github.com/andydunstall/kite"
 	"github.com/andydunstall/pico/pkg/log"
@@ -30,6 +31,8 @@ type Gossip struct {
 
 func NewGossip(
 	networkMap *netmap.NetworkMap,
+	streamLn net.Listener,
+	packetLn net.PacketConn,
 	conf Config,
 	logger log.Logger,
 ) (*Gossip, error) {
@@ -40,6 +43,8 @@ func NewGossip(
 		kite.WithNodeID(networkMap.LocalNode().ID),
 		kite.WithBindAddr(conf.BindAddr),
 		kite.WithAdvertiseAddr(conf.AdvertiseAddr),
+		kite.WithStreamListener(streamLn),
+		kite.WithPacketListener(packetLn),
 		kite.WithWatcher(syncer),
 		kite.WithLogger(logger.WithSubsystem("gossip.kite")),
 	)

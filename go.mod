@@ -3,7 +3,7 @@ module github.com/andydunstall/pico
 go 1.21.1
 
 require (
-	github.com/andydunstall/kite v0.1.0
+	github.com/andydunstall/kite v0.2.0
 	github.com/gin-gonic/gin v1.9.1
 	github.com/goccy/go-yaml v1.11.3
 	github.com/gorilla/websocket v1.5.1
@@ -16,7 +16,7 @@ require (
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/sync v0.7.0
-	google.golang.org/protobuf v1.33.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -56,5 +56,5 @@ require (
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 )

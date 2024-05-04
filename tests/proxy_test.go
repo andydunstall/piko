@@ -95,7 +95,7 @@ func TestProxy(t *testing.T) {
 		assert.NoError(t, err)
 
 		if len(endpoints) == 0 {
-			<-time.After(time.Millisecond*10)
+			<-time.After(time.Millisecond * 10)
 			continue
 		}
 
