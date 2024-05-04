@@ -107,48 +107,12 @@ Run the Pico agent with `pico agent`.
 
 ## Getting Started
 
-This section describes how to run both the Pico server and agent locally to
-register and endpoint. In production you'd host the server remotely as a
-cluster, though this is still useful to demo Pico.
-
-This example registers an endpoint `my-endpoint` and forwards requests to
-`localhost:3000`. To see the requests being forwarded, start a simple file
-server at `localhost:3000` with `python3 -m http.server 3000`.
-
-Pico has a single binary that can be built with `make pico`, which is output to
-`build/pico` (requires Go 1.21 or later).
-
-### Setup
-
-Start the Pico server with `pico server`. This listens for proxy requests on
-port `8000` and upstream connections on `8001`.
-
-Next start the Pico agent and register the above endpoint with
-`pico agent –endpoints my-endpoint/localhost:3000`. This creates an outbound
-connection to the Pico server that registers to receive requests for the given
-endpoints.
-
-You can inspect the status of the server using the `pico status` CLI. Such as
-use `pico status proxy endpoints` to view the list of endpoints registered on
-the server.
-
-### Request
-
-As described above, when sending a request to Pico you can identify the
-endpoint ID using either the `Host` header or the `x-pico-agent`.
-
-Therefore to send a request to the upstream endpoint use:
-```
-# x-pico-endpoint
-curl http://localhost:8000 -H "x-pico-endpoint: my-endpoint"
-
-# Host
-curl --connect-to my-endpoint.example.com:8000:localhost:8000 http://my-endpoint.example.com:8000
-```
+See [Getting Started](./docs/getting-started.md).
 
 ## Docs
 
 See [docs](./docs) for details on deploying and managing Pico:
+- [Getting Started](./docs/getting-started.md)
 - [Configure](./docs/deploy/configure.md)
 - [Kubernetes](./docs/deploy/kubernetes.md)
 - [Observability](./docs/deploy/observability.md)

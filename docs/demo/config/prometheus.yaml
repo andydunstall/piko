@@ -1,0 +1,18 @@
+global:
+  scrape_interval: 5s
+  external_labels:
+    cluster: demo
+    namespace: demo
+
+scrape_configs:
+  - job_name: demo/pico
+    static_configs:
+      - targets: ["pico-1:8002"]
+        labels:
+          pod: "pico-1"
+      - targets: ["pico-2:8002"]
+        labels:
+          pod: "pico-2"
+      - targets: ["pico-3:8002"]
+        labels:
+          pod: "pico-3"
