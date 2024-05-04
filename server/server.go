@@ -296,7 +296,7 @@ func advertiseAddrFromBindAddr(bindAddr string) (string, error) {
 		return "", fmt.Errorf("invalid bind addr: %s: %w", bindAddr, err)
 	}
 
-	if host == "0.0.0.0" {
+	if host == "0.0.0.0" || host == "::" {
 		ip, err := sockaddr.GetPrivateIP()
 		if err != nil {
 			return "", fmt.Errorf("get interface addr: %w", err)
