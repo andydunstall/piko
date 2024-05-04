@@ -3,8 +3,8 @@ all: pico
 
 .PHONY: pico
 pico:
-	mkdir -p build
-	go build -o build/pico main.go
+	mkdir -p bin
+	go build -o bin/pico main.go
 
 .PHONY: unit-test
 unit-test:
@@ -31,3 +31,8 @@ lint:
 coverage:
 	go test ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out
+
+.PHONY: image
+image:
+	docker build . -f build/Dockerfile -t pico:$(shell git rev-parse HEAD)
+	docker tag pico:$(shell git rev-parse HEAD) pico:latest
