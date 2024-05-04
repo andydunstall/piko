@@ -9,7 +9,7 @@ import (
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server"
-	"github.com/andydunstall/pico/server/config"
+	serverconfig "github.com/andydunstall/pico/server/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -37,16 +37,16 @@ func TestServer(t *testing.T) {
 
 // defaultServerConfig returns the default server configuration for local
 // tests.
-func defaultServerConfig() *config.Config {
-	return &config.Config{
-		Proxy: config.ProxyConfig{
+func defaultServerConfig() *serverconfig.Config {
+	return &serverconfig.Config{
+		Proxy: serverconfig.ProxyConfig{
 			BindAddr:       "127.0.0.1:0",
 			GatewayTimeout: 1,
 		},
-		Upstream: config.UpstreamConfig{
+		Upstream: serverconfig.UpstreamConfig{
 			BindAddr: "127.0.0.1:0",
 		},
-		Admin: config.AdminConfig{
+		Admin: serverconfig.AdminConfig{
 			BindAddr: "127.0.0.1:0",
 		},
 	}
