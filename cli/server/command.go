@@ -3,25 +3,15 @@ package server
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
-	"time"
 
 	picoconfig "github.com/andydunstall/pico/pkg/config"
 	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/pico/server"
 	"github.com/andydunstall/pico/server/config"
-	"github.com/andydunstall/pico/server/gossip"
-	"github.com/andydunstall/pico/server/netmap"
-	proxy "github.com/andydunstall/pico/server/proxy"
-	adminserver "github.com/andydunstall/pico/server/server/admin"
-	proxyserver "github.com/andydunstall/pico/server/server/proxy"
-	upstreamserver "github.com/andydunstall/pico/server/server/upstream"
-	"github.com/hashicorp/go-sockaddr"
 	rungroup "github.com/oklog/run"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -105,39 +95,6 @@ default value can be given using form ${VAR:default}.`,
 			os.Exit(1)
 		}
 
-		if conf.Cluster.NodeID == "" {
-			nodeID := netmap.GenerateNodeID()
-			if conf.Cluster.NodeIDPrefix != "" {
-				nodeID = conf.Cluster.NodeIDPrefix + nodeID
-			}
-			conf.Cluster.NodeID = nodeID
-		}
-
-		if conf.Proxy.AdvertiseAddr == "" {
-			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Proxy.BindAddr)
-			if err != nil {
-				logger.Error("invalid configuration", zap.Error(err))
-				os.Exit(1)
-			}
-			conf.Proxy.AdvertiseAddr = advertiseAddr
-		}
-		if conf.Admin.AdvertiseAddr == "" {
-			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Admin.BindAddr)
-			if err != nil {
-				logger.Error("invalid configuration", zap.Error(err))
-				os.Exit(1)
-			}
-			conf.Admin.AdvertiseAddr = advertiseAddr
-		}
-		if conf.Gossip.AdvertiseAddr == "" {
-			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Gossip.BindAddr)
-			if err != nil {
-				logger.Error("invalid configuration", zap.Error(err))
-				os.Exit(1)
-			}
-			conf.Gossip.AdvertiseAddr = advertiseAddr
-		}
-
 		if err := run(&conf, logger); err != nil {
 			logger.Error("failed to run server", zap.Error(err))
 			os.Exit(1)
@@ -148,74 +105,10 @@ default value can be given using form ${VAR:default}.`,
 }
 
 func run(conf *config.Config, logger log.Logger) error {
-	logger.Info("starting pico server", zap.Any("conf", conf))
-
-	registry := prometheus.NewRegistry()
-
-	adminLn, err := net.Listen("tcp", conf.Admin.BindAddr)
+	server, err := server.NewServer(conf, logger)
 	if err != nil {
-		return fmt.Errorf("admin listen: %s: %w", conf.Admin.BindAddr, err)
+		return fmt.Errorf("server: %w", err)
 	}
-	adminServer := adminserver.NewServer(
-		adminLn,
-		registry,
-		logger,
-	)
-
-	networkMap := netmap.NewNetworkMap(&netmap.Node{
-		ID:        conf.Cluster.NodeID,
-		ProxyAddr: conf.Proxy.AdvertiseAddr,
-		AdminAddr: conf.Admin.AdvertiseAddr,
-	}, logger)
-	networkMap.Metrics().Register(registry)
-	adminServer.AddStatus("/netmap", netmap.NewStatus(networkMap))
-
-	gossiper, err := gossip.NewGossip(networkMap, conf.Gossip, logger)
-	if err != nil {
-		return fmt.Errorf("gossip: %w", err)
-	}
-	defer gossiper.Close()
-	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
-
-	// Attempt to join an existing cluster. Note if 'join' is a domain that
-	// doesn't map to any entries (except ourselves), then join will succeed
-	// since it means we're the first member.
-	nodeIDs, err := gossiper.Join(conf.Cluster.Join)
-	if err != nil {
-		return fmt.Errorf("join cluster: %w", err)
-	}
-	if len(nodeIDs) > 0 {
-		logger.Info(
-			"joined cluster",
-			zap.Strings("node-ids", nodeIDs),
-		)
-	}
-
-	p := proxy.NewProxy(networkMap, proxy.WithLogger(logger))
-	adminServer.AddStatus("/proxy", proxy.NewStatus(p))
-
-	proxyLn, err := net.Listen("tcp", conf.Proxy.BindAddr)
-	if err != nil {
-		return fmt.Errorf("proxy listen: %s: %w", conf.Proxy.BindAddr, err)
-	}
-	proxyServer := proxyserver.NewServer(
-		proxyLn,
-		p,
-		&conf.Proxy,
-		registry,
-		logger,
-	)
-
-	upstreamLn, err := net.Listen("tcp", conf.Upstream.BindAddr)
-	if err != nil {
-		return fmt.Errorf("upstream listen: %s: %w", conf.Upstream.BindAddr, err)
-	}
-	upstreamServer := upstreamserver.NewServer(
-		upstreamLn,
-		p,
-		registry,
-		logger,
-	)
 
 	var group rungroup.Group
 
@@ -230,21 +123,6 @@ func run(conf *config.Config, logger log.Logger) error {
 				"received shutdown signal",
 				zap.String("signal", sig.String()),
 			)
-
-			leaveCtx, cancel := context.WithTimeout(
-				context.Background(),
-				time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
-			)
-			defer cancel()
-
-			// Leave as soon as we receive the shutdown signal to avoid receiving
-			// forward proxy requests.
-			if err := gossiper.Leave(leaveCtx); err != nil {
-				logger.Warn("failed to gracefully leave cluster", zap.Error(err))
-			} else {
-				logger.Info("left cluster")
-			}
-
 			return nil
 		case <-signalCtx.Done():
 			return nil
@@ -253,94 +131,12 @@ func run(conf *config.Config, logger log.Logger) error {
 		signalCancel()
 	})
 
-	// Proxy server.
+	runCtx, runCancel := context.WithCancel(context.Background())
 	group.Add(func() error {
-		if err := proxyServer.Serve(); err != nil {
-			return fmt.Errorf("proxy server serve: %w", err)
-		}
-		return nil
+		return server.Run(runCtx)
 	}, func(error) {
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
-		)
-		defer cancel()
-
-		if err := proxyServer.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown proxy server", zap.Error(err))
-		}
-
-		logger.Info("proxy server shut down")
+		runCancel()
 	})
 
-	// Upstream server.
-	group.Add(func() error {
-		if err := upstreamServer.Serve(); err != nil {
-			return fmt.Errorf("upstream server serve: %w", err)
-		}
-		return nil
-	}, func(error) {
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
-		)
-		defer cancel()
-
-		if err := upstreamServer.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown upstream server", zap.Error(err))
-		}
-
-		logger.Info("upstream server shut down")
-	})
-
-	// Admin server.
-	group.Add(func() error {
-		if err := adminServer.Serve(); err != nil {
-			return fmt.Errorf("admin server serve: %w", err)
-		}
-		return nil
-	}, func(error) {
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			time.Duration(conf.Server.GracefulShutdownTimeout)*time.Second,
-		)
-		defer cancel()
-
-		if err := adminServer.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
-		}
-
-		logger.Info("admin server shut down")
-	})
-
-	if err := group.Run(); err != nil {
-		return err
-	}
-
-	logger.Info("shutdown complete")
-
-	return nil
-}
-
-func advertiseAddrFromBindAddr(bindAddr string) (string, error) {
-	if strings.HasPrefix(bindAddr, ":") {
-		bindAddr = "0.0.0.0" + bindAddr
-	}
-
-	host, port, err := net.SplitHostPort(bindAddr)
-	if err != nil {
-		return "", fmt.Errorf("invalid bind addr: %s: %w", bindAddr, err)
-	}
-
-	if host == "0.0.0.0" {
-		ip, err := sockaddr.GetPrivateIP()
-		if err != nil {
-			return "", fmt.Errorf("get interface addr: %w", err)
-		}
-		if ip == "" {
-			return "", fmt.Errorf("no private ip found")
-		}
-		return ip + ":" + port, nil
-	}
-	return bindAddr, nil
+	return group.Run()
 }

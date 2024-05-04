@@ -59,6 +59,7 @@ func (p *Proxy) Request(
 		zap.String("host", r.Host),
 		zap.String("method", r.Method),
 		zap.String("path", r.URL.Path),
+		zap.Bool("forwarded", forwarded),
 	)
 
 	endpointID := endpointIDFromRequest(r)
@@ -66,6 +67,8 @@ func (p *Proxy) Request(
 		logger.Warn("request: missing endpoint id")
 		return errorResponse(http.StatusBadRequest, "missing pico endpoint id")
 	}
+
+	logger = logger.With(zap.String("endpoint-id", endpointID))
 
 	start := time.Now()
 
