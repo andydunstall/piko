@@ -14,6 +14,10 @@ unit-test:
 integration-test:
 	go test ./... -tags integration -v
 
+.PHONY: system-test
+system-test:
+	go test ./tests -tags system -v
+
 .PHONY: fmt
 fmt:
 	go fmt ./...
