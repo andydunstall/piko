@@ -29,4 +29,4 @@ This includes Prometheus metrics at `/metrics` and a status API at `/status`
 which is used by the `pico status` CLI. It defaults to port `8002`.
 
 Finally the gossip port is used for inter-node traffic to propagate the cluster
-state which defaults to port `7000`.
+state which defaults to port `8003`.
