@@ -111,8 +111,8 @@ See [Getting Started](./docs/getting-started.md).
 
 ## Docs
 
-See [docs](./docs) for details on deploying and managing Pico:
 - [Getting Started](./docs/getting-started.md)
+- [Architecture](./docs/architecture.md)
 - [Configure](./docs/deploy/configure.md)
 - [Kubernetes](./docs/deploy/kubernetes.md)
 - [Observability](./docs/deploy/observability.md)
