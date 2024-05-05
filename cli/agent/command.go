@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"gopkg.in/yaml.v3"
 
 	"github.com/andydunstall/pico/agent"
 	"github.com/andydunstall/pico/agent/config"
@@ -108,6 +109,9 @@ default value can be given using form ${VAR:default}.`,
 }
 
 func run(conf *config.Config, logger log.Logger) error {
+	b, _ := yaml.Marshal(conf)
+	fmt.Println(string(b))
+
 	logger.Info("starting pico agent", zap.Any("conf", conf))
 
 	registry := prometheus.NewRegistry()

@@ -14,6 +14,7 @@ import (
 	rungroup "github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
 func NewCommand() *cobra.Command {
@@ -105,6 +106,9 @@ default value can be given using form ${VAR:default}.`,
 }
 
 func run(conf *config.Config, logger log.Logger) error {
+	b, _ := yaml.Marshal(conf)
+	fmt.Println(string(b))
+
 	server, err := server.NewServer(conf, logger)
 	if err != nil {
 		return fmt.Errorf("server: %w", err)

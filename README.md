@@ -113,9 +113,10 @@ See [Getting Started](./docs/getting-started.md).
 
 - [Getting Started](./docs/getting-started.md)
 - [Architecture](./docs/architecture.md)
-- [Configure](./docs/deploy/configure.md)
-- [Kubernetes](./docs/deploy/kubernetes.md)
-- [Observability](./docs/deploy/observability.md)
+- [Configure](./docs/configure.md)
+- Manage
+  - [Kubernetes](./docs/deploy/kubernetes.md)
+  - [Observability](./docs/deploy/observability.md)
 
 ## Limitations
 
