@@ -72,7 +72,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
-		conn, err := conn.DialWebsocket(context.TODO(), url)
+		conn, err := conn.DialWebsocket(context.TODO(), url, "")
 		require.NoError(t, err)
 
 		// Add client stream and ensure upstream added to proxy.
@@ -116,7 +116,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
-		conn, err := conn.DialWebsocketWithToken(context.TODO(), url, "123")
+		conn, err := conn.DialWebsocket(context.TODO(), url, "123")
 		require.NoError(t, err)
 
 		// Add client stream and ensure upstream added to proxy.
@@ -161,7 +161,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
-		conn, err := conn.DialWebsocketWithToken(context.TODO(), url, "123")
+		conn, err := conn.DialWebsocket(context.TODO(), url, "123")
 		require.NoError(t, err)
 
 		// Add client stream and ensure upstream added to proxy.
@@ -204,7 +204,7 @@ func TestServer_AddConn(t *testing.T) {
 			"ws://%s/pico/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
-		_, err = conn.DialWebsocketWithToken(context.TODO(), url, "123")
+		_, err = conn.DialWebsocket(context.TODO(), url, "123")
 		require.Error(t, err)
 	})
 
@@ -235,7 +235,7 @@ func TestServer_AddConn(t *testing.T) {
 			"ws://%s/pico/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
-		_, err = conn.DialWebsocketWithToken(context.TODO(), url, "123")
+		_, err = conn.DialWebsocket(context.TODO(), url, "123")
 		require.Error(t, err)
 	})
 
