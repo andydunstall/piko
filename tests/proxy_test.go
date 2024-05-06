@@ -117,7 +117,7 @@ func TestProxy(t *testing.T) {
 func defaultAgentConfig(serverAddr string) *agentconfig.Config {
 	return &agentconfig.Config{
 		Server: agentconfig.ServerConfig{
-			URL:                      "http://" + serverAddr,
+			URL:               "http://" + serverAddr,
 			HeartbeatInterval: 1,
 			HeartbeatTimeout:  1,
 		},

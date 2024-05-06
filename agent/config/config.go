@@ -32,6 +32,10 @@ func (c *ServerConfig) Validate() error {
 	return nil
 }
 
+type AuthConfig struct {
+	APIKey string `json:"api_key" yaml:"api_key"`
+}
+
 // ForwarderConfig contains the configuration for how to forward requests
 // from Pico.
 type ForwarderConfig struct {
@@ -57,6 +61,7 @@ type Config struct {
 	// as 'd3934d4f/localhost:3000'.
 	Endpoints []string        `json:"endpoints" yaml:"endpoints"`
 	Server    ServerConfig    `json:"server" yaml:"server"`
+	Auth      AuthConfig      `json:"auth" yaml:"auth"`
 	Forwarder ForwarderConfig `json:"forwarder" yaml:"forwarder"`
 	Admin     AdminConfig     `json:"admin" yaml:"admin"`
 	Log       log.Config      `json:"log" yaml:"log"`
@@ -139,6 +144,14 @@ Heartbeat timeout in seconds.,
 To verify the connection to the server is ok, the listener sends a
 heartbeat to the upstream at the '--server.heartbeat-interval'
 interval, with a timeout of '--server.heartbeat-timeout'.`,
+	)
+
+	fs.StringVar(
+		&c.Auth.APIKey,
+		"auth.api-key",
+		"",
+		`
+An API key to authenticate the connection to Pico.`,
 	)
 
 	fs.IntVar(

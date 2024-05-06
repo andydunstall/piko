@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/pico/server/auth"
 	"github.com/andydunstall/pico/server/gossip"
 	"github.com/spf13/pflag"
 )
@@ -98,6 +99,7 @@ type Config struct {
 	Admin    AdminConfig    `json:"admin" yaml:"admin"`
 	Gossip   gossip.Config  `json:"gossip" yaml:"gossip"`
 	Cluster  ClusterConfig  `json:"cluster" yaml:"cluster"`
+	Auth     auth.Config    `json:"auth" yaml:"auth"`
 	Server   ServerConfig   `json:"server" yaml:"server"`
 	Log      log.Config     `json:"log" yaml:"log"`
 }
@@ -272,6 +274,8 @@ port is given, the gossip port of this node is used.
 Note each node propagates membership information to the other known nodes,
 so the initial set of configured members only needs to be a subset of nodes.`,
 	)
+
+	c.Auth.RegisterFlags(fs)
 
 	c.Gossip.RegisterFlags(fs)
 
