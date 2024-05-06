@@ -94,7 +94,7 @@ func (s *Server) registerRoutes() {
 	s.router.NoRoute(s.notFoundRoute)
 }
 
-// proxyRoute handles proxied requests from downstream clients.
+// proxyRoute handles proxied requests from proxy clients.
 func (s *Server) proxyRoute(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),

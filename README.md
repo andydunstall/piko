@@ -10,8 +10,8 @@ Unlike many open-source tunnelling solutions, Pico is designed to serve
 production traffic. Such as you may use Pico to expose services in a customer
 network, a bring your own cloud (BYOC) service or to connect to IoT devices.
 
-Upstream endpoints register with Pico via an outbound-only connection. Clients
-then send HTTP(S) requests to Pico which will proxy the requests to a
+Upstream endpoints register with Pico via an outbound-only connection. Proxy
+clients then send HTTP(S) requests to Pico which will proxy the requests to a
 registered endpoint.
 
 Requests identify the target endpoint ID using either the `Host` header or an
@@ -60,7 +60,7 @@ ID, Pico load balances requests among those endpoints.
 ## Components
 
 ### Server
-The Pico server is responsible for proxying requests from downstream clients to
+The Pico server is responsible for proxying requests from proxy clients to
 registered upstream endpoints.
 
 Upstream endpoints register with Pico via an outbound-only connection. Clients
@@ -74,11 +74,11 @@ level domain is used as the endpoint ID. Such as if you send a request to
 takes precedence over the `Host`.
 
 Pico supports running as a cluster of server nodes. Upstream listeners and
-downstream clients may connect to any node in the cluster and Pico manages
+proxy clients may connect to any node in the cluster and Pico manages
 routing requests to the correct listener.
 
 The server exposes 4 ports:
-* Proxy port: Listens for HTTP(S) requests from downstream clients and forwards
+* Proxy port: Listens for HTTP(S) requests from proxy clients and forwards
 the requests to upstream listeners (defaults to `8000`)
 * Upstream port: Listens for connections from upstream listeners (defaults to
 `8001`)
@@ -88,7 +88,7 @@ the requests to upstream listeners (defaults to `8000`)
 (defaults to `8003`)
 
 The server has separate proxy and upstream ports as upstream listeners and
-downstream clients will be in separate networks (otherwise there isn’t any need
+proxy clients will be in separate networks (otherwise there isn’t any need
 for Pico). Such as you may expose the upstream port to the Internet for
 external networks to register endpoints, though only allow requests to the
 proxy port from nodes in the same network.

@@ -23,11 +23,16 @@ support for SDKs that register endpoints directly in the future.
 
 ## Server
 
-The Pico server is responsible for accepting incoming proxy requests, then routing the requests to an appropriate endpoint connection.
+The Pico server is responsible for accepting incoming proxy requests, then
+routing the requests to an appropriate endpoint connection.
 
-Incoming requests identify the target endpoint ID using either the ‘Host’ header or ‘x-pico-endpoint’ header.
+Incoming requests identify the target endpoint ID using either the ‘Host’
+header or ‘x-pico-endpoint’ header.
 
-Pico is designed to be deployed as a cluster of server nodes, where both upstream endpoint connections and downstream client requests may be routed to a random node in the cluster via a load balancer. Therefore Pico must manage forwarding a request to node A to an endpoint connected to node B.
+Pico is designed to be deployed as a cluster of server nodes, where both
+upstream endpoint connections and proxy client requests may be routed to a
+random node in the cluster via a load balancer. Therefore Pico must manage
+forwarding a request to node A to an endpoint connected to node B.
 
 <p align="center">
   <img src="../assets/images/routing.png" alt="routing" width="40%"/>
