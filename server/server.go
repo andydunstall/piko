@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/pico/server/auth"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/gossip"
 	"github.com/andydunstall/pico/server/netmap"
@@ -16,6 +17,7 @@ import (
 	adminserver "github.com/andydunstall/pico/server/server/admin"
 	proxyserver "github.com/andydunstall/pico/server/server/proxy"
 	upstreamserver "github.com/andydunstall/pico/server/server/upstream"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-sockaddr"
 	rungroup "github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -125,6 +127,30 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 }
 
 func (s *Server) Run(ctx context.Context) error {
+	var verifier auth.Verifier
+	if s.conf.Auth.AuthEnabled() {
+		var verifierConf auth.JWTVerifierConfig
+		if s.conf.Auth.TokenRSAPublicKey != "" {
+			rsaPublicKey, err := jwt.ParseRSAPublicKeyFromPEM(
+				[]byte(s.conf.Auth.TokenRSAPublicKey),
+			)
+			if err != nil {
+				return fmt.Errorf("parse rsa public key: %w", err)
+			}
+			verifierConf.RSAPublicKey = rsaPublicKey
+		}
+		if s.conf.Auth.TokenECDSAPublicKey != "" {
+			ecdsaPublicKey, err := jwt.ParseECPublicKeyFromPEM(
+				[]byte(s.conf.Auth.TokenECDSAPublicKey),
+			)
+			if err != nil {
+				return fmt.Errorf("parse ecdsa public key: %w", err)
+			}
+			verifierConf.ECDSAPublicKey = ecdsaPublicKey
+		}
+		verifier = auth.NewJWTVerifier(verifierConf)
+	}
+
 	s.logger.Info("starting pico server", zap.Any("conf", s.conf))
 
 	registry := prometheus.NewRegistry()
@@ -184,8 +210,7 @@ func (s *Server) Run(ctx context.Context) error {
 	upstreamServer := upstreamserver.NewServer(
 		s.upstreamLn,
 		p,
-		// TODO(andydunstall)
-		nil,
+		verifier,
 		registry,
 		s.logger,
 	)

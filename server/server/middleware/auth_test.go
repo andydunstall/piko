@@ -160,3 +160,8 @@ func TestAuthMiddleware(t *testing.T) {
 		assert.Equal(t, "missing authorization", errMessage.Error)
 	})
 }
+
+func init() {
+	// Disable Gin debug logs.
+	gin.SetMode(gin.ReleaseMode)
+}

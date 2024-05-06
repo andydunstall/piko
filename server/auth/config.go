@@ -28,6 +28,10 @@ type Config struct {
 	TokenIssuer string
 }
 
+func (c *Config) AuthEnabled() bool {
+	return c.TokenHMACSecretKey != "" || c.TokenRSAPublicKey != "" || c.TokenECDSAPublicKey != ""
+}
+
 func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.TokenHMACSecretKey,
