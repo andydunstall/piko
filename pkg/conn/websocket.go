@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/gorilla/websocket"
 )
@@ -21,6 +22,18 @@ func NewWebsocketConn(wsConn *websocket.Conn) *WebsocketConn {
 func DialWebsocket(ctx context.Context, url string) (*WebsocketConn, error) {
 	wsConn, _, err := websocket.DefaultDialer.DialContext(
 		ctx, url, nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return NewWebsocketConn(wsConn), nil
+}
+
+func DialWebsocketWithToken(ctx context.Context, url string, token string) (*WebsocketConn, error) {
+	header := make(http.Header)
+	header.Set("Authorization", "Bearer "+token)
+	wsConn, _, err := websocket.DefaultDialer.DialContext(
+		ctx, url, header,
 	)
 	if err != nil {
 		return nil, err

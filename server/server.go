@@ -184,6 +184,8 @@ func (s *Server) Run(ctx context.Context) error {
 	upstreamServer := upstreamserver.NewServer(
 		s.upstreamLn,
 		p,
+		// TODO(andydunstall)
+		nil,
 		registry,
 		s.logger,
 	)

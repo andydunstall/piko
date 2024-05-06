@@ -29,7 +29,7 @@ lint:
 
 .PHONY: coverage
 coverage:
-	go test ./... -coverprofile=coverage.out
+	go test ./... -coverprofile=coverage.out -tags integration
 	go tool cover -html=coverage.out
 
 .PHONY: image
