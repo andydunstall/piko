@@ -27,7 +27,6 @@ endpoint ID is the equivalent of a domain name in Pico.
 - [Components](#components)
 - [Getting Started](#getting-started)
 - [Docs](#docs)
-- [Limitations](#limitations)
 
 ## Design Goals
 
@@ -117,9 +116,3 @@ See [Getting Started](./docs/getting-started.md).
 - Manage
   - [Kubernetes](./docs/deploy/kubernetes.md)
   - [Observability](./docs/deploy/observability.md)
-
-## Limitations
-
-Pico is currently only a proof of concept so is not yet suitable for
-production. It likely contains bugs and is missing important features like
-authentication.
