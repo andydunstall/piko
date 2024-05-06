@@ -44,7 +44,7 @@ func newEndpoint(
 		forwarder: newForwarder(
 			endpointID,
 			forwardAddr,
-			time.Duration(conf.Forwarder.TimeoutSeconds)*time.Second,
+			time.Duration(conf.Forwarder.Timeout)*time.Second,
 			metrics,
 			logger,
 		),
@@ -74,8 +74,8 @@ func (e *endpoint) Run(ctx context.Context) error {
 
 		if err := stream.Monitor(
 			ctx,
-			time.Duration(e.conf.Server.HeartbeatIntervalSeconds)*time.Second,
-			time.Duration(e.conf.Server.HeartbeatTimeoutSeconds)*time.Second,
+			time.Duration(e.conf.Server.HeartbeatInterval)*time.Second,
+			time.Duration(e.conf.Server.HeartbeatTimeout)*time.Second,
 		); err != nil {
 			if ctx.Err() != nil {
 				// Shutdown.

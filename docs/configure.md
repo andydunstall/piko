@@ -43,6 +43,7 @@ proxy:
 
     # The timeout when sending proxied requests to upstream listeners for forwarding
     # to other nodes in the cluster.
+    #
     # If the upstream does not respond within the given timeout a
     # '504 Gateway Timeout' is returned to the client.
     gateway_timeout: 15
@@ -51,7 +52,7 @@ upstream:
     # The host/port to listen for connections from upstream listeners.
     # 
     # If the host is unspecified it defaults to all listeners, such as
-    # '--proxy.bind-addr :8001' will listen on '0.0.0.0:8001'.
+    # '--upstream.bind-addr :8001' will listen on '0.0.0.0:8001'.
     bind_addr: :8001
 
     # Upstream listen address to advertise to other nodes in the cluster.
@@ -190,15 +191,15 @@ server:
     # Heartbeat interval in seconds.
     # 
     # To verify the connection to the server is ok, the listener sends a
-    # heartbeat to the upstream at the '--server.heartbeat-interval-seconds'
-    # interval, with a timeout of '--server.heartbeat-timeout-seconds'.`,
-    heartbeat_interval_seconds: 10
+    # heartbeat to the upstream at the '--server.heartbeat-interval'
+    # interval, with a timeout of '--server.heartbeat-timeout'.`,
+    heartbeat_interval: 10
 
     # Heartbeat timeout in seconds.,
     # 
     # To verify the connection to the server is ok, the listener sends a
-    # heartbeat to the upstream at the '--server.heartbeat-interval-seconds'
-    heartbeat_timeout_seconds: 10
+    # heartbeat to the upstream at the '--server.heartbeat-interval'
+    heartbeat_timeout: 10
 
 forwarder:
     # Forwarder timeout in seconds.
@@ -208,7 +209,7 @@ forwarder:
     # 
     # If the upstream does not respond within the given timeout a
     # '504 Gateway Timeout' is returned to the client.
-    timeout_seconds: 10
+    timeout: 10
 
 admin:
     # The host/port to listen for incoming admin connections.

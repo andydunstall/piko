@@ -11,9 +11,9 @@ import (
 
 type ServerConfig struct {
 	// URL is the server URL.
-	URL                      string `json:"url" yaml:"url"`
-	HeartbeatIntervalSeconds int    `json:"heartbeat_interval_seconds" yaml:"heartbeat_interval_seconds"`
-	HeartbeatTimeoutSeconds  int    `json:"heartbeat_timeout_seconds" yaml:"heartbeat_timeout_seconds"`
+	URL               string `json:"url" yaml:"url"`
+	HeartbeatInterval int    `json:"heartbeat_interval" yaml:"heartbeat_interval"`
+	HeartbeatTimeout  int    `json:"heartbeat_timeout" yaml:"heartbeat_timeout"`
 }
 
 func (c *ServerConfig) Validate() error {
@@ -23,10 +23,10 @@ func (c *ServerConfig) Validate() error {
 	if _, err := url.Parse(c.URL); err != nil {
 		return fmt.Errorf("invalid url: %w", err)
 	}
-	if c.HeartbeatIntervalSeconds == 0 {
+	if c.HeartbeatInterval == 0 {
 		return fmt.Errorf("missing heartbeat interval")
 	}
-	if c.HeartbeatTimeoutSeconds == 0 {
+	if c.HeartbeatTimeout == 0 {
 		return fmt.Errorf("missing heartbeat timeout")
 	}
 	return nil
@@ -35,7 +35,7 @@ func (c *ServerConfig) Validate() error {
 // ForwarderConfig contains the configuration for how to forward requests
 // from Pico.
 type ForwarderConfig struct {
-	TimeoutSeconds int `json:"timeout_seconds" yaml:"timeout_seconds"`
+	Timeout int `json:"timeout" yaml:"timeout"`
 }
 
 type AdminConfig struct {
@@ -119,30 +119,30 @@ Note Pico connects to the server with WebSockets, so will replace http/https
 with ws/wss (you can configure either).`,
 	)
 	fs.IntVar(
-		&c.Server.HeartbeatIntervalSeconds,
-		"server.heartbeat-interval-seconds",
+		&c.Server.HeartbeatInterval,
+		"server.heartbeat-interval",
 		10,
 		`
 Heartbeat interval in seconds.
 
 To verify the connection to the server is ok, the listener sends a
-heartbeat to the upstream at the '--server.heartbeat-interval-seconds'
-interval, with a timeout of '--server.heartbeat-timeout-seconds'.`,
+heartbeat to the upstream at the '--server.heartbeat-interval'
+interval, with a timeout of '--server.heartbeat-timeout'.`,
 	)
 	fs.IntVar(
-		&c.Server.HeartbeatTimeoutSeconds,
-		"server.heartbeat-timeout-seconds",
+		&c.Server.HeartbeatTimeout,
+		"server.heartbeat-timeout",
 		10,
 		`
 Heartbeat timeout in seconds.,
 
 To verify the connection to the server is ok, the listener sends a
-heartbeat to the upstream at the '--server.heartbeat-interval-seconds'
-interval, with a timeout of '--server.heartbeat-timeout-seconds'.`,
+heartbeat to the upstream at the '--server.heartbeat-interval'
+interval, with a timeout of '--server.heartbeat-timeout'.`,
 	)
 
 	fs.IntVar(
-		&c.Forwarder.TimeoutSeconds,
+		&c.Forwarder.Timeout,
 		"forwarder.timeout",
 		10,
 		`

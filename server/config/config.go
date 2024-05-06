@@ -72,6 +72,13 @@ type ClusterConfig struct {
 	Join []string `json:"join" yaml:"join"`
 }
 
+func (c *ClusterConfig) Validate() error {
+	if c.NodeID != "" && c.NodeIDPrefix != "" {
+		return fmt.Errorf("cannot specify both node ID and node ID prefix")
+	}
+	return nil
+}
+
 type ServerConfig struct {
 	// GracefulShutdownTimeout is the timeout to allow for graceful shutdown
 	// of the server in seconds.
@@ -107,6 +114,9 @@ func (c *Config) Validate() error {
 	}
 	if err := c.Gossip.Validate(); err != nil {
 		return fmt.Errorf("gossip: %w", err)
+	}
+	if err := c.Cluster.Validate(); err != nil {
+		return fmt.Errorf("cluster: %w", err)
 	}
 	if err := c.Server.Validate(); err != nil {
 		return fmt.Errorf("server: %w", err)
@@ -151,6 +161,7 @@ advertise address of '10.26.104.14:8000'.`,
 		`
 The timeout when sending proxied requests to upstream listeners for forwarding
 to other nodes in the cluster.
+
 If the upstream does not respond within the given timeout a
 '504 Gateway Timeout' is returned to the client.`,
 	)
@@ -163,7 +174,7 @@ If the upstream does not respond within the given timeout a
 The host/port to listen for connections from upstream listeners.
 
 If the host is unspecified it defaults to all listeners, such as
-'--proxy.bind-addr :8001' will listen on '0.0.0.0:8001'`,
+'--upstream.bind-addr :8001' will listen on '0.0.0.0:8001'`,
 	)
 	fs.StringVar(
 		&c.Upstream.AdvertiseAddr,

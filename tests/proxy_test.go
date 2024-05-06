@@ -118,11 +118,11 @@ func defaultAgentConfig(serverAddr string) *agentconfig.Config {
 	return &agentconfig.Config{
 		Server: agentconfig.ServerConfig{
 			URL:                      "http://" + serverAddr,
-			HeartbeatIntervalSeconds: 1,
-			HeartbeatTimeoutSeconds:  1,
+			HeartbeatInterval: 1,
+			HeartbeatTimeout:  1,
 		},
 		Forwarder: agentconfig.ForwarderConfig{
-			TimeoutSeconds: 1,
+			Timeout: 1,
 		},
 		Admin: agentconfig.AdminConfig{
 			BindAddr: "127.0.0.1:0",
