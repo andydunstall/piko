@@ -133,6 +133,28 @@ cluster:
     # so the initial set of configured members only needs to be a subset of nodes.
     join: []
 
+auth:
+    # Secret key to authenticate HMAC endpoint connection JWTs.
+    token_hmac_secret_key: ""
+
+    # Public key to authenticate RSA endpoint connection JWTs.
+    token_rsa_public_key: ""
+
+    # Public key to authenticate ECDSA endpoint connection JWTs.
+    token_ecdsa_public_key: ""
+
+    # Audience of endpoint connection JWT token to verify.
+    #
+    # If given the JWT 'aud' claim must match the given audience. Otherwise it
+    # is ignored.
+    token_audience: ""
+
+    # Issuer of endpoint connection JWT token to verify.
+    #
+    # If given the JWT 'iss' claim must match the given issuer. Otherwise it
+    # is ignored.
+    token_issuer: ""
+
 server:
     # Maximum number of seconds after a shutdown signal is received (SIGTERM or
     # SIGINT) to gracefully shutdown the server node before terminating.
@@ -156,6 +178,59 @@ log:
     # Such as you can enable 'gossip' logs with '--log.subsystems gossip'.
     subsystems: []
 ```
+
+### Cluster
+
+To deploy Pico as a cluster, configure `--cluster.join` to a list of cluster
+members in the cluster to join.
+
+The addresses may be either addresses of specific nodes, such as
+`10.26.104.14`, or a domain name that resolves to the IP addresses of all nodes
+in the cluster.
+
+To deploy Pico to Kubernetes, you can create a headless service whose domain
+resolves to the IP addresses of the pods in the service, such as
+`pico.prod-pico-ns.svc.cluster.local`. When Pico starts, it will then attempt
+to join the other pods.
+
+### Authentication
+
+To authenticate upstream endpoint connections, Pico can use a
+[JSON Web Token (JWT)](https://jwt.io/) provided by your application.
+
+You configure Pico with the secret key or public key to verify the JWT, then
+configure the upstream endpoint with the JWT. Pico will then verify endpoints
+connection token.
+
+Pico supports HMAC, RSA, and ECDSA JWT algorithms, specifically HS256, HS384,
+HS512, RSA256, RSA384, RSA512, EC256, EC384, and EC512.
+
+The server has the following configuration options to pass a secret key or
+public key:
+- `auth.token_hmac_secret_key`: Add HMAC secret key
+- `auth.token_rsa_public_key`: Add RSA public key
+- `auth.token_ecdsa_public_key`: Add ECDSA public key
+
+If no keys secret or public keys are given, Pico will allow unauthenticated
+endpoint connections.
+
+Pico will verify the `exp` (expiry) and `iat` (issued at) claims if given, and
+drop the connection to the upstream endpoint once its token expires.
+
+By default Pico will not verify the `aud` (audience) or `iss` (issuer) claims,
+though you can enable these checks with `auth.token_audience` and
+`auth.token_issuer` respectively.
+
+You may also include Pico specific fields in your JWT. Pico supports the
+`pico.endpoints` claim which contains an array of endpoint IDs the token is
+permitted to register. Such as if the JWT includes claim
+`"pico": {"endpoints": ["endpoint-123"]}`, it will be permitted to register
+endpoint ID `endpoint-123` but not `endpoint-xyz`.
+
+Note Pico does (yet) not authenticate proxy requests as proxy clients will
+typically be deployed to the same network as the Pcio server. Your upstream
+services may then authenticate incoming requests if needed after they've been
+forwarded by Pico.
 
 ## Agent
 
@@ -201,6 +276,10 @@ server:
     # heartbeat to the upstream at the '--server.heartbeat-interval'
     heartbeat_timeout: 10
 
+auth:
+    # An API key to authenticate the connection to Pico.
+    api_key: ""
+
 forwarder:
     # Forwarder timeout in seconds.
     # 
@@ -233,3 +312,8 @@ log:
     # Such as you can enable 'gossip' logs with '--log.subsystems gossip'.
     subsystems: []
 ```
+
+### Authentication
+
+To authenticate the agent, include a JWT in `auth.api_key`. The supported JWT
+formats are described above in the server configuration.
