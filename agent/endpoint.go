@@ -100,6 +100,8 @@ func (e *endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 			return rpc.NewStream(conn, e.rpcServer.Handler(), e.logger), nil
 		}
 
+		// TODO(andydunstall): Handle non-retryable errors like 401.
+
 		e.logger.Warn(
 			"failed to connect to server; retrying",
 			zap.Duration("backoff", backoff),

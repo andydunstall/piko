@@ -129,7 +129,12 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 func (s *Server) Run(ctx context.Context) error {
 	var verifier auth.Verifier
 	if s.conf.Auth.AuthEnabled() {
-		var verifierConf auth.JWTVerifierConfig
+		verifierConf := auth.JWTVerifierConfig{
+			HMACSecretKey: []byte(s.conf.Auth.TokenHMACSecretKey),
+			Audience:      s.conf.Auth.TokenAudience,
+			Issuer:        s.conf.Auth.TokenIssuer,
+		}
+
 		if s.conf.Auth.TokenRSAPublicKey != "" {
 			rsaPublicKey, err := jwt.ParseRSAPublicKeyFromPEM(
 				[]byte(s.conf.Auth.TokenRSAPublicKey),

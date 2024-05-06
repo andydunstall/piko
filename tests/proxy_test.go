@@ -4,6 +4,7 @@ package tests
 
 import (
 	"context"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"net"
@@ -17,6 +18,7 @@ import (
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server"
 	statusclient "github.com/andydunstall/pico/status/client"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -114,6 +116,78 @@ func TestProxy(t *testing.T) {
 	assert.Equal(t, http.StatusOK, resp.StatusCode)
 }
 
+func TestProxy_Authenticated(t *testing.T) {
+	hsSecretKey := generateTestHSKey(t)
+
+	serverConf := defaultServerConfig()
+	serverConf.Auth.TokenHMACSecretKey = string(hsSecretKey)
+
+	server, err := server.NewServer(serverConf, log.NewNopLogger())
+	require.NoError(t, err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go func() {
+		require.NoError(t, server.Run(ctx))
+	}()
+
+	upstream, err := newUpstreamServer(func(http.ResponseWriter, *http.Request) {
+	})
+	require.NoError(t, err)
+	go func() {
+		if err := upstream.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			require.NoError(t, err)
+		}
+	}()
+	defer upstream.Close()
+
+	endpointClaims := jwt.RegisteredClaims{
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		Issuer:    "bar",
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, endpointClaims)
+	apiKey, err := token.SignedString([]byte(hsSecretKey))
+	assert.NoError(t, err)
+
+	agentConf := defaultAgentConfig(serverConf.Upstream.AdvertiseAddr)
+	agentConf.Auth.APIKey = apiKey
+	agentConf.Endpoints = []string{
+		"my-endpoint/" + upstream.Addr(),
+	}
+	agent := agent.NewAgent(agentConf, log.NewNopLogger())
+	go func() {
+		assert.NoError(t, agent.Run(ctx))
+	}()
+
+	// Wait for the agent to register the endpoint with Pico.
+	for {
+		statusClient := statusclient.NewClient(&url.URL{
+			Scheme: "http",
+			Host:   serverConf.Admin.AdvertiseAddr,
+		})
+		endpoints, err := statusClient.ProxyEndpoints()
+		assert.NoError(t, err)
+
+		if len(endpoints) == 0 {
+			<-time.After(time.Millisecond * 10)
+			continue
+		}
+
+		_, ok := endpoints["my-endpoint"]
+		assert.True(t, ok)
+		break
+	}
+
+	// Send a request to Pico which should be forwarded to the upstream server.
+	client := &http.Client{}
+	req, _ := http.NewRequest("GET", "http://"+serverConf.Proxy.AdvertiseAddr, nil)
+	req.Header.Set("x-pico-endpoint", "my-endpoint")
+	resp, err := client.Do(req)
+	assert.NoError(t, err)
+	defer resp.Body.Close()
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+}
+
 func defaultAgentConfig(serverAddr string) *agentconfig.Config {
 	return &agentconfig.Config{
 		Server: agentconfig.ServerConfig{
@@ -128,4 +202,11 @@ func defaultAgentConfig(serverAddr string) *agentconfig.Config {
 			BindAddr: "127.0.0.1:0",
 		},
 	}
+}
+
+func generateTestHSKey(t *testing.T) []byte {
+	b := make([]byte, 10)
+	_, err := rand.Read(b)
+	require.NoError(t, err)
+	return b
 }
