@@ -3,6 +3,7 @@ run:
   modules-download-mode: readonly
   build-tags:
     - integration
+    - system
 
 linters:
   enable:

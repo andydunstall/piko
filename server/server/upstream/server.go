@@ -10,6 +10,7 @@ import (
 	"github.com/andydunstall/pico/pkg/conn"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/pkg/rpc"
+	"github.com/andydunstall/pico/server/auth"
 	proxy "github.com/andydunstall/pico/server/proxy"
 	"github.com/andydunstall/pico/server/server/middleware"
 	"github.com/gin-gonic/gin"
@@ -45,6 +46,7 @@ type Server struct {
 func NewServer(
 	ln net.Listener,
 	proxy Proxy,
+	verifier auth.Verifier,
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
@@ -64,6 +66,11 @@ func NewServer(
 		shutdownCancel:    shutdownCancel,
 		proxy:             proxy,
 		logger:            logger.WithSubsystem("upstream.server"),
+	}
+
+	if verifier != nil {
+		tokenMiddleware := middleware.NewAuthMiddleware(verifier, logger)
+		router.Use(tokenMiddleware.VerifyEndpointToken)
 	}
 
 	// Recover from panics.
@@ -101,6 +108,23 @@ func (s *Server) registerRoutes() {
 func (s *Server) listenerRoute(c *gin.Context) {
 	endpointID := c.Param("endpointID")
 
+	token, ok := c.Get(middleware.TokenContextKey)
+	if ok {
+		endpointToken := token.(*auth.EndpointToken)
+		if !endpointToken.EndpointPermitted(endpointID) {
+			s.logger.Warn(
+				"endpoint not permitted",
+				zap.Strings("token-endpoints", endpointToken.Endpoints),
+				zap.String("endpoint-id", endpointID),
+			)
+			c.JSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "endpoint not permitted"},
+			)
+			return
+		}
+	}
+
 	wsConn, err := s.websocketUpgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		// Upgrade replies to the client so nothing else to do.
@@ -124,8 +148,20 @@ func (s *Server) listenerRoute(c *gin.Context) {
 	s.proxy.AddConn(conn)
 	defer s.proxy.RemoveConn(conn)
 
+	ctx := s.shutdownCtx
+	if ok {
+		// If the token has an expiry, then we ensure we close the connection
+		// to the endpoint once the token expires.
+		endpointToken := token.(*auth.EndpointToken)
+		if !endpointToken.Expiry.IsZero() {
+			var cancel func()
+			ctx, cancel = context.WithDeadline(ctx, endpointToken.Expiry)
+			defer cancel()
+		}
+	}
+
 	if err := stream.Monitor(
-		s.shutdownCtx,
+		ctx,
 		time.Second*10,
 		time.Second*10,
 	); err != nil {
