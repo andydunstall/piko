@@ -22,7 +22,7 @@ func NewCommand() *cobra.Command {
 		Short: "start a server node",
 		Long: `Start a server node.
 
-The Pico server is responsible for proxying requests from downstream clients to
+The Pico server is responsible for proxying requests from proxy clients to
 registered upstream listeners.
 
 Pico may run as a cluster of nodes for fault tolerance and scalability. Use

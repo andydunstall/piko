@@ -17,7 +17,7 @@ join any existing nodes.
 
 ## Ports
 
-The proxy port accepts connections from downstream clients. It only
+The proxy port accepts connections from proxy clients. It only
 supports HTTP and defaults to port `8000`.
 
 The upstream port accepts connections from upstream listeners via
