@@ -7,25 +7,25 @@ import (
 type Config struct {
 	// TokenHMACSecretKey is the secret key to authenticate HMAC endpoint
 	// connection JWTs.
-	TokenHMACSecretKey string
+	TokenHMACSecretKey string `json:"token_hmac_secret_key"`
 
 	// TokenRSAPublicKey is the public key to authenticate RSA endpoint
 	// connection JWTs.
-	TokenRSAPublicKey string
+	TokenRSAPublicKey string `json:"token_rsa_public_key"`
 
 	// TokenECDSAPublicKey is the public key to authenticate ECDSA endpoint
 	// connection JWTs.
-	TokenECDSAPublicKey string
+	TokenECDSAPublicKey string `json:"token_ecdsa_public_key"`
 
 	// TokenAudience is the required 'aud' claim of the authenticated JWTs.
 	//
 	// If not given the 'aud' claim will be ignored.
-	TokenAudience string
+	TokenAudience string `json:"token_audience"`
 
 	// TokenIssuer is the required 'iss' claim of the authenticated JWTs.
 	//
 	// If not given the 'iss' claim will be ignored.
-	TokenIssuer string
+	TokenIssuer string `json:"token_issuer"`
 }
 
 func (c *Config) AuthEnabled() bool {
