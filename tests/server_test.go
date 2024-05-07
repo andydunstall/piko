@@ -6,6 +6,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server"
@@ -50,7 +51,7 @@ func defaultServerConfig() *serverconfig.Config {
 	return &serverconfig.Config{
 		Proxy: serverconfig.ProxyConfig{
 			BindAddr:       "127.0.0.1:0",
-			GatewayTimeout: 1,
+			GatewayTimeout: time.Second,
 		},
 		Upstream: serverconfig.UpstreamConfig{
 			BindAddr: "127.0.0.1:0",

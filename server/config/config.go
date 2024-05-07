@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/auth"
@@ -18,7 +19,7 @@ type ProxyConfig struct {
 
 	// GatewayTimeout is the timeout in seconds of forwarding requests to an
 	// upstream listener.
-	GatewayTimeout int `json:"gateway_timeout" yaml:"gateway_timeout"`
+	GatewayTimeout time.Duration `json:"gateway_timeout" yaml:"gateway_timeout"`
 }
 
 func (c *ProxyConfig) Validate() error {
@@ -83,7 +84,7 @@ func (c *ClusterConfig) Validate() error {
 type ServerConfig struct {
 	// GracefulShutdownTimeout is the timeout to allow for graceful shutdown
 	// of the server in seconds.
-	GracefulShutdownTimeout int `json:"graceful_shutdown_timeout" yaml:"graceful_shutdown_timeout"`
+	GracefulShutdownTimeout time.Duration `json:"graceful_shutdown_timeout" yaml:"graceful_shutdown_timeout"`
 }
 
 func (c *ServerConfig) Validate() error {
@@ -156,10 +157,10 @@ If the bind address does not include an IP (such as ':8000') the nodes
 private IP will be used, such as a bind address of ':8000' may have an
 advertise address of '10.26.104.14:8000'.`,
 	)
-	fs.IntVar(
+	fs.DurationVar(
 		&c.Proxy.GatewayTimeout,
 		"proxy.gateway-timeout",
-		15,
+		time.Second*15,
 		`
 The timeout when sending proxied requests to upstream listeners for forwarding
 to other nodes in the cluster.
@@ -221,12 +222,12 @@ private IP will be used, such as a bind address of ':8002' may have an
 advertise address of '10.26.104.14:8002'.`,
 	)
 
-	fs.IntVar(
+	fs.DurationVar(
 		&c.Server.GracefulShutdownTimeout,
 		"server.graceful-shutdown-timeout",
-		60,
+		time.Minute,
 		`
-Maximum number of seconds after a shutdown signal is received (SIGTERM or
+Maximum timeout after a shutdown signal is received (SIGTERM or
 SIGINT) to gracefully shutdown the server node before terminating.
 This includes handling in-progress HTTP requests, gracefully closing
 connections to upstream listeners, announcing to the cluster the node is

@@ -46,7 +46,7 @@ proxy:
     #
     # If the upstream does not respond within the given timeout a
     # '504 Gateway Timeout' is returned to the client.
-    gateway_timeout: 15
+    gateway_timeout: 15s
 
 upstream:
     # The host/port to listen for connections from upstream listeners.
@@ -156,12 +156,12 @@ auth:
     token_issuer: ""
 
 server:
-    # Maximum number of seconds after a shutdown signal is received (SIGTERM or
+    # Maximum duration after a shutdown signal is received (SIGTERM or
     # SIGINT) to gracefully shutdown the server node before terminating.
     # This includes handling in-progress HTTP requests, gracefully closing
     # connections to upstream listeners, announcing to the cluster the node is
     # leaving...
-    graceful_shutdown_timeout: 60
+    graceful_shutdown_timeout: 1m
 
 log:
     # Minimum log level to output.
@@ -263,32 +263,32 @@ server:
     # with ws/wss (you can configure either).
     url: http://localhost:8001
 
-    # Heartbeat interval in seconds.
+    # Heartbeat interval.
     # 
     # To verify the connection to the server is ok, the listener sends a
     # heartbeat to the upstream at the '--server.heartbeat-interval'
     # interval, with a timeout of '--server.heartbeat-timeout'.`,
-    heartbeat_interval: 10
+    heartbeat_interval: 10s
 
-    # Heartbeat timeout in seconds.,
+    # Heartbeat timeout.
     # 
     # To verify the connection to the server is ok, the listener sends a
     # heartbeat to the upstream at the '--server.heartbeat-interval'
-    heartbeat_timeout: 10
+    heartbeat_timeout: 10s
 
 auth:
     # An API key to authenticate the connection to Pico.
     api_key: ""
 
 forwarder:
-    # Forwarder timeout in seconds.
+    # Forwarder timeout.
     # 
     # This is the timeout between a listener receiving a request from Pico then
     # forwarding it to the configured forward address, and receiving a response.
     # 
     # If the upstream does not respond within the given timeout a
     # '504 Gateway Timeout' is returned to the client.
-    timeout: 10
+    timeout: 10s
 
 admin:
     # The host/port to listen for incoming admin connections.

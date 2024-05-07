@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/auth"
@@ -232,7 +231,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 		leaveCtx, cancel := context.WithTimeout(
 			context.Background(),
-			time.Duration(s.conf.Server.GracefulShutdownTimeout)*time.Second,
+			s.conf.Server.GracefulShutdownTimeout,
 		)
 		defer cancel()
 
@@ -258,7 +257,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}, func(error) {
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
-			time.Duration(s.conf.Server.GracefulShutdownTimeout)*time.Second,
+			s.conf.Server.GracefulShutdownTimeout,
 		)
 		defer cancel()
 
@@ -278,7 +277,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}, func(error) {
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
-			time.Duration(s.conf.Server.GracefulShutdownTimeout)*time.Second,
+			s.conf.Server.GracefulShutdownTimeout,
 		)
 		defer cancel()
 
@@ -298,7 +297,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}, func(error) {
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
-			time.Duration(s.conf.Server.GracefulShutdownTimeout)*time.Second,
+			s.conf.Server.GracefulShutdownTimeout,
 		)
 		defer cancel()
 

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/spf13/pflag"
@@ -11,9 +12,9 @@ import (
 
 type ServerConfig struct {
 	// URL is the server URL.
-	URL               string `json:"url" yaml:"url"`
-	HeartbeatInterval int    `json:"heartbeat_interval" yaml:"heartbeat_interval"`
-	HeartbeatTimeout  int    `json:"heartbeat_timeout" yaml:"heartbeat_timeout"`
+	URL               string        `json:"url" yaml:"url"`
+	HeartbeatInterval time.Duration `json:"heartbeat_interval" yaml:"heartbeat_interval"`
+	HeartbeatTimeout  time.Duration `json:"heartbeat_timeout" yaml:"heartbeat_timeout"`
 }
 
 func (c *ServerConfig) Validate() error {
@@ -39,7 +40,7 @@ type AuthConfig struct {
 // ForwarderConfig contains the configuration for how to forward requests
 // from Pico.
 type ForwarderConfig struct {
-	Timeout int `json:"timeout" yaml:"timeout"`
+	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 }
 
 type AdminConfig struct {
@@ -123,23 +124,23 @@ so if you include a path it will be used as a prefix.
 Note Pico connects to the server with WebSockets, so will replace http/https
 with ws/wss (you can configure either).`,
 	)
-	fs.IntVar(
+	fs.DurationVar(
 		&c.Server.HeartbeatInterval,
 		"server.heartbeat-interval",
-		10,
+		time.Second*10,
 		`
-Heartbeat interval in seconds.
+Heartbeat interval.
 
 To verify the connection to the server is ok, the listener sends a
 heartbeat to the upstream at the '--server.heartbeat-interval'
 interval, with a timeout of '--server.heartbeat-timeout'.`,
 	)
-	fs.IntVar(
+	fs.DurationVar(
 		&c.Server.HeartbeatTimeout,
 		"server.heartbeat-timeout",
-		10,
+		time.Second*10,
 		`
-Heartbeat timeout in seconds.,
+Heartbeat timeout.
 
 To verify the connection to the server is ok, the listener sends a
 heartbeat to the upstream at the '--server.heartbeat-interval'
@@ -154,12 +155,12 @@ interval, with a timeout of '--server.heartbeat-timeout'.`,
 An API key to authenticate the connection to Pico.`,
 	)
 
-	fs.IntVar(
+	fs.DurationVar(
 		&c.Forwarder.Timeout,
 		"forwarder.timeout",
-		10,
+		time.Second*10,
 		`
-Forwarder timeout in seconds.
+Forwarder timeout.
 
 This is the timeout between a listener receiving a request from Pico then
 forwarding it to the configured forward address, and receiving a response.
