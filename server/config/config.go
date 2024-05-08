@@ -72,6 +72,8 @@ type ClusterConfig struct {
 
 	// Join contians a list of addresses of members in the cluster to join.
 	Join []string `json:"join" yaml:"join"`
+
+	AbortIfJoinFails bool `json:"abort_if_join_fails" yaml:"abort_if_join_fails"`
 }
 
 func (c *ClusterConfig) Validate() error {
@@ -256,7 +258,6 @@ the given prefix.
 Such as you could use the node or pod  name as a prefix, then add a unique
 identifier to ensure the node ID is unique across restarts.`,
 	)
-
 	fs.StringSliceVar(
 		&c.Cluster.Join,
 		"cluster.join",
@@ -274,6 +275,14 @@ port is given, the gossip port of this node is used.
 
 Note each node propagates membership information to the other known nodes,
 so the initial set of configured members only needs to be a subset of nodes.`,
+	)
+	fs.BoolVar(
+		&c.Cluster.AbortIfJoinFails,
+		"cluster.abort-if-join-fails",
+		true,
+		`
+Whether the server node should abort if it is configured with more than one
+node to join (excluding itself) but fails to join any members.`,
 	)
 
 	c.Auth.RegisterFlags(fs)

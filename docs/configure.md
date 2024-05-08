@@ -133,6 +133,10 @@ cluster:
     # so the initial set of configured members only needs to be a subset of nodes.
     join: []
 
+    # Whether the server node should abort if it is configured with more than one
+    # node to join (excluding itself) but fails to join any members.
+    abort_if_join_fails: true
+
 auth:
     # Secret key to authenticate HMAC endpoint connection JWTs.
     token_hmac_secret_key: ""

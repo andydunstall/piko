@@ -186,12 +186,15 @@ func (s *Server) Run(ctx context.Context) error {
 	defer gossiper.Close()
 	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
 
-	// Attempt to join an existing cluster. Note if 'join' is a domain that
-	// doesn't map to any entries (except ourselves), then join will succeed
-	// since it means we're the first member.
-	nodeIDs, err := gossiper.Join(s.conf.Cluster.Join)
+	// Attempt to join an existing cluster.
+	//
+	// Note when running on Kubernetes, if this is the first member, as it is
+	// not yet ready the service DNS record won't resolve so this may fail.
+	// Therefore we attempt to join though continue booting if join fails.
+	// Once booted we then attempt to join again with retries.
+	nodeIDs, err := gossiper.JoinOnBoot(s.conf.Cluster.Join)
 	if err != nil {
-		return fmt.Errorf("join cluster: %w", err)
+		s.logger.Warn("failed to join cluster", zap.Error(err))
 	}
 	if len(nodeIDs) > 0 {
 		s.logger.Info(
@@ -228,21 +231,6 @@ func (s *Server) Run(ctx context.Context) error {
 		case <-ctx.Done():
 		case <-shutdownCtx.Done():
 		}
-
-		leaveCtx, cancel := context.WithTimeout(
-			context.Background(),
-			s.conf.Server.GracefulShutdownTimeout,
-		)
-		defer cancel()
-
-		// Leave as soon as we receive the shutdown signal to avoid receiving
-		// forward proxy requests.
-		if err := gossiper.Leave(leaveCtx); err != nil {
-			s.logger.Warn("failed to gracefully leave cluster", zap.Error(err))
-		} else {
-			s.logger.Info("left cluster")
-		}
-
 		return nil
 	}, func(error) {
 		shutdownCancel()
@@ -306,6 +294,46 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 
 		s.logger.Info("admin server shut down")
+	})
+
+	// Gossip.
+	gossipCtx, gossipCancel := context.WithCancel(ctx)
+	group.Add(func() error {
+		if len(nodeIDs) == 0 {
+			nodeIDs, err = gossiper.JoinOnStartup(gossipCtx, s.conf.Cluster.Join)
+			if err != nil {
+				if s.conf.Cluster.AbortIfJoinFails {
+					return fmt.Errorf("join on startup: %w", err)
+				}
+				s.logger.Warn("failed to join cluster", zap.Error(err))
+			}
+			if len(nodeIDs) > 0 {
+				s.logger.Info(
+					"joined cluster",
+					zap.Strings("node-ids", nodeIDs),
+				)
+			}
+		}
+
+		<-gossipCtx.Done()
+
+		leaveCtx, cancel := context.WithTimeout(
+			context.Background(),
+			s.conf.Server.GracefulShutdownTimeout,
+		)
+		defer cancel()
+
+		// Leave as soon as we receive the shutdown signal to avoid receiving
+		// forward proxy requests.
+		if err := gossiper.Leave(leaveCtx); err != nil {
+			s.logger.Warn("failed to gracefully leave cluster", zap.Error(err))
+		} else {
+			s.logger.Info("left cluster")
+		}
+
+		return nil
+	}, func(error) {
+		gossipCancel()
 	})
 
 	if err := group.Run(); err != nil {
