@@ -4,10 +4,13 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/andydunstall/kite"
+	"github.com/andydunstall/pico/pkg/backoff"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/netmap"
+	"go.uber.org/zap"
 )
 
 // Gossip is responsible for maintaining this nodes local NetworkMap
@@ -61,10 +64,33 @@ func NewGossip(
 	}, nil
 }
 
-// Join attempts to join an existing cluster by syncronising with the members
-// at the given addresses.
-func (g *Gossip) Join(addrs []string) ([]string, error) {
+// JoinOnBoot attempts to join an existing cluster by syncronising with the
+// members at the given addresses.
+//
+// This will only attempt to join once and won't retry.
+func (g *Gossip) JoinOnBoot(addrs []string) ([]string, error) {
 	return g.gossiper.Join(addrs)
+}
+
+// JoinOnStartup attempts to join an existing cluster by syncronising with the
+// members at the given addresses.
+//
+// This will retry 5 times (with backoff).
+func (g *Gossip) JoinOnStartup(ctx context.Context, addrs []string) ([]string, error) {
+	backoff := backoff.New(5, time.Second, time.Minute)
+	var lastErr error
+	for {
+		if !backoff.Wait(ctx) {
+			return nil, lastErr
+		}
+
+		nodeIDs, err := g.gossiper.Join(addrs)
+		if err == nil {
+			return nodeIDs, nil
+		}
+		g.logger.Warn("failed to join cluster", zap.Error(err))
+		lastErr = err
+	}
 }
 
 // Leave notifies the known members that this node is leaving the cluster.
