@@ -4,6 +4,7 @@ import (
 	"github.com/andydunstall/pico/cli/agent"
 	"github.com/andydunstall/pico/cli/server"
 	"github.com/andydunstall/pico/cli/status"
+	"github.com/andydunstall/pico/cli/workload"
 	"github.com/spf13/cobra"
 )
 
@@ -22,6 +23,7 @@ func NewCommand() *cobra.Command {
 	cmd.AddCommand(agent.NewCommand())
 	cmd.AddCommand(server.NewCommand())
 	cmd.AddCommand(status.NewCommand())
+	cmd.AddCommand(workload.NewCommand())
 
 	return cmd
 }
