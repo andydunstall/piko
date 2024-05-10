@@ -6,7 +6,6 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/config"
@@ -98,7 +97,7 @@ func (s *Server) registerRoutes() {
 func (s *Server) proxyRoute(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(
 		context.Background(),
-		time.Duration(s.conf.GatewayTimeout)*time.Second,
+		s.conf.GatewayTimeout,
 	)
 	defer cancel()
 
