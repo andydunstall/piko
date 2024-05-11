@@ -1,20 +1,21 @@
-package netmap
+package cluster
 
 import "github.com/prometheus/client_golang/prometheus"
 
 type Metrics struct {
-	// Entries contains the number of entries in the netmap, labelled by
+	// Nodes contains the number of known nodes in the cluster, labelled by
 	// status.
-	Entries *prometheus.GaugeVec
+	Nodes *prometheus.GaugeVec
 }
 
 func NewMetrics() *Metrics {
 	return &Metrics{
-		Entries: prometheus.NewGaugeVec(
+		Nodes: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Subsystem: "netmap",
-				Name:      "entries",
-				Help:      "Number of entries in the netmap",
+				Namespace: "pico",
+				Subsystem: "cluster",
+				Name:      "nodes",
+				Help:      "Number of nodes in the cluster state",
 			},
 			[]string{"status"},
 		),
@@ -23,6 +24,6 @@ func NewMetrics() *Metrics {
 
 func (m *Metrics) Register(registry *prometheus.Registry) {
 	registry.MustRegister(
-		m.Entries,
+		m.Nodes,
 	)
 }

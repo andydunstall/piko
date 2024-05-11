@@ -33,7 +33,7 @@ the status API, and health checks
 - Prometheus (`http://localhost:9090`)
 - Grafana (`http://localhost:3000`)
 
-To verify Pico has started correctly, run `pico status netmap nodes` which
+To verify Pico has started correctly, run `pico status cluster nodes` which
 queries the Pico admin API for the set of known Pico nodes.
 
 ## Agent
@@ -53,7 +53,7 @@ pico agent --endpoints my-endpoint/localhost:4000
 
 See `pico agent -h` for the available options.
 
-You can verify the endpoint has connected, again run `pico status netmap nodes`
+You can verify the endpoint has connected, again run `pico status cluster nodes`
 and you'll see one of the Pico server nodes reporting endpoint `my-endpoint`
 has an active connection.
 

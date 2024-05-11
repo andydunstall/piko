@@ -1,4 +1,4 @@
-package netmap
+package cluster
 
 import (
 	"crypto/rand"

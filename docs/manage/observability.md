@@ -37,6 +37,6 @@ at `/status` on the admin port that `pico status` then queries.
 
 Such as to view the endpoints registers on a server use
 `pico status proxy endpoints`. Or to inspect the set of known nodes in the
-cluster use `pico status netmap nodes`.
+cluster use `pico status cluster nodes`.
 
 Configure the server URL with `--server`.

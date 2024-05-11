@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/andydunstall/kite"
-	"github.com/andydunstall/pico/server/netmap"
+	"github.com/andydunstall/pico/server/cluster"
 )
 
 type Client struct {
@@ -42,28 +42,28 @@ func (c *Client) ProxyEndpoints() (map[string][]string, error) {
 	return endpoints, nil
 }
 
-func (c *Client) NetmapNodes() ([]*netmap.Node, error) {
-	r, err := c.request("/status/netmap/nodes")
+func (c *Client) ClusterNodes() ([]*cluster.Node, error) {
+	r, err := c.request("/status/cluster/nodes")
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	var nodes []*netmap.Node
+	var nodes []*cluster.Node
 	if err := json.NewDecoder(r).Decode(&nodes); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 	return nodes, nil
 }
 
-func (c *Client) NetmapNode(nodeID string) (*netmap.Node, error) {
-	r, err := c.request("/status/netmap/nodes/" + nodeID)
+func (c *Client) ClusterNode(nodeID string) (*cluster.Node, error) {
+	r, err := c.request("/status/cluster/nodes/" + nodeID)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	var node netmap.Node
+	var node cluster.Node
 	if err := json.NewDecoder(r).Decode(&node); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}

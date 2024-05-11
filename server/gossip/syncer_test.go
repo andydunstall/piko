@@ -4,7 +4,7 @@ import (
 	"testing"
 
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/netmap"
+	"github.com/andydunstall/pico/server/cluster"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,12 +32,12 @@ func (g *fakeGossiper) DeleteLocal(key string) {
 var _ gossiper = &fakeGossiper{}
 
 func TestSyncer_Sync(t *testing.T) {
-	localNode := &netmap.Node{
+	localNode := &cluster.Node{
 		ID:        "local",
 		ProxyAddr: "10.26.104.56:8000",
 		AdminAddr: "10.26.104.56:8001",
 	}
-	m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+	m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 	m.AddLocalEndpoint("my-endpoint")
 	m.AddLocalEndpoint("my-endpoint")
 	m.AddLocalEndpoint("my-endpoint")
@@ -59,12 +59,12 @@ func TestSyncer_Sync(t *testing.T) {
 }
 
 func TestSyncer_OnLocalEndpointUpdate(t *testing.T) {
-	localNode := &netmap.Node{
+	localNode := &cluster.Node{
 		ID:        "local",
 		ProxyAddr: "10.26.104.56:8000",
 		AdminAddr: "10.26.104.56:8001",
 	}
-	m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+	m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 	sync := newSyncer(m, log.NewNopLogger())
 
@@ -102,12 +102,12 @@ func TestSyncer_OnLocalEndpointUpdate(t *testing.T) {
 
 func TestSyncer_RemoteNodeUpdate(t *testing.T) {
 	t.Run("add node", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -121,9 +121,9 @@ func TestSyncer_RemoteNodeUpdate(t *testing.T) {
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
-		assert.Equal(t, node, &netmap.Node{
+		assert.Equal(t, node, &cluster.Node{
 			ID:        "remote",
-			Status:    netmap.NodeStatusActive,
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "10.26.104.98:8000",
 			AdminAddr: "10.26.104.98:8001",
 			Endpoints: map[string]int{
@@ -133,12 +133,12 @@ func TestSyncer_RemoteNodeUpdate(t *testing.T) {
 	})
 
 	t.Run("add node missing state", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -154,13 +154,13 @@ func TestSyncer_RemoteNodeUpdate(t *testing.T) {
 	})
 
 	t.Run("add local node", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
-			Status:    netmap.NodeStatusActive,
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -176,13 +176,13 @@ func TestSyncer_RemoteNodeUpdate(t *testing.T) {
 	})
 
 	t.Run("update node", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
-			Status:    netmap.NodeStatusActive,
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -202,9 +202,9 @@ func TestSyncer_RemoteNodeUpdate(t *testing.T) {
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
-		assert.Equal(t, node, &netmap.Node{
+		assert.Equal(t, node, &cluster.Node{
 			ID:        "remote",
-			Status:    netmap.NodeStatusActive,
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "10.26.104.98:8000",
 			AdminAddr: "10.26.104.98:8001",
 			Endpoints: map[string]int{
@@ -216,12 +216,12 @@ func TestSyncer_RemoteNodeUpdate(t *testing.T) {
 
 func TestSyncer_RemoteNodeLeave(t *testing.T) {
 	t.Run("active node leave", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -234,14 +234,14 @@ func TestSyncer_RemoteNodeLeave(t *testing.T) {
 		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
 		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
 
-		// Leaving should update the netmap.
+		// Leaving should update the cluster.
 		sync.OnLeave("remote")
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
-		assert.Equal(t, node, &netmap.Node{
+		assert.Equal(t, node, &cluster.Node{
 			ID:        "remote",
-			Status:    netmap.NodeStatusLeft,
+			Status:    cluster.NodeStatusLeft,
 			ProxyAddr: "10.26.104.98:8000",
 			AdminAddr: "10.26.104.98:8001",
 			Endpoints: map[string]int{
@@ -251,18 +251,18 @@ func TestSyncer_RemoteNodeLeave(t *testing.T) {
 
 		sync.OnExpired("remote")
 
-		// Expiring should remove from the netmap.
+		// Expiring should remove from the cluster.
 		_, ok = m.Node("remote")
 		assert.False(t, ok)
 	})
 
 	t.Run("pending node leave", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -283,13 +283,13 @@ func TestSyncer_RemoteNodeLeave(t *testing.T) {
 	})
 
 	t.Run("local node leave", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
-			Status:    netmap.NodeStatusActive,
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -305,12 +305,12 @@ func TestSyncer_RemoteNodeLeave(t *testing.T) {
 
 func TestSyncer_RemoteNodeDown(t *testing.T) {
 	t.Run("active node", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -323,14 +323,14 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
 		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
 
-		// Marking a node down should update the netmap.
+		// Marking a node down should update the cluster.
 		sync.OnDown("remote")
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
-		assert.Equal(t, node, &netmap.Node{
+		assert.Equal(t, node, &cluster.Node{
 			ID:        "remote",
-			Status:    netmap.NodeStatusDown,
+			Status:    cluster.NodeStatusDown,
 			ProxyAddr: "10.26.104.98:8000",
 			AdminAddr: "10.26.104.98:8001",
 			Endpoints: map[string]int{
@@ -340,18 +340,18 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 
 		sync.OnExpired("remote")
 
-		// Expiring should remove from the netmap.
+		// Expiring should remove from the cluster.
 		_, ok = m.Node("remote")
 		assert.False(t, ok)
 	})
 
 	t.Run("active node recovers", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -364,17 +364,17 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
 		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
 
-		// Marking a node down should update the netmap.
+		// Marking a node down should update the cluster.
 		sync.OnDown("remote")
 
-		// Marking a node healthy should update the netmap.
+		// Marking a node healthy should update the cluster.
 		sync.OnUp("remote")
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
-		assert.Equal(t, node, &netmap.Node{
+		assert.Equal(t, node, &cluster.Node{
 			ID:        "remote",
-			Status:    netmap.NodeStatusActive,
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "10.26.104.98:8000",
 			AdminAddr: "10.26.104.98:8001",
 			Endpoints: map[string]int{
@@ -384,12 +384,12 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 	})
 
 	t.Run("pending node down", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -408,21 +408,21 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
-		assert.Equal(t, node, &netmap.Node{
+		assert.Equal(t, node, &cluster.Node{
 			ID:        "remote",
-			Status:    netmap.NodeStatusActive,
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "10.26.104.98:8000",
 			AdminAddr: "10.26.104.98:8001",
 		})
 	})
 
 	t.Run("pending node expires", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 
@@ -444,13 +444,13 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 	})
 
 	t.Run("local node leave", func(t *testing.T) {
-		localNode := &netmap.Node{
+		localNode := &cluster.Node{
 			ID:        "local",
-			Status:    netmap.NodeStatusActive,
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "10.26.104.56:8000",
 			AdminAddr: "10.26.104.56:8001",
 		}
-		m := netmap.NewNetworkMap(localNode.Copy(), log.NewNopLogger())
+		m := cluster.NewState(localNode.Copy(), log.NewNopLogger())
 
 		sync := newSyncer(m, log.NewNopLogger())
 

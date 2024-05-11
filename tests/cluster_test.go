@@ -54,7 +54,7 @@ func TestCluster(t *testing.T) {
 					Scheme: "http",
 					Host:   addr,
 				})
-				nodes, err := statusClient.NetmapNodes()
+				nodes, err := statusClient.ClusterNodes()
 				assert.NoError(t, err)
 
 				if len(nodes) < 2 {

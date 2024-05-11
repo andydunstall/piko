@@ -17,8 +17,8 @@ can be used to answer questions such as:
 See 'status --help' for the availale commands.
 
 Examples:
-  # Inspect the members in the netmap.
-  pico status netmap members
+  # Inspect the known nodes in the cluster.
+  pico status cluster nodes
 
   # Inspect the upstream listeners connected to this node.
   pico status proxy endpoints
@@ -29,7 +29,7 @@ Examples:
 	}
 
 	cmd.AddCommand(newProxyCommand())
-	cmd.AddCommand(newNetmapCommand())
+	cmd.AddCommand(newClusterCommand())
 	cmd.AddCommand(newGossipCommand())
 
 	return cmd
