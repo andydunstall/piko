@@ -15,8 +15,8 @@ type NodeStatus string
 const (
 	// NodeStatusActive means the node is healthy and accepting traffic.
 	NodeStatusActive NodeStatus = "active"
-	// NodeStatusDown means the node is considered down.
-	NodeStatusDown NodeStatus = "down"
+	// NodeStatusUnreachable means the node is considered unreachable.
+	NodeStatusUnreachable NodeStatus = "unreachable"
 	// NodeStatusLeft means the node has left the cluster.
 	NodeStatusLeft NodeStatus = "left"
 )

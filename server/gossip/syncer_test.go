@@ -303,7 +303,7 @@ func TestSyncer_RemoteNodeLeave(t *testing.T) {
 	})
 }
 
-func TestSyncer_RemoteNodeDown(t *testing.T) {
+func TestSyncer_RemoteNodeUnreachable(t *testing.T) {
 	t.Run("active node", func(t *testing.T) {
 		localNode := &cluster.Node{
 			ID:        "local",
@@ -330,7 +330,7 @@ func TestSyncer_RemoteNodeDown(t *testing.T) {
 		assert.True(t, ok)
 		assert.Equal(t, node, &cluster.Node{
 			ID:        "remote",
-			Status:    cluster.NodeStatusDown,
+			Status:    cluster.NodeStatusUnreachable,
 			ProxyAddr: "10.26.104.98:8000",
 			AdminAddr: "10.26.104.98:8001",
 			Endpoints: map[string]int{

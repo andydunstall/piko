@@ -113,7 +113,7 @@ func TestState_AddNode(t *testing.T) {
 		// Attempting to add a node with the same ID should succeed.
 		newNode = &Node{
 			ID:     "remote",
-			Status: NodeStatusDown,
+			Status: NodeStatusUnreachable,
 		}
 		s.AddNode(newNode)
 
@@ -150,7 +150,7 @@ func TestState_RemoveNode(t *testing.T) {
 
 		newNode := &Node{
 			ID:     "remote",
-			Status: NodeStatusDown,
+			Status: NodeStatusUnreachable,
 		}
 		s.AddNode(newNode)
 		assert.True(t, s.RemoveNode(newNode.ID))
@@ -186,10 +186,10 @@ func TestState_UpdateRemoteStatus(t *testing.T) {
 			Status: NodeStatusActive,
 		}
 		s.AddNode(newNode)
-		assert.True(t, s.UpdateRemoteStatus("remote", NodeStatusDown))
+		assert.True(t, s.UpdateRemoteStatus("remote", NodeStatusUnreachable))
 
 		n, _ := s.Node("remote")
-		assert.Equal(t, NodeStatusDown, n.Status)
+		assert.Equal(t, NodeStatusUnreachable, n.Status)
 	})
 
 	t.Run("update local status", func(t *testing.T) {
@@ -200,7 +200,7 @@ func TestState_UpdateRemoteStatus(t *testing.T) {
 		s := NewState(localNode.Copy(), log.NewNopLogger())
 
 		// Attempting to update the local node should have no affect.
-		assert.False(t, s.UpdateRemoteStatus("local", NodeStatusDown))
+		assert.False(t, s.UpdateRemoteStatus("local", NodeStatusUnreachable))
 		assert.Equal(t, localNode, s.LocalNode())
 	})
 }
@@ -215,7 +215,7 @@ func TestState_UpdateRemoteEndpoint(t *testing.T) {
 
 		newNode := &Node{
 			ID:     "remote",
-			Status: NodeStatusDown,
+			Status: NodeStatusUnreachable,
 		}
 		s.AddNode(newNode)
 		assert.True(t, s.UpdateRemoteEndpoint("remote", "my-endpoint", 7))

@@ -180,7 +180,9 @@ func (s *syncer) OnDown(nodeID string) {
 		return
 	}
 
-	if updated := s.clusterState.UpdateRemoteStatus(nodeID, cluster.NodeStatusDown); updated {
+	if updated := s.clusterState.UpdateRemoteStatus(
+		nodeID, cluster.NodeStatusUnreachable,
+	); updated {
 		s.logger.Info(
 			"node down; updated cluster",
 			zap.String("node-id", nodeID),
@@ -195,7 +197,7 @@ func (s *syncer) OnDown(nodeID string) {
 	// come back.
 	pending, ok := s.pendingNodes[nodeID]
 	if ok {
-		pending.Status = cluster.NodeStatusDown
+		pending.Status = cluster.NodeStatusUnreachable
 
 		s.logger.Info(
 			"node down; updated pending",
