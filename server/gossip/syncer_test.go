@@ -323,8 +323,8 @@ func TestSyncer_RemoteNodeUnreachable(t *testing.T) {
 		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
 		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
 
-		// Marking a node down should update the cluster.
-		sync.OnDown("remote")
+		// Marking a node unreachable should update the cluster.
+		sync.OnUnreachable("remote")
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
@@ -364,11 +364,11 @@ func TestSyncer_RemoteNodeUnreachable(t *testing.T) {
 		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
 		sync.OnUpsertKey("remote", "endpoint:my-endpoint", "5")
 
-		// Marking a node down should update the cluster.
-		sync.OnDown("remote")
+		// Marking a node unreachable should update the cluster.
+		sync.OnUnreachable("remote")
 
 		// Marking a node healthy should update the cluster.
-		sync.OnUp("remote")
+		sync.OnReachable("remote")
 
 		node, ok := m.Node("remote")
 		assert.True(t, ok)
@@ -383,7 +383,7 @@ func TestSyncer_RemoteNodeUnreachable(t *testing.T) {
 		})
 	})
 
-	t.Run("pending node down", func(t *testing.T) {
+	t.Run("pending node unreachable", func(t *testing.T) {
 		localNode := &cluster.Node{
 			ID:        "local",
 			ProxyAddr: "10.26.104.56:8000",
@@ -400,9 +400,9 @@ func TestSyncer_RemoteNodeUnreachable(t *testing.T) {
 		sync.OnJoin("remote")
 		sync.OnUpsertKey("remote", "proxy_addr", "10.26.104.98:8000")
 
-		// Marking down should not remove the pending node.
-		sync.OnDown("remote")
-		sync.OnUp("remote")
+		// Marking unreachable should not remove the pending node.
+		sync.OnUnreachable("remote")
+		sync.OnReachable("remote")
 
 		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
 
@@ -433,8 +433,8 @@ func TestSyncer_RemoteNodeUnreachable(t *testing.T) {
 		sync.OnJoin("remote")
 		sync.OnUpsertKey("remote", "proxy_addr", "10.26.104.98:8000")
 
-		// Marking down should not remove the pending node.
-		sync.OnDown("remote")
+		// Marking unreachable should not remove the pending node.
+		sync.OnUnreachable("remote")
 		sync.OnExpired("remote")
 
 		sync.OnUpsertKey("remote", "admin_addr", "10.26.104.98:8001")
@@ -457,7 +457,7 @@ func TestSyncer_RemoteNodeUnreachable(t *testing.T) {
 		gossiper := &fakeGossiper{}
 		sync.Sync(gossiper)
 
-		// Attempting to mark the local node as down should have no affect.
+		// Attempting to mark the local node as unreachable should have no affect.
 		sync.OnLeave("local")
 
 		assert.Equal(t, localNode, m.LocalNode())

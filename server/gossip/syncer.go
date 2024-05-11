@@ -135,10 +135,10 @@ func (s *syncer) OnLeave(nodeID string) {
 	}
 }
 
-func (s *syncer) OnUp(nodeID string) {
+func (s *syncer) OnReachable(nodeID string) {
 	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
-			"node up; same id as local node",
+			"node reachable; same id as local node",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -146,7 +146,7 @@ func (s *syncer) OnUp(nodeID string) {
 
 	if updated := s.clusterState.UpdateRemoteStatus(nodeID, cluster.NodeStatusActive); updated {
 		s.logger.Info(
-			"node up; updated cluster",
+			"node reachable; updated cluster",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -160,21 +160,21 @@ func (s *syncer) OnUp(nodeID string) {
 		pending.Status = cluster.NodeStatusActive
 
 		s.logger.Info(
-			"node up; updated pending",
+			"node reachable; updated pending",
 			zap.String("node-id", nodeID),
 		)
 	} else {
 		s.logger.Warn(
-			"node up; unknown node",
+			"node reachable; unknown node",
 			zap.String("node-id", nodeID),
 		)
 	}
 }
 
-func (s *syncer) OnDown(nodeID string) {
+func (s *syncer) OnUnreachable(nodeID string) {
 	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
-			"node down; same id as local node",
+			"node unreachable; same id as local node",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -184,7 +184,7 @@ func (s *syncer) OnDown(nodeID string) {
 		nodeID, cluster.NodeStatusUnreachable,
 	); updated {
 		s.logger.Info(
-			"node down; updated cluster",
+			"node unreachable; updated cluster",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -200,12 +200,12 @@ func (s *syncer) OnDown(nodeID string) {
 		pending.Status = cluster.NodeStatusUnreachable
 
 		s.logger.Info(
-			"node down; updated pending",
+			"node unreachable; updated pending",
 			zap.String("node-id", nodeID),
 		)
 	} else {
 		s.logger.Warn(
-			"node down; unknown node",
+			"node unreachable; unknown node",
 			zap.String("node-id", nodeID),
 		)
 	}
@@ -320,8 +320,8 @@ func (s *syncer) OnUpsertKey(nodeID, key, value string) {
 	// Once we have the nodes immutable fields it can be added to the cluster.
 	if node.ProxyAddr != "" && node.AdminAddr != "" {
 		if node.Status == "" {
-			// Unless we've received a down/leave notification, we consider
-			// the node as active.
+			// Unless we've received a unreachable/leave notification, we
+			// consider the node as active.
 			node.Status = cluster.NodeStatusActive
 		}
 
