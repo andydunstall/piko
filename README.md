@@ -1,108 +1,68 @@
 # Pico [![Build](https://github.com/andydunstall/pico/actions/workflows/build.yaml/badge.svg)](https://github.com/andydunstall/pico/actions/workflows/build.yaml)
 
-> :warning: Pico is currently only a proof of concept so is not yet suitable
-for production.
+Pico is an open-source alternative to [Ngrok](https://ngrok.com/), designed to
+serve production traffic and be simple to host (particularly on Kubernetes).
+Such as you may use Pico to expose services in a customer network, a bring your
+own cloud (BYOC) service or to connect to IoT devices.
 
-Pico is a reverse proxy that allows you to expose an endpoint that isn’t
-publicly routable (known as tunnelling).
+The proxy server may be hosted as a cluster of nodes for fault tolerance, scale
+and zero downtime deployments.
 
-Unlike many open-source tunnelling solutions, Pico is designed to serve
-production traffic. Such as you may use Pico to expose services in a customer
-network, a bring your own cloud (BYOC) service or to connect to IoT devices.
+Upstream services connect to Pico and register endpoints. Pico will then route
+requests for an endpoint to a registered upstream service via its outbound-only
+connection. This means you can expose your services without opening a public
+port.
 
-Upstream endpoints register with Pico via an outbound-only connection. Proxy
-clients then send HTTP(S) requests to Pico which will proxy the requests to a
-registered endpoint.
-
-Requests identify the target endpoint ID using either the `Host` header or an
-`x-pico-endpoint` header. When multiple endpoints have the same ID, Pico will
-load balance requests for that ID among the registered endpoints. Therefore an
-endpoint ID is the equivalent of a domain name in Pico.
+Incoming HTTP(S) requests identify the ID of the target endpoint using either
+the `Host` header or an `x-pico-endpoint` header. If multiple upstream services
+have registered the same endpoint, Pico load balances requests for that
+endpoint among the registered upstreams.
 
 ![overview](assets/images/overview.png)
 
 ## Contents
 
 - [Design Goals](#design-goals)
-- [Components](#components)
 - [Getting Started](#getting-started)
 - [Docs](#docs)
 
 ## Design Goals
 
 ### Production Traffic
-Unlike many open-source tunnelling solutions that are built for testing and
-development (such as sharing a demo running on your local machine), Pico is
-built to serve production traffic. Such as you could use Pico to:
+
+Pico is designed to serve production traffic rather than as a tool for testing
+and development. Such as you could use Pico to:
 * Access customer networks
 * Build a bring your own cloud (BYOC) solution
 * Access IoT devices
 
-Therefore Pico supports running as a cluster of server nodes in order to be
-fault tolerant, scale horizontally and support zero downtime deployments. It
-also includes observability tools for monitoring, alerting and debugging.
+To support this, Pico may run as a cluster of nodes in order to be fault
+tolerant, scale horizontally and support zero downtime deployments. It also has
+observability tools for monitoring and debugging.
 
 ### Hosting
-Pico is designed to be simple to host, particularly on Kubernetes. A cluster of
-server nodes can be hosted behind a HTTP load balancer or
-[Kubernetes Gateway](https://kubernetes.io/docs/concepts/services-networking/gateway/)
-as a Kubernetes deployment or stateful set.
 
-Upstream endpoints and proxied requests may be load balanced to any node in the
-cluster, then Pico will manage routing the request to the correct endpoint.
+Pico is built to be simple to host on Kubernetes. A Pico cluster may be hosted
+as a Kubernetes StatefulSet behind a HTTP load balancer or Kubernetes Gateway.
 
-### Dynamic Endpoints
-Upstreams may register any endpoint ID dynamically at runtime without any
-static configuration. If there are multiple registered endpoints for a given
-ID, Pico load balances requests among those endpoints.
+Upstream service connections and proxy client requests may be load balanced to
+any node in the cluster and Pico will manage routing the requests to the
+correct upstream.
 
-## Components
+### Secure
 
-### Server
-The Pico server is responsible for proxying requests from proxy clients to
-registered upstream endpoints.
+Upstream services connect to Pico via an outbound-only connection. Pico will
+then route any requests to the upstream via that connection. Therefore the
+upstream never has to open a port to listen for requests.
 
-Upstream endpoints register with Pico via an outbound-only connection. Clients
-then send HTTP(S) requests to the Pico server, which will proxy the requests to
-a registered endpoint.
+Pico supports authenticating upstream services before they can register
+endpoints.
 
-Incoming requests identify the target endpoint ID using either the `Host`
-header or `x-pico-endpoint` header. When the `Host` header is used, the lowest
-level domain is used as the endpoint ID. Such as if you send a request to
-`my-endpoint.pico.example.com`, `my-endpoint` will be used. `x-pico-endpoint`
-takes precedence over the `Host`.
-
-Pico supports running as a cluster of server nodes. Upstream listeners and
-proxy clients may connect to any node in the cluster and Pico manages
-routing requests to the correct listener.
-
-The server exposes 4 ports:
-* Proxy port: Listens for HTTP(S) requests from proxy clients and forwards
-the requests to upstream listeners (defaults to `8000`)
-* Upstream port: Listens for connections from upstream listeners (defaults to
-`8001`)
-* Admin port: Listens for admin requests to inspect the status of the server
-(defaults to `8002`)
-* Gossip port: Listens for gossip traffic between nodes in the same cluster
-(defaults to `8003`)
-
-The server has separate proxy and upstream ports as upstream listeners and
-proxy clients will be in separate networks (otherwise there isn’t any need
-for Pico). Such as you may expose the upstream port to the Internet for
-external networks to register endpoints, though only allow requests to the
-proxy port from nodes in the same network.
-
-Run a server node with `pico server`.
-
-### Agent
-The Pico agent is a lightweight proxy that runs alongside your upstream
-services that registers endpoints with the Pico server and forwards incoming
-requests.
-
-Such as you run an Pico agent and register endpoint `my-endpoint` that forwards
-requests to `localhost:3000`.
-
-Run the Pico agent with `pico agent`.
+Since Pico can be self-hosted, you can host it in the same network as your
+proxy clients so never accept requests from an external network. Such as you
+may have authenticated upstream services register from the Internet over TLS,
+then only provide an internal route for proxy clients in the same network as
+Pico.
 
 ## Getting Started
 
