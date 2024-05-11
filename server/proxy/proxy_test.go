@@ -51,6 +51,7 @@ func TestProxy(t *testing.T) {
 		networkMap := cluster.NewState(&cluster.Node{}, log.NewNopLogger())
 		networkMap.AddNode(&cluster.Node{
 			ID:        "node-1",
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "1.2.3.4:1234",
 			Endpoints: map[string]int{
 				"my-endpoint": 5,
@@ -85,6 +86,7 @@ func TestProxy(t *testing.T) {
 		networkMap := cluster.NewState(&cluster.Node{}, log.NewNopLogger())
 		networkMap.AddNode(&cluster.Node{
 			ID:        "node-1",
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "1.2.3.4:1234",
 			Endpoints: map[string]int{
 				"my-endpoint": 5,
@@ -119,6 +121,7 @@ func TestProxy(t *testing.T) {
 		networkMap := cluster.NewState(&cluster.Node{}, log.NewNopLogger())
 		networkMap.AddNode(&cluster.Node{
 			ID:        "node-1",
+			Status:    cluster.NodeStatusActive,
 			ProxyAddr: "1.2.3.4:1234",
 			Endpoints: map[string]int{
 				"my-endpoint": 5,

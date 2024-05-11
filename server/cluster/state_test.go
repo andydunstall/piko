@@ -272,3 +272,78 @@ func TestState_RemoveRemoteEndpoint(t *testing.T) {
 		assert.Equal(t, localNode, s.LocalNode())
 	})
 }
+
+func TestState_LookupEndpoint(t *testing.T) {
+	t.Run("found", func(t *testing.T) {
+		localNode := &Node{
+			ID:     "local",
+			Status: NodeStatusActive,
+		}
+		s := NewState(localNode.Copy(), log.NewNopLogger())
+
+		newNode := &Node{
+			ID:     "remote",
+			Status: NodeStatusActive,
+		}
+		s.AddNode(newNode)
+		assert.True(t, s.UpdateRemoteEndpoint("remote", "my-endpoint-1", 7))
+
+		node, ok := s.LookupEndpoint("my-endpoint-1")
+		assert.True(t, ok)
+		assert.Equal(t, newNode, node)
+	})
+
+	t.Run("ignore unreachable", func(t *testing.T) {
+		localNode := &Node{
+			ID:     "local",
+			Status: NodeStatusActive,
+		}
+		s := NewState(localNode.Copy(), log.NewNopLogger())
+
+		newNode := &Node{
+			ID:     "remote",
+			Status: NodeStatusUnreachable,
+		}
+		s.AddNode(newNode)
+		assert.True(t, s.UpdateRemoteEndpoint("remote", "my-endpoint-1", 7))
+
+		_, ok := s.LookupEndpoint("my-endpoint-1")
+		assert.False(t, ok)
+	})
+
+	t.Run("ignore left", func(t *testing.T) {
+		localNode := &Node{
+			ID:     "local",
+			Status: NodeStatusActive,
+		}
+		s := NewState(localNode.Copy(), log.NewNopLogger())
+
+		newNode := &Node{
+			ID:     "remote",
+			Status: NodeStatusLeft,
+		}
+		s.AddNode(newNode)
+		assert.True(t, s.UpdateRemoteEndpoint("remote", "my-endpoint-1", 7))
+
+		_, ok := s.LookupEndpoint("my-endpoint-1")
+		assert.False(t, ok)
+	})
+
+	t.Run("not found", func(t *testing.T) {
+		localNode := &Node{
+			ID:     "local",
+			Status: NodeStatusActive,
+		}
+		s := NewState(localNode.Copy(), log.NewNopLogger())
+
+		newNode := &Node{
+			ID:     "remote",
+			Status: NodeStatusActive,
+		}
+		s.AddNode(newNode)
+		assert.True(t, s.UpdateRemoteEndpoint("remote", "my-endpoint-1", 7))
+
+		_, ok := s.LookupEndpoint("my-endpoint-2")
+		assert.False(t, ok)
+	})
+}

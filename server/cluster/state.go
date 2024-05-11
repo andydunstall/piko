@@ -87,6 +87,8 @@ func (s *State) Nodes() []*Node {
 	return nodes
 }
 
+// LookupEndpoint looks up a node that the endpoint with the given ID is active
+// on.
 func (s *State) LookupEndpoint(endpointID string) (*Node, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -94,6 +96,10 @@ func (s *State) LookupEndpoint(endpointID string) (*Node, bool) {
 	for _, node := range s.nodes {
 		if node.ID == s.localID {
 			// Ignore ourselves.
+			continue
+		}
+		if node.Status != NodeStatusActive {
+			// Ignore unreachable and left nodes.
 			continue
 		}
 		if listeners, ok := node.Endpoints[endpointID]; ok && listeners > 0 {
