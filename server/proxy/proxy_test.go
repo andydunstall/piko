@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/netmap"
+	"github.com/andydunstall/pico/server/cluster"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -48,8 +48,8 @@ func (f *fakeForwarder) Request(
 
 func TestProxy(t *testing.T) {
 	t.Run("forward request remote ok", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger())
-		networkMap.AddNode(&netmap.Node{
+		networkMap := cluster.NewState(&cluster.Node{}, log.NewNopLogger())
+		networkMap.AddNode(&cluster.Node{
 			ID:        "node-1",
 			ProxyAddr: "1.2.3.4:1234",
 			Endpoints: map[string]int{
@@ -82,8 +82,8 @@ func TestProxy(t *testing.T) {
 	})
 
 	t.Run("forward request remote endpoint timeout", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger())
-		networkMap.AddNode(&netmap.Node{
+		networkMap := cluster.NewState(&cluster.Node{}, log.NewNopLogger())
+		networkMap.AddNode(&cluster.Node{
 			ID:        "node-1",
 			ProxyAddr: "1.2.3.4:1234",
 			Endpoints: map[string]int{
@@ -116,8 +116,8 @@ func TestProxy(t *testing.T) {
 	})
 
 	t.Run("forward request remote endpoint unreachable", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger())
-		networkMap.AddNode(&netmap.Node{
+		networkMap := cluster.NewState(&cluster.Node{}, log.NewNopLogger())
+		networkMap.AddNode(&cluster.Node{
 			ID:        "node-1",
 			ProxyAddr: "1.2.3.4:1234",
 			Endpoints: map[string]int{
@@ -150,7 +150,7 @@ func TestProxy(t *testing.T) {
 
 	t.Run("forward request remote endpoint not found", func(t *testing.T) {
 		proxy := NewProxy(
-			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+			cluster.NewState(&cluster.Node{}, log.NewNopLogger()),
 		)
 
 		header := make(http.Header)
@@ -182,7 +182,7 @@ func TestProxy(t *testing.T) {
 		}
 
 		proxy := NewProxy(
-			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+			cluster.NewState(&cluster.Node{}, log.NewNopLogger()),
 		)
 
 		proxy.AddConn(conn)
@@ -207,7 +207,7 @@ func TestProxy(t *testing.T) {
 		}
 
 		proxy := NewProxy(
-			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+			cluster.NewState(&cluster.Node{}, log.NewNopLogger()),
 		)
 
 		proxy.AddConn(conn)
@@ -236,7 +236,7 @@ func TestProxy(t *testing.T) {
 		}
 
 		proxy := NewProxy(
-			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+			cluster.NewState(&cluster.Node{}, log.NewNopLogger()),
 		)
 
 		proxy.AddConn(conn)
@@ -256,7 +256,7 @@ func TestProxy(t *testing.T) {
 
 	t.Run("forward request local endpoint not found", func(t *testing.T) {
 		proxy := NewProxy(
-			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+			cluster.NewState(&cluster.Node{}, log.NewNopLogger()),
 		)
 
 		header := make(http.Header)
@@ -289,8 +289,8 @@ func TestProxy(t *testing.T) {
 	})
 
 	t.Run("add conn", func(t *testing.T) {
-		networkMap := netmap.NewNetworkMap(
-			&netmap.Node{
+		networkMap := cluster.NewState(
+			&cluster.Node{
 				ID: "local",
 			}, log.NewNopLogger(),
 		)
@@ -300,7 +300,7 @@ func TestProxy(t *testing.T) {
 			endpointID: "my-endpoint",
 		}
 		proxy.AddConn(conn)
-		// Verify the netmap was updated.
+		// Verify the cluster was updated.
 		assert.Equal(t, map[string]int{
 			"my-endpoint": 1,
 		}, networkMap.LocalNode().Endpoints)
@@ -311,7 +311,7 @@ func TestProxy(t *testing.T) {
 
 	t.Run("missing endpoint", func(t *testing.T) {
 		proxy := NewProxy(
-			netmap.NewNetworkMap(&netmap.Node{}, log.NewNopLogger()),
+			cluster.NewState(&cluster.Node{}, log.NewNopLogger()),
 		)
 
 		resp := proxy.Request(context.TODO(), &http.Request{

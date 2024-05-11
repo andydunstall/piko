@@ -7,7 +7,7 @@ import (
 
 	"github.com/andydunstall/kite"
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/netmap"
+	"github.com/andydunstall/pico/server/cluster"
 	"go.uber.org/zap"
 )
 
@@ -16,31 +16,31 @@ type gossiper interface {
 	DeleteLocal(key string)
 }
 
-// syncer handles syncronising state between gossip and the netmap.
+// syncer handles syncronising state between gossip and the cluster.
 //
-// When a node joins, it is considered 'pending' so not added to the netmap
+// When a node joins, it is considered 'pending' so not added to the cluster
 // until we have the full node state. Since gossip propagates state updates in
-// order, we only add a node to the netmap when we have the required immutable
+// order, we only add a node to the cluster when we have the required immutable
 // fields.
 type syncer struct {
 	// pendingNodes contains nodes that we haven't received the full state for
-	// yet so can't be added to the netmap.
-	pendingNodes map[string]*netmap.Node
+	// yet so can't be added to the cluster.
+	pendingNodes map[string]*cluster.Node
 
 	// mu protects the above fields.
 	mu sync.Mutex
 
-	networkMap *netmap.NetworkMap
+	clusterState *cluster.State
 
 	gossiper gossiper
 
 	logger log.Logger
 }
 
-func newSyncer(networkMap *netmap.NetworkMap, logger log.Logger) *syncer {
+func newSyncer(clusterState *cluster.State, logger log.Logger) *syncer {
 	return &syncer{
-		pendingNodes: make(map[string]*netmap.Node),
-		networkMap:   networkMap,
+		pendingNodes: make(map[string]*cluster.Node),
+		clusterState: clusterState,
 		logger:       logger,
 	}
 }
@@ -48,9 +48,9 @@ func newSyncer(networkMap *netmap.NetworkMap, logger log.Logger) *syncer {
 func (s *syncer) Sync(gossiper gossiper) {
 	s.gossiper = gossiper
 
-	s.networkMap.OnLocalEndpointUpdate(s.onLocalEndpointUpdate)
+	s.clusterState.OnLocalEndpointUpdate(s.onLocalEndpointUpdate)
 
-	localNode := s.networkMap.LocalNode()
+	localNode := s.clusterState.LocalNode()
 	// First add immutable fields.
 	s.gossiper.UpsertLocal("proxy_addr", localNode.ProxyAddr)
 	s.gossiper.UpsertLocal("admin_addr", localNode.AdminAddr)
@@ -62,7 +62,7 @@ func (s *syncer) Sync(gossiper gossiper) {
 }
 
 func (s *syncer) OnJoin(nodeID string) {
-	if nodeID == s.networkMap.LocalID() {
+	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
 			"node joined; same id as local node",
 			zap.String("node-id", nodeID),
@@ -70,9 +70,9 @@ func (s *syncer) OnJoin(nodeID string) {
 		return
 	}
 
-	if _, ok := s.networkMap.Node(nodeID); ok {
+	if _, ok := s.clusterState.Node(nodeID); ok {
 		s.logger.Warn(
-			"node joined; already in netmap",
+			"node joined; already in cluster",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -90,8 +90,8 @@ func (s *syncer) OnJoin(nodeID string) {
 	}
 
 	// Add as pending since we don't have enough information to add to the
-	// netmap.
-	s.pendingNodes[nodeID] = &netmap.Node{
+	// cluster.
+	s.pendingNodes[nodeID] = &cluster.Node{
 		ID: nodeID,
 	}
 
@@ -99,7 +99,7 @@ func (s *syncer) OnJoin(nodeID string) {
 }
 
 func (s *syncer) OnLeave(nodeID string) {
-	if nodeID == s.networkMap.LocalID() {
+	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
 			"node healthy; same id as local node",
 			zap.String("node-id", nodeID),
@@ -107,9 +107,9 @@ func (s *syncer) OnLeave(nodeID string) {
 		return
 	}
 
-	if updated := s.networkMap.UpdateRemoteStatus(nodeID, netmap.NodeStatusLeft); updated {
+	if updated := s.clusterState.UpdateRemoteStatus(nodeID, cluster.NodeStatusLeft); updated {
 		s.logger.Info(
-			"node leave; updated netmap",
+			"node leave; updated cluster",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -136,7 +136,7 @@ func (s *syncer) OnLeave(nodeID string) {
 }
 
 func (s *syncer) OnUp(nodeID string) {
-	if nodeID == s.networkMap.LocalID() {
+	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
 			"node up; same id as local node",
 			zap.String("node-id", nodeID),
@@ -144,9 +144,9 @@ func (s *syncer) OnUp(nodeID string) {
 		return
 	}
 
-	if updated := s.networkMap.UpdateRemoteStatus(nodeID, netmap.NodeStatusActive); updated {
+	if updated := s.clusterState.UpdateRemoteStatus(nodeID, cluster.NodeStatusActive); updated {
 		s.logger.Info(
-			"node up; updated netmap",
+			"node up; updated cluster",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -157,7 +157,7 @@ func (s *syncer) OnUp(nodeID string) {
 
 	pending, ok := s.pendingNodes[nodeID]
 	if ok {
-		pending.Status = netmap.NodeStatusActive
+		pending.Status = cluster.NodeStatusActive
 
 		s.logger.Info(
 			"node up; updated pending",
@@ -172,7 +172,7 @@ func (s *syncer) OnUp(nodeID string) {
 }
 
 func (s *syncer) OnDown(nodeID string) {
-	if nodeID == s.networkMap.LocalID() {
+	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
 			"node down; same id as local node",
 			zap.String("node-id", nodeID),
@@ -180,9 +180,9 @@ func (s *syncer) OnDown(nodeID string) {
 		return
 	}
 
-	if updated := s.networkMap.UpdateRemoteStatus(nodeID, netmap.NodeStatusDown); updated {
+	if updated := s.clusterState.UpdateRemoteStatus(nodeID, cluster.NodeStatusDown); updated {
 		s.logger.Info(
-			"node down; updated netmap",
+			"node down; updated cluster",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -195,7 +195,7 @@ func (s *syncer) OnDown(nodeID string) {
 	// come back.
 	pending, ok := s.pendingNodes[nodeID]
 	if ok {
-		pending.Status = netmap.NodeStatusDown
+		pending.Status = cluster.NodeStatusDown
 
 		s.logger.Info(
 			"node down; updated pending",
@@ -210,7 +210,7 @@ func (s *syncer) OnDown(nodeID string) {
 }
 
 func (s *syncer) OnExpired(nodeID string) {
-	if nodeID == s.networkMap.LocalID() {
+	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
 			"node expired; same id as local node",
 			zap.String("node-id", nodeID),
@@ -218,9 +218,9 @@ func (s *syncer) OnExpired(nodeID string) {
 		return
 	}
 
-	if removed := s.networkMap.RemoveNode(nodeID); removed {
+	if removed := s.clusterState.RemoveNode(nodeID); removed {
 		s.logger.Info(
-			"node expired; removed from netmap",
+			"node expired; removed from cluster",
 			zap.String("node-id", nodeID),
 		)
 		return
@@ -246,7 +246,7 @@ func (s *syncer) OnExpired(nodeID string) {
 }
 
 func (s *syncer) OnUpsertKey(nodeID, key, value string) {
-	if nodeID == s.networkMap.LocalID() {
+	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
 			"node upsert state; same id as local node",
 			zap.String("node-id", nodeID),
@@ -255,7 +255,7 @@ func (s *syncer) OnUpsertKey(nodeID, key, value string) {
 		return
 	}
 
-	// First check if the node is already in the netmap. Only check mutable
+	// First check if the node is already in the cluster. Only check mutable
 	// fields.
 	if strings.HasPrefix(key, "endpoint:") {
 		endpointID, _ := strings.CutPrefix(key, "endpoint:")
@@ -269,7 +269,7 @@ func (s *syncer) OnUpsertKey(nodeID, key, value string) {
 			)
 			return
 		}
-		if s.networkMap.UpdateRemoteEndpoint(nodeID, endpointID, listeners) {
+		if s.clusterState.UpdateRemoteEndpoint(nodeID, endpointID, listeners) {
 			return
 		}
 	}
@@ -315,19 +315,19 @@ func (s *syncer) OnUpsertKey(nodeID, key, value string) {
 		return
 	}
 
-	// Once we have the nodes immutable fields it can be added to the netmap.
+	// Once we have the nodes immutable fields it can be added to the cluster.
 	if node.ProxyAddr != "" && node.AdminAddr != "" {
 		if node.Status == "" {
 			// Unless we've received a down/leave notification, we consider
 			// the node as active.
-			node.Status = netmap.NodeStatusActive
+			node.Status = cluster.NodeStatusActive
 		}
 
 		delete(s.pendingNodes, node.ID)
-		s.networkMap.AddNode(node)
+		s.clusterState.AddNode(node)
 
 		s.logger.Debug(
-			"node upsert state; added to netmap",
+			"node upsert state; added to cluster",
 			zap.String("node-id", nodeID),
 			zap.String("key", key),
 			zap.String("value", value),
@@ -343,7 +343,7 @@ func (s *syncer) OnUpsertKey(nodeID, key, value string) {
 }
 
 func (s *syncer) OnDeleteKey(nodeID, key string) {
-	if nodeID == s.networkMap.LocalID() {
+	if nodeID == s.clusterState.LocalID() {
 		s.logger.Warn(
 			"node delete state; same id as local node",
 			zap.String("node-id", nodeID),
@@ -363,9 +363,9 @@ func (s *syncer) OnDeleteKey(nodeID, key string) {
 	}
 
 	endpointID, _ := strings.CutPrefix(key, "endpoint:")
-	if s.networkMap.RemoveRemoteEndpoint(nodeID, endpointID) {
+	if s.clusterState.RemoveRemoteEndpoint(nodeID, endpointID) {
 		s.logger.Debug(
-			"node delete state; netmap updated",
+			"node delete state; cluster updated",
 			zap.String("node-id", nodeID),
 			zap.String("key", key),
 		)

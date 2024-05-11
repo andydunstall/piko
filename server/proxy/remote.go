@@ -6,13 +6,13 @@ import (
 
 	"github.com/andydunstall/pico/pkg/forwarder"
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/netmap"
+	"github.com/andydunstall/pico/server/cluster"
 )
 
 // remoteProxy is responsible for forwarding requests to Pico server nodes with
 // an upstream connection for the target endpoint.
 type remoteProxy struct {
-	networkMap *netmap.NetworkMap
+	clusterState *cluster.State
 
 	forwarder forwarder.Forwarder
 
@@ -20,14 +20,14 @@ type remoteProxy struct {
 }
 
 func newRemoteProxy(
-	networkMap *netmap.NetworkMap,
+	clusterState *cluster.State,
 	forwarder forwarder.Forwarder,
 	logger log.Logger,
 ) *remoteProxy {
 	return &remoteProxy{
-		networkMap: networkMap,
-		forwarder:  forwarder,
-		logger:     logger,
+		clusterState: clusterState,
+		forwarder:    forwarder,
+		logger:       logger,
 	}
 }
 
@@ -44,13 +44,13 @@ func (p *remoteProxy) Request(
 }
 
 func (p *remoteProxy) AddConn(conn Conn) {
-	// Update the netmap to notify other nodes that we have a connection for
+	// Update the cluster to notify other nodes that we have a connection for
 	// the endpoint.
-	p.networkMap.AddLocalEndpoint(conn.EndpointID())
+	p.clusterState.AddLocalEndpoint(conn.EndpointID())
 }
 
 func (p *remoteProxy) RemoveConn(conn Conn) {
-	p.networkMap.RemoveLocalEndpoint(conn.EndpointID())
+	p.clusterState.RemoveLocalEndpoint(conn.EndpointID())
 }
 
 // findNode looks up a node with an upstream connection for the given endpoint
@@ -58,7 +58,7 @@ func (p *remoteProxy) RemoveConn(conn Conn) {
 func (p *remoteProxy) findNode(endpointID string) (string, bool) {
 	// TODO(andydunstall): This doesn't yet do any load balancing. It just
 	// selects the first node.
-	node, ok := p.networkMap.LookupEndpoint(endpointID)
+	node, ok := p.clusterState.LookupEndpoint(endpointID)
 	if !ok {
 		return "", false
 	}

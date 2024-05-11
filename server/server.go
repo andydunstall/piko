@@ -9,9 +9,9 @@ import (
 
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/auth"
+	"github.com/andydunstall/pico/server/cluster"
 	"github.com/andydunstall/pico/server/config"
 	"github.com/andydunstall/pico/server/gossip"
-	"github.com/andydunstall/pico/server/netmap"
 	"github.com/andydunstall/pico/server/proxy"
 	adminserver "github.com/andydunstall/pico/server/server/admin"
 	proxyserver "github.com/andydunstall/pico/server/server/proxy"
@@ -67,7 +67,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	}
 
 	if conf.Cluster.NodeID == "" {
-		nodeID := netmap.GenerateNodeID()
+		nodeID := cluster.GenerateNodeID()
 		if conf.Cluster.NodeIDPrefix != "" {
 			nodeID = conf.Cluster.NodeIDPrefix + nodeID
 		}
@@ -165,16 +165,16 @@ func (s *Server) Run(ctx context.Context) error {
 		s.logger,
 	)
 
-	networkMap := netmap.NewNetworkMap(&netmap.Node{
+	clusterState := cluster.NewState(&cluster.Node{
 		ID:        s.conf.Cluster.NodeID,
 		ProxyAddr: s.conf.Proxy.AdvertiseAddr,
 		AdminAddr: s.conf.Admin.AdvertiseAddr,
 	}, s.logger)
-	networkMap.Metrics().Register(registry)
-	adminServer.AddStatus("/netmap", netmap.NewStatus(networkMap))
+	clusterState.Metrics().Register(registry)
+	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
 
 	gossiper, err := gossip.NewGossip(
-		networkMap,
+		clusterState,
 		s.gossipStreamLn,
 		s.gossipPacketLn,
 		s.conf.Gossip,
@@ -203,7 +203,7 @@ func (s *Server) Run(ctx context.Context) error {
 		)
 	}
 
-	p := proxy.NewProxy(networkMap, proxy.WithLogger(s.logger))
+	p := proxy.NewProxy(clusterState, proxy.WithLogger(s.logger))
 	adminServer.AddStatus("/proxy", proxy.NewStatus(p))
 
 	proxyServer := proxyserver.NewServer(

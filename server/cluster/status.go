@@ -1,4 +1,4 @@
-package netmap
+package cluster
 
 import (
 	"net/http"
@@ -8,12 +8,12 @@ import (
 )
 
 type Status struct {
-	networkMap *NetworkMap
+	state *State
 }
 
-func NewStatus(networkMap *NetworkMap) *Status {
+func NewStatus(state *State) *Status {
 	return &Status{
-		networkMap: networkMap,
+		state: state,
 	}
 }
 
@@ -24,18 +24,18 @@ func (s *Status) Register(group *gin.RouterGroup) {
 }
 
 func (s *Status) listNodesRoute(c *gin.Context) {
-	nodes := s.networkMap.Nodes()
+	nodes := s.state.Nodes()
 	c.JSON(http.StatusOK, nodes)
 }
 
 func (s *Status) getLocalNodeRoute(c *gin.Context) {
-	node := s.networkMap.LocalNode()
+	node := s.state.LocalNode()
 	c.JSON(http.StatusOK, node)
 }
 
 func (s *Status) getNodeRoute(c *gin.Context) {
 	id := c.Param("id")
-	node, ok := s.networkMap.Node(id)
+	node, ok := s.state.Node(id)
 	if !ok {
 		c.Status(http.StatusNotFound)
 		return

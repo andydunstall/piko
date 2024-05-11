@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/netmap"
+	"github.com/andydunstall/pico/server/cluster"
 	"go.uber.org/zap"
 )
 
@@ -27,7 +27,7 @@ type Proxy struct {
 	logger log.Logger
 }
 
-func NewProxy(networkMap *netmap.NetworkMap, opts ...Option) *Proxy {
+func NewProxy(clusterState *cluster.State, opts ...Option) *Proxy {
 	options := defaultOptions()
 	for _, opt := range opts {
 		opt.apply(&options)
@@ -36,7 +36,7 @@ func NewProxy(networkMap *netmap.NetworkMap, opts ...Option) *Proxy {
 	logger := options.logger.WithSubsystem("proxy")
 	return &Proxy{
 		local:  newLocalProxy(logger),
-		remote: newRemoteProxy(networkMap, options.forwarder, logger),
+		remote: newRemoteProxy(clusterState, options.forwarder, logger),
 		logger: logger,
 	}
 }
