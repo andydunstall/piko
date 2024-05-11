@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/andydunstall/pico/pkg/gossip"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/auth"
-	"github.com/andydunstall/pico/server/gossip"
 	"github.com/spf13/pflag"
 )
 

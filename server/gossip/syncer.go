@@ -5,7 +5,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/andydunstall/kite"
+	"github.com/andydunstall/pico/pkg/gossip"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/cluster"
 	"go.uber.org/zap"
@@ -407,4 +407,4 @@ func (s *syncer) onLocalEndpointUpdate(endpointID string, listeners int) {
 	}
 }
 
-var _ kite.Watcher = &syncer{}
+var _ gossip.Watcher = &syncer{}

@@ -173,16 +173,13 @@ func (s *Server) Run(ctx context.Context) error {
 	clusterState.Metrics().Register(registry)
 	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
 
-	gossiper, err := gossip.NewGossip(
+	gossiper := gossip.NewGossip(
 		clusterState,
 		s.gossipStreamLn,
 		s.gossipPacketLn,
-		s.conf.Gossip,
+		&s.conf.Gossip,
 		s.logger,
 	)
-	if err != nil {
-		return fmt.Errorf("gossip: %w", err)
-	}
 	defer gossiper.Close()
 	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
 

@@ -9,7 +9,7 @@ import (
 	fspath "path"
 	"time"
 
-	"github.com/andydunstall/kite"
+	"github.com/andydunstall/pico/pkg/gossip"
 	"github.com/andydunstall/pico/server/cluster"
 )
 
@@ -70,28 +70,28 @@ func (c *Client) ClusterNode(nodeID string) (*cluster.Node, error) {
 	return &node, nil
 }
 
-func (c *Client) GossipNodes() ([]kite.NodeMetadata, error) {
+func (c *Client) GossipNodes() ([]gossip.NodeMetadata, error) {
 	r, err := c.request("/status/gossip/nodes")
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	var members []kite.NodeMetadata
+	var members []gossip.NodeMetadata
 	if err := json.NewDecoder(r).Decode(&members); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
 	return members, nil
 }
 
-func (c *Client) GossipNode(memberID string) (*kite.NodeState, error) {
+func (c *Client) GossipNode(memberID string) (*gossip.NodeState, error) {
 	r, err := c.request("/status/gossip/nodes/" + memberID)
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	var member kite.NodeState
+	var member gossip.NodeState
 	if err := json.NewDecoder(r).Decode(&member); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}

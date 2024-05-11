@@ -2,6 +2,7 @@ package gossip
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/pflag"
 )
@@ -12,11 +13,23 @@ type Config struct {
 
 	// AdvertiseAddr is the address to advertise to other nodes.
 	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
+
+	// Interval is the rate to initiate a gossip round.
+	Interval time.Duration `json:"interval" yaml:"interval"`
+
+	// MaxPacketSize is the maximum size of any packet sent.
+	MaxPacketSize int `json:"max_packet_size" yaml:"max_packet_size"`
 }
 
 func (c *Config) Validate() error {
 	if c.BindAddr == "" {
 		return fmt.Errorf("missing bind addr")
+	}
+	if c.Interval == 0 {
+		return fmt.Errorf("missing interval")
+	}
+	if c.MaxPacketSize == 0 {
+		return fmt.Errorf("missing max packet size")
 	}
 	return nil
 }
@@ -48,5 +61,26 @@ By default, if the bind address includes an IP to bind to that will be used.
 If the bind address does not include an IP (such as ':8003') the nodes
 private IP will be used, such as a bind address of ':8003' may have an
 advertise address of '10.26.104.14:8003'.`,
+	)
+
+	fs.DurationVar(
+		&c.Interval,
+		"gossip.interval",
+		time.Millisecond*500,
+		`
+The interval to initiate rounds of gossip.
+
+Each gossip round selects another known node to synchronize with.`,
+	)
+
+	fs.IntVar(
+		&c.MaxPacketSize,
+		"gossip.max-packet-size",
+		1400,
+		`
+The maximum size of any packet sent.
+
+Depending on your networks MTU you may be able to increase to include more data
+in each packet.`,
 	)
 }

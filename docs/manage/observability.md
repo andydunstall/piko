@@ -26,7 +26,7 @@ overrides `--log.level` for the configured subsystems. Such as
 `--log.subsystems server.http,metrics,proxy.forwarder`.
 
 `--log.subsystems` enables any subsystem that are an exact match of the given
-list. Such as `gossip` will match `gossip` but not `gossip.kite`.
+list. Such as `rpc` will match `rpc` but not `rpc.stream`.
 
 ## Metrics
 The Pico server exposes Prometheus on the admin port at `/metrics`.

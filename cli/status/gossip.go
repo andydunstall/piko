@@ -6,7 +6,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/andydunstall/kite"
+	"github.com/andydunstall/pico/pkg/gossip"
 	"github.com/andydunstall/pico/status/client"
 	"github.com/andydunstall/pico/status/config"
 	yaml "github.com/goccy/go-yaml"
@@ -63,7 +63,7 @@ Pico server URL. This URL should point to the server admin port.
 }
 
 type gossipNodesOutput struct {
-	Nodes []kite.NodeMetadata `json:"nodes"`
+	Nodes []gossip.NodeMetadata `json:"nodes"`
 }
 
 func showGossipNodes(conf *config.Config) {

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/andydunstall/pico/pkg/gossip"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server"
 	serverconfig "github.com/andydunstall/pico/server/config"
@@ -58,6 +59,10 @@ func defaultServerConfig() *serverconfig.Config {
 		},
 		Admin: serverconfig.AdminConfig{
 			BindAddr: "127.0.0.1:0",
+		},
+		Gossip: gossip.Config{
+			Interval:      time.Millisecond * 10,
+			MaxPacketSize: 1400,
 		},
 	}
 }

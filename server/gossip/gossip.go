@@ -2,12 +2,11 @@ package gossip
 
 import (
 	"context"
-	"fmt"
 	"net"
 	"time"
 
-	"github.com/andydunstall/kite"
 	"github.com/andydunstall/pico/pkg/backoff"
+	"github.com/andydunstall/pico/pkg/gossip"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/cluster"
 	"go.uber.org/zap"
@@ -17,7 +16,7 @@ import (
 // and propagating the state of the local node to the rest of the cluster.
 //
 // At the gossip layer, a nodes state is represented as key-value pairs which
-// are propagated around the cluster using Kite. These key-value pairs are then
+// are propagated around the cluster. These key-value pairs are then
 // used to gossip based anti-entropy protocol. These key-value pairs are then
 // used to build the local State.
 type Gossip struct {
@@ -25,9 +24,7 @@ type Gossip struct {
 
 	// gossiper manages communicating with the other members to exchange state
 	// updates.
-	gossiper *kite.Kite
-
-	conf Config
+	gossiper *gossip.Gossip
 
 	logger log.Logger
 }
@@ -36,32 +33,27 @@ func NewGossip(
 	clusterState *cluster.State,
 	streamLn net.Listener,
 	packetLn net.PacketConn,
-	conf Config,
+	conf *gossip.Config,
 	logger log.Logger,
-) (*Gossip, error) {
+) *Gossip {
 	logger = logger.WithSubsystem("gossip")
 
 	syncer := newSyncer(clusterState, logger)
-	gossiper, err := kite.New(
-		kite.WithNodeID(clusterState.LocalNode().ID),
-		kite.WithBindAddr(conf.BindAddr),
-		kite.WithAdvertiseAddr(conf.AdvertiseAddr),
-		kite.WithStreamListener(streamLn),
-		kite.WithPacketListener(packetLn),
-		kite.WithWatcher(syncer),
-		kite.WithLogger(logger.WithSubsystem("gossip.kite")),
+	gossiper := gossip.New(
+		clusterState.LocalNode().ID,
+		conf,
+		streamLn,
+		packetLn,
+		syncer,
+		logger,
 	)
-	if err != nil {
-		return nil, fmt.Errorf("kite: %w", err)
-	}
 	syncer.Sync(gossiper)
 
 	return &Gossip{
 		clusterState: clusterState,
 		gossiper:     gossiper,
-		conf:         conf,
 		logger:       logger,
-	}, nil
+	}
 }
 
 // JoinOnBoot attempts to join an existing cluster by syncronising with the
@@ -114,12 +106,12 @@ func (g *Gossip) Leave(ctx context.Context) error {
 }
 
 // Nodes returns the metadata of all known nodes in the cluster.
-func (g *Gossip) Nodes() []kite.NodeMetadata {
+func (g *Gossip) Nodes() []gossip.NodeMetadata {
 	return g.gossiper.Nodes()
 }
 
 // NodeState returns the known state of the node with the given ID.
-func (g *Gossip) NodeState(id string) (*kite.NodeState, bool) {
+func (g *Gossip) NodeState(id string) (*gossip.NodeState, bool) {
 	return g.gossiper.Node(id)
 }
 

@@ -50,11 +50,6 @@ node A notifies the other nodes.
 Therefore each node has an eventually consistent view of what endpoints are
 active on the other nodes in the cluster.
 
-Pico uses the [kite](https://github.com/andydunstall/kite) library for gossip.
-Kite implements the Scuttlebutt protocol, which is an efficient gossip-based
-anti-entropy mechanism. It also manages failure detection and cluster
-membership, so if a node joins, leaves or fails, the other nodes are notified.
-
 ## Routing
 
 When a node receives a request, it first checks if an upstream endpoint with

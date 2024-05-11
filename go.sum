@@ -1,5 +1,3 @@
-github.com/andydunstall/kite v0.3.0 h1:oseShns4TUlFp0PEGcYLQylQ6H/AtVVcKwRYHzW+ZTE=
-github.com/andydunstall/kite v0.3.0/go.mod h1:KU17GjNYH0bNw0WjhinQioBRICBORO+QbAtcl1glPW0=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bytedance/sonic v1.11.5 h1:G00FYjjqll5iQ1PYXynbg/hyzqBqavH8Mo9/oTopd9k=
