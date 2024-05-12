@@ -17,11 +17,11 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func newEndpointsCommand() *cobra.Command {
+func newUpstreamsCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "endpoints",
-		Short: "add upstream endpoints",
-		Long: `Add upstream endpoints.
+		Use:   "upstreams",
+		Short: "add upstream services",
+		Long: `Add upstream services.
 
 Starts the configured number of upstream HTTP servers that return status code
 200 and echo the request body. Each upstream server has a corresponding agent
@@ -33,18 +33,18 @@ servers per endpoint.
 
 Examples:
   # Start 1000 upstream servers with 100 endpoints.
-  pico workload endpoints
+  pico workload upstreams
 
   # Start 5000 upstream servers with 5000 endpoints (so each upstream has a
   # unique endpoint ID).
-  pico workload endpoints --upstreams 5000 --endpoints 5000
+  pico workload upstreams --upstreams 5000 --endpoints 5000
 
   # Specify the Pico server address.
-  pico workload endpoints --server.url https://pico.example.com:8001
+  pico workload upstreams --server.url https://pico.example.com:8001
 `,
 	}
 
-	var conf config.EndpointsConfig
+	var conf config.UpstreamsConfig
 
 	var configPath string
 	cmd.Flags().StringVar(
@@ -92,7 +92,7 @@ default value can be given using form ${VAR:default}.`,
 			os.Exit(1)
 		}
 
-		if err := runEndpoints(&conf, logger); err != nil {
+		if err := runUpstreams(&conf, logger); err != nil {
 			logger.Error("failed to run server", zap.Error(err))
 			os.Exit(1)
 		}
@@ -101,8 +101,8 @@ default value can be given using form ${VAR:default}.`,
 	return cmd
 }
 
-func runEndpoints(conf *config.EndpointsConfig, logger log.Logger) error {
-	logger.Info("starting endpoints workload", zap.Any("conf", conf))
+func runUpstreams(conf *config.UpstreamsConfig, logger log.Logger) error {
+	logger.Info("starting upstreams workload", zap.Any("conf", conf))
 
 	ctx, cancel := signal.NotifyContext(
 		context.Background(), syscall.SIGINT, syscall.SIGTERM,

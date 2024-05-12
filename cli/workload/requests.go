@@ -139,6 +139,7 @@ func runClient(ctx context.Context, conf *config.RequestsConfig, logger log.Logg
 			resp, err := client.Do(req)
 			if err != nil {
 				logger.Warn("request", zap.Error(err))
+				continue
 			}
 			defer resp.Body.Close()
 

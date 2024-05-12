@@ -23,7 +23,7 @@ func (c *ServerConfig) Validate() error {
 	return nil
 }
 
-type EndpointsConfig struct {
+type UpstreamsConfig struct {
 	// Upstreams is the number of upstream servers to register.
 	Upstreams int `json:"upstreams" yaml:"upstreams"`
 
@@ -35,7 +35,7 @@ type EndpointsConfig struct {
 	Log log.Config `json:"log" yaml:"log"`
 }
 
-func (c *EndpointsConfig) Validate() error {
+func (c *UpstreamsConfig) Validate() error {
 	if c.Upstreams == 0 {
 		return fmt.Errorf("missing upstreams")
 	}
@@ -55,7 +55,7 @@ func (c *EndpointsConfig) Validate() error {
 	return nil
 }
 
-func (c *EndpointsConfig) RegisterFlags(fs *pflag.FlagSet) {
+func (c *UpstreamsConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.IntVar(
 		&c.Upstreams,
 		"upstreams",
