@@ -3,10 +3,14 @@ package admin
 import (
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
+	"time"
 
+	"github.com/andydunstall/pico/pkg/forwarder"
 	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/pico/server/cluster"
 	"github.com/andydunstall/pico/server/server/middleware"
 	"github.com/andydunstall/pico/server/status"
 	"github.com/gin-gonic/gin"
@@ -24,6 +28,10 @@ type Server struct {
 
 	httpServer *http.Server
 
+	clusterState *cluster.State
+
+	forwarder forwarder.Forwarder
+
 	registry *prometheus.Registry
 
 	logger log.Logger
@@ -31,6 +39,7 @@ type Server struct {
 
 func NewServer(
 	ln net.Listener,
+	clusterState *cluster.State,
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
@@ -42,8 +51,10 @@ func NewServer(
 			Addr:    ln.Addr().String(),
 			Handler: router,
 		},
-		registry: registry,
-		logger:   logger.WithSubsystem("admin.server"),
+		clusterState: clusterState,
+		forwarder:    forwarder.NewForwarder(),
+		registry:     registry,
+		logger:       logger.WithSubsystem("admin.server"),
 	}
 
 	// Recover from panics.
@@ -52,6 +63,10 @@ func NewServer(
 	server.router.Use(middleware.NewLogger(logger))
 	if registry != nil {
 		router.Use(middleware.NewMetrics("admin", registry))
+	}
+
+	if clusterState != nil {
+		router.Use(server.forwardInterceptor)
 	}
 
 	server.registerRoutes()
@@ -112,6 +127,49 @@ func (s *Server) metricsHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		h.ServeHTTP(c.Writer, c.Request)
 	}
+}
+
+// forwardInterceptor intercepts all admin requests. If the request has a
+// 'forward' query, the request is forwarded to the node with the requested ID.
+func (s *Server) forwardInterceptor(c *gin.Context) {
+	forward, ok := c.GetQuery("forward")
+	if !ok || forward == s.clusterState.LocalID() {
+		// No forward configuration so handle locally.
+		c.Next()
+		return
+	}
+
+	fmt.Println("NODE", forward, ok)
+	node, ok := s.clusterState.Node(forward)
+	if !ok {
+		c.AbortWithStatus(http.StatusNotFound)
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(c, time.Second*15)
+	defer cancel()
+
+	resp, err := s.forwarder.Request(ctx, node.AdminAddr, c.Request)
+	if err != nil {
+		s.logger.Warn(
+			"forward admin request",
+			zap.String("forward-node-id", node.ID),
+			zap.String("forward-addr", node.AdminAddr),
+			zap.Error(err),
+		)
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
+	// Write the response status, headers and body.
+	for k, v := range resp.Header {
+		c.Writer.Header()[k] = v
+	}
+	c.Writer.WriteHeader(resp.StatusCode)
+	if _, err := io.Copy(c.Writer, resp.Body); err != nil {
+		s.logger.Warn("failed to write response", zap.Error(err))
+	}
+	c.Abort()
 }
 
 func init() {

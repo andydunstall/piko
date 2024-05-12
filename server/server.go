@@ -159,19 +159,12 @@ func (s *Server) Run(ctx context.Context) error {
 
 	registry := prometheus.NewRegistry()
 
-	adminServer := adminserver.NewServer(
-		s.adminLn,
-		registry,
-		s.logger,
-	)
-
 	clusterState := cluster.NewState(&cluster.Node{
 		ID:        s.conf.Cluster.NodeID,
 		ProxyAddr: s.conf.Proxy.AdvertiseAddr,
 		AdminAddr: s.conf.Admin.AdvertiseAddr,
 	}, s.logger)
 	clusterState.Metrics().Register(registry)
-	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
 
 	gossiper := gossip.NewGossip(
 		clusterState,
@@ -182,7 +175,6 @@ func (s *Server) Run(ctx context.Context) error {
 	)
 	defer gossiper.Close()
 	gossiper.Metrics().Register(registry)
-	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
 
 	// Attempt to join an existing cluster.
 	//
@@ -203,6 +195,15 @@ func (s *Server) Run(ctx context.Context) error {
 
 	p := proxy.NewProxy(clusterState, proxy.WithLogger(s.logger))
 	p.Metrics().Register(registry)
+
+	adminServer := adminserver.NewServer(
+		s.adminLn,
+		clusterState,
+		registry,
+		s.logger,
+	)
+	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
+	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
 	adminServer.AddStatus("/proxy", proxy.NewStatus(p))
 
 	proxyServer := proxyserver.NewServer(

@@ -118,6 +118,7 @@ func run(conf *config.Config, logger log.Logger) error {
 	}
 	adminServer := adminserver.NewServer(
 		adminLn,
+		nil,
 		registry,
 		logger,
 	)
