@@ -256,6 +256,7 @@
       "type": "timeseries"
     }
   ],
+  "refresh": "30s",
   "schemaVersion": 39,
   "tags": [],
   "templating": {

@@ -26,6 +26,10 @@ type Metrics struct {
 	// PacketBytesOutbound is the total number of written bytes via a packet
 	// connection.
 	PacketBytesOutbound prometheus.Counter
+
+	// Entries is the number of entries labelled by node_id, deleted and
+	// internal.
+	Entries *prometheus.GaugeVec
 }
 
 func newMetrics() *Metrics {
@@ -78,6 +82,15 @@ func newMetrics() *Metrics {
 				Help:      "Total number of written bytes via a packet connection",
 			},
 		),
+		Entries: prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "pico",
+				Subsystem: "gossip",
+				Name:      "entries",
+				Help:      "Number of entries",
+			},
+			[]string{"node_id", "deleted", "internal"},
+		),
 	}
 }
 
@@ -89,5 +102,6 @@ func (m *Metrics) Register(reg *prometheus.Registry) {
 		m.ConnectionsOutbound,
 		m.StreamBytesOutbound,
 		m.PacketBytesOutbound,
+		m.Entries,
 	)
 }

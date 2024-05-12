@@ -115,6 +115,10 @@ func (g *Gossip) NodeState(id string) (*gossip.NodeState, bool) {
 	return g.gossiper.Node(id)
 }
 
+func (g *Gossip) Metrics() *gossip.Metrics {
+	return g.gossiper.Metrics()
+}
+
 func (g *Gossip) Close() error {
 	return g.gossiper.Close()
 }

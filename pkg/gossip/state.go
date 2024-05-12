@@ -5,6 +5,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -29,7 +31,7 @@ type Entry struct {
 	// Internal indicates whether this is an internal entry.
 	Internal bool `json:"internal" codec:"internal"`
 	// Deleted indicates whether this entry represents a deleted key.
-	Deleted bool `json:"tombstone" codec:"tombstone"`
+	Deleted bool `json:"deleted" codec:"deleted"`
 }
 
 // NodeMetadata contains the known metadata about the node.
@@ -113,6 +115,8 @@ type clusterState struct {
 
 	failureDetector failureDetector
 
+	metrics *Metrics
+
 	watcher Watcher
 }
 
@@ -121,6 +125,7 @@ func newClusterState(
 	localID string,
 	localAddr string,
 	failureDetector failureDetector,
+	metrics *Metrics,
 	watcher Watcher,
 ) *clusterState {
 	nodes := make(map[string]*nodeState)
@@ -132,10 +137,12 @@ func newClusterState(
 		},
 		Entries: make(map[string]Entry),
 	}
+
 	return &clusterState{
 		localID:         localID,
 		nodes:           nodes,
 		failureDetector: failureDetector,
+		metrics:         metrics,
 		watcher:         watcher,
 	}
 }
@@ -232,6 +239,8 @@ func (s *clusterState) UpsertLocal(key, value string) {
 		Value:   value,
 		Version: state.Version,
 	}
+
+	s.metricsUpsertEntry(state.ID, state.Entries[key], existing)
 }
 
 func (s *clusterState) DeleteLocal(key string) {
@@ -251,10 +260,16 @@ func (s *clusterState) DeleteLocal(key string) {
 	}
 
 	state.Version++
-	existing.Value = ""
-	existing.Version = state.Version
-	existing.Deleted = true
-	state.Entries[key] = existing
+
+	state.Entries[key] = Entry{
+		Key:      existing.Key,
+		Value:    "",
+		Version:  state.Version,
+		Internal: existing.Internal,
+		Deleted:  true,
+	}
+
+	s.metricsUpsertEntry(state.ID, state.Entries[key], existing)
 }
 
 // LeaveLocal updates the local node state to indicate the node has left the
@@ -277,6 +292,8 @@ func (s *clusterState) LeaveLocal() {
 		Version:  state.Version,
 		Internal: true,
 	}
+
+	s.metricsAddEntry(state.ID, state.Entries[leftKey])
 }
 
 // CompactLocal compacts the entries in the local node state to remove
@@ -316,6 +333,10 @@ func (s *clusterState) CompactLocal(threshold int) {
 	// Clear existing entries.
 	state.Entries = make(map[string]Entry)
 
+	s.metrics.Entries.DeletePartialMatch(prometheus.Labels{
+		"node_id": state.ID,
+	})
+
 	for _, entry := range entries {
 		if entry.Deleted {
 			// Discard deleted entries.
@@ -329,6 +350,8 @@ func (s *clusterState) CompactLocal(threshold int) {
 		state.Version++
 		entry.Version = state.Version
 		state.Entries[entry.Key] = entry
+
+		s.metricsAddEntry(state.ID, entry)
 	}
 
 	state.Version++
@@ -338,6 +361,8 @@ func (s *clusterState) CompactLocal(threshold int) {
 		Version:  state.Version,
 		Internal: true,
 	}
+
+	s.metricsAddEntry(state.ID, state.Entries[compactKey])
 }
 
 func (s *clusterState) Digest() digest {
@@ -497,8 +522,11 @@ func (s *clusterState) applyDeltaEntry(entry deltaEntry) {
 			continue
 		}
 
+		existing := state.Entries[e.Key]
 		state.Entries[e.Key] = e
 		state.Version = e.Version
+
+		s.metricsUpsertEntry(state.ID, e, existing)
 
 		if e.Internal {
 			if e.Key == leftKey {
@@ -515,6 +543,7 @@ func (s *clusterState) applyDeltaEntry(entry deltaEntry) {
 				}
 				for _, e := range state.Entries {
 					if e.Version <= compactVersion {
+						s.metricsDeleteEntry(state.ID, e)
 						delete(state.Entries, e.Key)
 					}
 				}
@@ -548,6 +577,10 @@ func (s *clusterState) RemoveExpiredAt(t time.Time) {
 	for _, id := range nodeIDs {
 		delete(s.nodes, id)
 
+		s.metrics.Entries.DeletePartialMatch(prometheus.Labels{
+			"node_id": id,
+		})
+
 		s.watcher.OnExpired(id)
 		s.failureDetector.Remove(id)
 	}
@@ -577,4 +610,27 @@ func (s *clusterState) UpdateLiveness(suspicionThreshold float64) {
 			}
 		}
 	}
+}
+
+func (s *clusterState) metricsAddEntry(nodeID string, newEntry Entry) {
+	s.metrics.Entries.With(prometheus.Labels{
+		"node_id":  nodeID,
+		"internal": strconv.FormatBool(newEntry.Internal),
+		"deleted":  strconv.FormatBool(newEntry.Deleted),
+	}).Inc()
+}
+
+func (s *clusterState) metricsDeleteEntry(nodeID string, existingEntry Entry) {
+	s.metrics.Entries.With(prometheus.Labels{
+		"node_id":  nodeID,
+		"internal": strconv.FormatBool(existingEntry.Internal),
+		"deleted":  strconv.FormatBool(existingEntry.Deleted),
+	}).Dec()
+}
+
+func (s *clusterState) metricsUpsertEntry(nodeID string, newEntry Entry, existingEntry Entry) {
+	if existingEntry.Key != "" {
+		s.metricsDeleteEntry(nodeID, existingEntry)
+	}
+	s.metricsAddEntry(nodeID, newEntry)
 }

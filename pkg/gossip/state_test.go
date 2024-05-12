@@ -11,7 +11,7 @@ import (
 func TestClusterState_LocalState(t *testing.T) {
 	t.Run("initial state", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 		node := clusterState.LocalNode()
 		assert.Equal(t, "node-1", node.ID)
@@ -24,7 +24,7 @@ func TestClusterState_LocalState(t *testing.T) {
 
 	t.Run("upsert", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 
 		clusterState.UpsertLocal("k1", "v1")
@@ -46,7 +46,7 @@ func TestClusterState_LocalState(t *testing.T) {
 
 	t.Run("delete", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 
 		clusterState.UpsertLocal("k1", "v1")
@@ -72,7 +72,7 @@ func TestClusterState_LocalState(t *testing.T) {
 func TestClusterState_ApplyDigest(t *testing.T) {
 	t.Run("apply", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 
 		clusterState.ApplyDigest(digest{
@@ -101,7 +101,7 @@ func TestClusterState_ApplyDigest(t *testing.T) {
 
 	t.Run("ignore left", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 
 		// Apply should ignore left nodes.
@@ -130,7 +130,7 @@ func TestClusterState_ApplyDigest(t *testing.T) {
 	t.Run("watch", func(t *testing.T) {
 		watcher := &fakeWatcher{}
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1", &fakeFailureDetector{}, watcher,
+			"node-1", "1.1.1.1", &fakeFailureDetector{}, newMetrics(), watcher,
 		)
 
 		clusterState.ApplyDigest(digest{
@@ -149,7 +149,7 @@ func TestClusterState_ApplyDigest(t *testing.T) {
 func TestClusterState_ApplyDelta(t *testing.T) {
 	t.Run("apply", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 
 		clusterState.ApplyDelta(delta{
@@ -237,7 +237,7 @@ func TestClusterState_ApplyDelta(t *testing.T) {
 	t.Run("watch", func(t *testing.T) {
 		watcher := &fakeWatcher{}
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1", &fakeFailureDetector{}, watcher,
+			"node-1", "1.1.1.1", &fakeFailureDetector{}, newMetrics(), watcher,
 		)
 
 		clusterState.ApplyDelta(delta{
@@ -298,7 +298,7 @@ func TestClusterState_ApplyDelta(t *testing.T) {
 
 func TestClusterState_Digest(t *testing.T) {
 	clusterState := newClusterState(
-		"node-1", "1.1.1.1", &fakeFailureDetector{}, newNopWatcher(),
+		"node-1", "1.1.1.1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 	)
 	clusterState.UpsertLocal("k1", "v1")
 	clusterState.UpsertLocal("k2", "v2")
@@ -339,7 +339,7 @@ func TestClusterState_Digest(t *testing.T) {
 
 func TestClusterState_Delta(t *testing.T) {
 	clusterState := newClusterState(
-		"node-1", "1.1.1.1", &fakeFailureDetector{}, newNopWatcher(),
+		"node-1", "1.1.1.1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 	)
 	clusterState.UpsertLocal("k1", "v1")
 	clusterState.UpsertLocal("k2", "v2")
@@ -437,7 +437,7 @@ func TestClusterState_Delta(t *testing.T) {
 func TestClusterState_Leave(t *testing.T) {
 	t.Run("leave local", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 		clusterState.LeaveLocal()
 
@@ -458,7 +458,7 @@ func TestClusterState_Leave(t *testing.T) {
 
 	t.Run("leave remote", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 
 		// Add node-2.
@@ -502,7 +502,7 @@ func TestClusterState_Leave(t *testing.T) {
 	t.Run("watch", func(t *testing.T) {
 		watcher := &fakeWatcher{}
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, watcher,
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), watcher,
 		)
 
 		// Add node-2.
@@ -534,7 +534,7 @@ func TestClusterState_Leave(t *testing.T) {
 	t.Run("expire", func(t *testing.T) {
 		watcher := &fakeWatcher{}
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, watcher,
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), watcher,
 		)
 
 		// Add node-2.
@@ -570,7 +570,7 @@ func TestClusterState_Leave(t *testing.T) {
 func TestClusterState_Compact(t *testing.T) {
 	t.Run("compact local", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 
 		clusterState.UpsertLocal("k1", "v1")
@@ -614,7 +614,7 @@ func TestClusterState_Compact(t *testing.T) {
 
 	t.Run("compact remote", func(t *testing.T) {
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newNopWatcher(),
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
 		)
 
 		// Add entries.
@@ -675,7 +675,7 @@ func TestClusterState_UpdateLiveness(t *testing.T) {
 					"node-2": 15.0,
 					"node-3": 25.0,
 				},
-			}, newNopWatcher(),
+			}, newMetrics(), newNopWatcher(),
 		)
 		clusterState.ApplyDelta(delta{
 			{
@@ -704,7 +704,7 @@ func TestClusterState_UpdateLiveness(t *testing.T) {
 			"node-3": 25.0,
 		}
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{suspicionLevels}, newNopWatcher(),
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{suspicionLevels}, newMetrics(), newNopWatcher(),
 		)
 		clusterState.ApplyDelta(delta{
 			{
@@ -738,7 +738,7 @@ func TestClusterState_UpdateLiveness(t *testing.T) {
 		}
 		watcher := &fakeWatcher{}
 		clusterState := newClusterState(
-			"node-1", "1.1.1.1:1", &fakeFailureDetector{suspicionLevels}, watcher,
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{suspicionLevels}, newMetrics(), watcher,
 		)
 		clusterState.ApplyDelta(delta{
 			{

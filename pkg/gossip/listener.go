@@ -448,7 +448,7 @@ func (l *packetListener) sendDelta(delta delta, addr string) error {
 		return fmt.Errorf("write packet: %s: %w", addr, err)
 	}
 
-	l.metrics.PacketBytesOutbound.Add(float64(buf.Len()))
+	l.metrics.PacketBytesOutbound.Add(float64(bufLen))
 
 	return nil
 }
@@ -511,7 +511,7 @@ func (l *packetListener) sendDigest(
 		return fmt.Errorf("write packet: %s: %w", addr, err)
 	}
 
-	l.metrics.PacketBytesOutbound.Add(float64(buf.Len()))
+	l.metrics.PacketBytesOutbound.Add(float64(bufLen))
 
 	return nil
 }

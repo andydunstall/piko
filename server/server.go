@@ -181,6 +181,7 @@ func (s *Server) Run(ctx context.Context) error {
 		s.logger,
 	)
 	defer gossiper.Close()
+	gossiper.Metrics().Register(registry)
 	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
 
 	// Attempt to join an existing cluster.

@@ -58,6 +58,8 @@ func New(
 		zap.String("advertise-addr", config.AdvertiseAddr),
 	)
 
+	metrics := newMetrics()
+
 	failureDetector := newAccrualFailureDetector(
 		config.Interval*2, 50,
 	)
@@ -65,10 +67,10 @@ func New(
 		nodeID,
 		config.AdvertiseAddr,
 		failureDetector,
+		metrics,
 		watcher,
 	)
 
-	metrics := newMetrics()
 	streamListener := newStreamListener(
 		state, streamTimeout, metrics, logger,
 	)
@@ -388,7 +390,7 @@ func (g *Gossip) gossip(node NodeMetadata) error {
 		return fmt.Errorf("write packet: %s: %w", node.Addr, err)
 	}
 
-	g.metrics.PacketBytesOutbound.Add(float64(buf.Len()))
+	g.metrics.PacketBytesOutbound.Add(float64(bufLen))
 
 	return nil
 }
