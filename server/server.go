@@ -201,6 +201,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 
 	p := proxy.NewProxy(clusterState, proxy.WithLogger(s.logger))
+	p.Metrics().Register(registry)
 	adminServer.AddStatus("/proxy", proxy.NewStatus(p))
 
 	proxyServer := proxyserver.NewServer(

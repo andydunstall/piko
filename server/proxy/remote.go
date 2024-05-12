@@ -7,6 +7,7 @@ import (
 	"github.com/andydunstall/pico/pkg/forwarder"
 	"github.com/andydunstall/pico/pkg/log"
 	"github.com/andydunstall/pico/server/cluster"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // remoteProxy is responsible for forwarding requests to Pico server nodes with
@@ -16,17 +17,21 @@ type remoteProxy struct {
 
 	forwarder forwarder.Forwarder
 
+	metrics *Metrics
+
 	logger log.Logger
 }
 
 func newRemoteProxy(
 	clusterState *cluster.State,
 	forwarder forwarder.Forwarder,
+	metrics *Metrics,
 	logger log.Logger,
 ) *remoteProxy {
 	return &remoteProxy{
 		clusterState: clusterState,
 		forwarder:    forwarder,
+		metrics:      metrics,
 		logger:       logger,
 	}
 }
@@ -36,10 +41,13 @@ func (p *remoteProxy) Request(
 	endpointID string,
 	r *http.Request,
 ) (*http.Response, error) {
-	addr, ok := p.findNode(endpointID)
+	nodeID, addr, ok := p.findNode(endpointID)
 	if !ok {
 		return nil, errEndpointNotFound
 	}
+	p.metrics.ForwardedRemoteTotal.With(prometheus.Labels{
+		"node_id": nodeID,
+	}).Inc()
 	return p.forwarder.Request(ctx, addr, r)
 }
 
@@ -54,13 +62,13 @@ func (p *remoteProxy) RemoveConn(conn Conn) {
 }
 
 // findNode looks up a node with an upstream connection for the given endpoint
-// and returns the proxy address.
-func (p *remoteProxy) findNode(endpointID string) (string, bool) {
+// and returns the node ID and proxy address.
+func (p *remoteProxy) findNode(endpointID string) (string, string, bool) {
 	// TODO(andydunstall): This doesn't yet do any load balancing. It just
 	// selects the first node.
 	node, ok := p.clusterState.LookupEndpoint(endpointID)
 	if !ok {
-		return "", false
+		return "", "", false
 	}
-	return node.ProxyAddr, true
+	return node.ID, node.ProxyAddr, true
 }

@@ -31,6 +31,9 @@ list. Such as `rpc` will match `rpc` but not `rpc.stream`.
 ## Metrics
 The Pico server exposes Prometheus on the admin port at `/metrics`.
 
+Pico also includes a number of Grafana dashboards at
+[../../monitoring/dashboards](monitoring/dashboards).
+
 ## Status
 Pico includes a status CLI to inspect a Pico server. Servers register endpoints
 at `/status` on the admin port that `pico status` then queries.

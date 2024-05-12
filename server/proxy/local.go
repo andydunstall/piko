@@ -54,12 +54,15 @@ type localProxy struct {
 
 	mu sync.Mutex
 
+	metrics *Metrics
+
 	logger log.Logger
 }
 
-func newLocalProxy(logger log.Logger) *localProxy {
+func newLocalProxy(metrics *Metrics, logger log.Logger) *localProxy {
 	return &localProxy{
 		endpoints: make(map[string]*localEndpoint),
+		metrics:   metrics,
 		logger:    logger,
 	}
 }
@@ -76,6 +79,9 @@ func (p *localProxy) Request(
 		// No connection found.
 		return nil, errEndpointNotFound
 	}
+
+	p.metrics.ForwardedLocalTotal.Inc()
+
 	return conn.Request(ctx, r)
 }
 
@@ -86,10 +92,14 @@ func (p *localProxy) AddConn(conn Conn) {
 	e, ok := p.endpoints[conn.EndpointID()]
 	if !ok {
 		e = &localEndpoint{}
+
+		p.metrics.RegisteredEndpoints.Inc()
 	}
 
 	e.AddConn(conn)
 	p.endpoints[conn.EndpointID()] = e
+
+	p.metrics.ConnectedUpstreams.Inc()
 }
 
 func (p *localProxy) RemoveConn(conn Conn) {
@@ -102,7 +112,11 @@ func (p *localProxy) RemoveConn(conn Conn) {
 	}
 	if endpoint.RemoveConn(conn) {
 		delete(p.endpoints, conn.EndpointID())
+
+		p.metrics.RegisteredEndpoints.Dec()
 	}
+
+	p.metrics.ConnectedUpstreams.Dec()
 }
 
 func (p *localProxy) ConnAddrs() map[string][]string {

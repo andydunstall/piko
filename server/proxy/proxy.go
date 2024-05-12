@@ -24,6 +24,8 @@ type Proxy struct {
 	local  *localProxy
 	remote *remoteProxy
 
+	metrics *Metrics
+
 	logger log.Logger
 }
 
@@ -33,11 +35,13 @@ func NewProxy(clusterState *cluster.State, opts ...Option) *Proxy {
 		opt.apply(&options)
 	}
 
+	metrics := NewMetrics()
 	logger := options.logger.WithSubsystem("proxy")
 	return &Proxy{
-		local:  newLocalProxy(logger),
-		remote: newRemoteProxy(clusterState, options.forwarder, logger),
-		logger: logger,
+		local:   newLocalProxy(metrics, logger),
+		remote:  newRemoteProxy(clusterState, options.forwarder, metrics, logger),
+		metrics: metrics,
+		logger:  logger,
 	}
 }
 
@@ -167,6 +171,10 @@ func (p *Proxy) RemoveConn(conn Conn) {
 // all local connected endpoints.
 func (p *Proxy) ConnAddrs() map[string][]string {
 	return p.local.ConnAddrs()
+}
+
+func (p *Proxy) Metrics() *Metrics {
+	return p.metrics
 }
 
 // endpointIDFromRequest returns the endpoint ID from the HTTP request, or an
