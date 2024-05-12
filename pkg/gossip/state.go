@@ -545,6 +545,12 @@ func (s *clusterState) applyDeltaEntry(entry deltaEntry) {
 					if e.Version <= compactVersion {
 						s.metricsDeleteEntry(state.ID, e)
 						delete(state.Entries, e.Key)
+
+						if !e.Deleted {
+							// If we didn't already know the entry was deleted,
+							// notify the watcher.
+							s.watcher.OnDeleteKey(entry.ID, e.Key)
+						}
 					}
 				}
 			}

@@ -665,6 +665,47 @@ func TestClusterState_Compact(t *testing.T) {
 			node.Entries,
 		)
 	})
+
+	t.Run("watch", func(t *testing.T) {
+		watcher := &fakeWatcher{}
+		clusterState := newClusterState(
+			"node-1", "1.1.1.1:1", &fakeFailureDetector{}, newMetrics(), watcher,
+		)
+
+		// Add entries.
+		clusterState.ApplyDelta(delta{
+			{
+				ID:   "node-2",
+				Addr: "2.2.2.2",
+				Entries: []Entry{
+					{"k1", "v1", 4, false, false},
+					{"k2", "v2", 5, false, false},
+					{"k3", "v3", 6, false, false},
+					{"k4", "v4", 7, false, false},
+				},
+			},
+		})
+
+		// Compact entries.
+		//
+		// Note compacting before the node learned k2 and k3 were deleted.
+		clusterState.ApplyDelta(delta{
+			{
+				ID:   "node-2",
+				Addr: "2.2.2.2",
+				Entries: []Entry{
+					{"k1", "v1", 10, false, false},
+					{"k4", "v4", 11, false, false},
+					{compactKey, "9", 12, true, false},
+				},
+			},
+		})
+
+		assert.Equal(t, []stateDelete{
+			{"node-2", "k2"},
+			{"node-2", "k3"},
+		}, watcher.deletes)
+	})
 }
 
 func TestClusterState_UpdateLiveness(t *testing.T) {
