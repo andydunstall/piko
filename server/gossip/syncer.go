@@ -257,6 +257,14 @@ func (s *syncer) OnUpsertKey(nodeID, key, value string) {
 		return
 	}
 
+	if key == "proxy_addr" || key == "admin_addr" {
+		// Ignore immutable fields if the node is in the cluster state. This
+		// may occur after a compaction so immutable fields are re-versioned.
+		if _, ok := s.clusterState.Node(nodeID); ok {
+			return
+		}
+	}
+
 	// First check if the node is already in the cluster. Only check mutable
 	// fields.
 	if strings.HasPrefix(key, "endpoint:") {
@@ -398,8 +406,9 @@ func (s *syncer) OnDeleteKey(nodeID, key string) {
 	)
 }
 
-func (s *syncer) onLocalEndpointUpdate(endpointID string, listeners int) {
+func (s *syncer) onLocalEndpointUpdate(endpointID string) {
 	key := "endpoint:" + endpointID
+	listeners := s.clusterState.LocalEndpointListeners(endpointID)
 	if listeners > 0 {
 		s.gossiper.UpsertLocal(key, strconv.Itoa(listeners))
 	} else {

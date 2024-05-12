@@ -35,26 +35,23 @@ func TestState_UpdateLocalEndpoint(t *testing.T) {
 
 	var notifyEndpointID string
 	var notifyListeners int
-	s.OnLocalEndpointUpdate(func(endpointID string, listeners int) {
+	s.OnLocalEndpointUpdate(func(endpointID string) {
 		notifyEndpointID = endpointID
-		notifyListeners = listeners
+		notifyListeners = s.LocalEndpointListeners(endpointID)
 	})
 
 	s.AddLocalEndpoint("my-endpoint")
 	assert.Equal(t, "my-endpoint", notifyEndpointID)
-	assert.Equal(t, 1, notifyListeners)
 	n, _ := s.Node("local")
 	assert.Equal(t, 1, n.Endpoints["my-endpoint"])
 
 	s.AddLocalEndpoint("my-endpoint")
 	assert.Equal(t, "my-endpoint", notifyEndpointID)
-	assert.Equal(t, 2, notifyListeners)
 	n, _ = s.Node("local")
 	assert.Equal(t, 2, n.Endpoints["my-endpoint"])
 
 	s.RemoveLocalEndpoint("my-endpoint")
 	assert.Equal(t, "my-endpoint", notifyEndpointID)
-	assert.Equal(t, 1, notifyListeners)
 	n, _ = s.Node("local")
 	assert.Equal(t, 1, n.Endpoints["my-endpoint"])
 

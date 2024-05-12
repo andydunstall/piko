@@ -15,7 +15,7 @@ type State struct {
 	localID string
 	nodes   map[string]*Node
 
-	localEndpointSubscribers []func(endpointID string, listeners int)
+	localEndpointSubscribers []func(endpointID string)
 
 	// mu protects the above fields.
 	mu sync.RWMutex
@@ -113,7 +113,6 @@ func (s *State) LookupEndpoint(endpointID string) (*Node, bool) {
 // AddLocalEndpoint adds the active endpoint to the local node state.
 func (s *State) AddLocalEndpoint(endpointID string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	node, ok := s.nodes[s.localID]
 	if !ok {
@@ -126,15 +125,19 @@ func (s *State) AddLocalEndpoint(endpointID string) {
 
 	node.Endpoints[endpointID] = node.Endpoints[endpointID] + 1
 
-	for _, f := range s.localEndpointSubscribers {
-		f(endpointID, node.Endpoints[endpointID])
+	subscribers := make([]func(endpointID string), 0, len(s.localEndpointSubscribers))
+	subscribers = append(subscribers, s.localEndpointSubscribers...)
+
+	s.mu.Unlock()
+
+	for _, f := range subscribers {
+		f(endpointID)
 	}
 }
 
 // RemoveLocalEndpoint removes the active endpoint from the local node state.
 func (s *State) RemoveLocalEndpoint(endpointID string) {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	node, ok := s.nodes[s.localID]
 	if !ok {
@@ -148,6 +151,7 @@ func (s *State) RemoveLocalEndpoint(endpointID string) {
 	listeners, ok := node.Endpoints[endpointID]
 	if !ok || listeners == 0 {
 		s.logger.Warn("remove local endpoint: endpoint not found")
+		s.mu.Unlock()
 		return
 	}
 
@@ -157,9 +161,29 @@ func (s *State) RemoveLocalEndpoint(endpointID string) {
 		delete(node.Endpoints, endpointID)
 	}
 
-	for _, f := range s.localEndpointSubscribers {
-		f(endpointID, node.Endpoints[endpointID])
+	subscribers := make([]func(endpointID string), 0, len(s.localEndpointSubscribers))
+	subscribers = append(subscribers, s.localEndpointSubscribers...)
+
+	s.mu.Unlock()
+
+	for _, f := range subscribers {
+		f(endpointID)
 	}
+}
+
+func (s *State) LocalEndpointListeners(endpointID string) int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	node, ok := s.nodes[s.localID]
+	if !ok {
+		panic("local node not in cluster")
+	}
+
+	if node.Endpoints == nil {
+		return 0
+	}
+	return node.Endpoints[endpointID]
 }
 
 // OnLocalEndpointUpdate subscribes to changes to the local nodes active
@@ -167,7 +191,7 @@ func (s *State) RemoveLocalEndpoint(endpointID string) {
 //
 // The callback is called with the cluster mutex locked so must not block or
 // call back to the cluster.
-func (s *State) OnLocalEndpointUpdate(f func(endpointID string, listeners int)) {
+func (s *State) OnLocalEndpointUpdate(f func(endpointID string)) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
