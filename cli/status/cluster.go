@@ -40,15 +40,7 @@ Examples:
 	}
 
 	var conf config.Config
-
-	cmd.Flags().StringVar(
-		&conf.Server.URL,
-		"server.url",
-		"http://localhost:8002",
-		`
-Pico server URL. This URL should point to the server admin port.
-`,
-	)
+	conf.RegisterFlags(cmd.Flags())
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := conf.Validate(); err != nil {
@@ -69,7 +61,7 @@ type clusterNodesOutput struct {
 func showClusterNodes(conf *config.Config) {
 	// The URL has already been validated in conf.
 	url, _ := url.Parse(conf.Server.URL)
-	client := client.NewClient(url)
+	client := client.NewClient(url, conf.Forward)
 	defer client.Close()
 
 	nodes, err := client.ClusterNodes()
@@ -110,15 +102,7 @@ Examples:
 	}
 
 	var conf config.Config
-
-	cmd.Flags().StringVar(
-		&conf.Server.URL,
-		"server.url",
-		"http://localhost:8002",
-		`
-Pico server URL. This URL should point to the server admin port.
-`,
-	)
+	conf.RegisterFlags(cmd.Flags())
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := conf.Validate(); err != nil {
@@ -135,7 +119,7 @@ Pico server URL. This URL should point to the server admin port.
 func showClusterNode(nodeID string, conf *config.Config) {
 	// The URL has already been validated in conf.
 	url, _ := url.Parse(conf.Server.URL)
-	client := client.NewClient(url)
+	client := client.NewClient(url, conf.Forward)
 	defer client.Close()
 
 	node, err := client.ClusterNode(nodeID)

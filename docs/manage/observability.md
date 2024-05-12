@@ -42,4 +42,6 @@ Such as to view the endpoints registers on a server use
 `pico status proxy endpoints`. Or to inspect the set of known nodes in the
 cluster use `pico status cluster nodes`.
 
-Configure the server URL with `--server`.
+Configure the server URL with `--server.url`. You can also forward to a
+particular node ID using `--forward` (which can be useful when all nodes are
+behind a load balancer).

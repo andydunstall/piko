@@ -139,7 +139,6 @@ func (s *Server) forwardInterceptor(c *gin.Context) {
 		return
 	}
 
-	fmt.Println("NODE", forward, ok)
 	node, ok := s.clusterState.Node(forward)
 	if !ok {
 		c.AbortWithStatus(http.StatusNotFound)

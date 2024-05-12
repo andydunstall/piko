@@ -92,7 +92,7 @@ func TestProxy(t *testing.T) {
 		statusClient := statusclient.NewClient(&url.URL{
 			Scheme: "http",
 			Host:   serverConf.Admin.AdvertiseAddr,
-		})
+		}, "")
 		endpoints, err := statusClient.ProxyEndpoints()
 		assert.NoError(t, err)
 
@@ -164,7 +164,7 @@ func TestProxy_Authenticated(t *testing.T) {
 		statusClient := statusclient.NewClient(&url.URL{
 			Scheme: "http",
 			Host:   serverConf.Admin.AdvertiseAddr,
-		})
+		}, "")
 		endpoints, err := statusClient.ProxyEndpoints()
 		assert.NoError(t, err)
 

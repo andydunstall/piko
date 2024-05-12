@@ -53,7 +53,7 @@ func TestCluster(t *testing.T) {
 				statusClient := statusclient.NewClient(&url.URL{
 					Scheme: "http",
 					Host:   addr,
-				})
+				}, "")
 				nodes, err := statusClient.ClusterNodes()
 				assert.NoError(t, err)
 

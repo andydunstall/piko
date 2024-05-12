@@ -17,14 +17,17 @@ type Client struct {
 	httpClient *http.Client
 
 	url *url.URL
+
+	forward string
 }
 
-func NewClient(url *url.URL) *Client {
+func NewClient(url *url.URL, forward string) *Client {
 	return &Client{
 		httpClient: &http.Client{
 			Timeout: time.Second * 15,
 		},
-		url: url,
+		url:     url,
+		forward: forward,
 	}
 }
 
@@ -105,6 +108,10 @@ func (c *Client) Close() {
 func (c *Client) request(path string) (io.ReadCloser, error) {
 	url := new(url.URL)
 	*url = *c.url
+
+	if c.forward != "" {
+		url.RawQuery = "forward=" + c.forward
+	}
 
 	url.Path = fspath.Join(url.Path, path)
 

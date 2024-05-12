@@ -38,15 +38,7 @@ Examples:
 	}
 
 	var conf config.Config
-
-	cmd.Flags().StringVar(
-		&conf.Server.URL,
-		"server.url",
-		"http://localhost:8002",
-		`
-Pico server URL. This URL should point to the server admin port.
-`,
-	)
+	conf.RegisterFlags(cmd.Flags())
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if err := conf.Validate(); err != nil {
@@ -67,7 +59,7 @@ type proxyEndpointsOutput struct {
 func showProxyEndpoints(conf *config.Config) {
 	// The URL has already been validated in conf.
 	url, _ := url.Parse(conf.Server.URL)
-	client := client.NewClient(url)
+	client := client.NewClient(url, conf.Forward)
 	defer client.Close()
 
 	endpoints, err := client.ProxyEndpoints()
