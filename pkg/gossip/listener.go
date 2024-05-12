@@ -17,9 +17,9 @@ import (
 // streamListener listens for incoming stream connections and reads messages
 // from those connections.
 type streamListener struct {
-	state *clusterState
-
 	ln net.Listener
+
+	state *clusterState
 
 	streamTimeout time.Duration
 
@@ -29,12 +29,14 @@ type streamListener struct {
 }
 
 func newStreamListener(
+	ln net.Listener,
 	state *clusterState,
 	streamTimeout time.Duration,
 	metrics *Metrics,
 	logger log.Logger,
 ) *streamListener {
 	return &streamListener{
+		ln:            ln,
 		state:         state,
 		streamTimeout: streamTimeout,
 		metrics:       metrics,
@@ -43,14 +45,9 @@ func newStreamListener(
 }
 
 // Serve will accept connections until listener is closed.
-func (l *streamListener) Serve(ln net.Listener) {
-	if l.ln != nil {
-		panic("already serving")
-	}
-	l.ln = ln
-
+func (l *streamListener) Serve() {
 	for {
-		conn, err := ln.Accept()
+		conn, err := l.ln.Accept()
 		if err != nil {
 			if errors.Is(err, net.ErrClosed) {
 				return
@@ -79,10 +76,7 @@ func (l *streamListener) Serve(ln net.Listener) {
 }
 
 func (l *streamListener) Close() error {
-	if l.ln != nil {
-		return l.ln.Close()
-	}
-	return nil
+	return l.ln.Close()
 }
 
 func (l *streamListener) handleConn(conn net.Conn) error {
@@ -203,11 +197,11 @@ func (l *streamListener) leave(r io.Reader, w *bufio.Writer) error {
 
 // packetListener listens for and handles incoming packets.
 type packetListener struct {
+	ln net.PacketConn
+
 	state *clusterState
 
 	failureDetector failureDetector
-
-	ln net.PacketConn
 
 	readBuf []byte
 
@@ -219,6 +213,7 @@ type packetListener struct {
 }
 
 func newPacketListener(
+	ln net.PacketConn,
 	state *clusterState,
 	failureDetector failureDetector,
 	maxPacketSize int,
@@ -226,6 +221,7 @@ func newPacketListener(
 	logger log.Logger,
 ) *packetListener {
 	return &packetListener{
+		ln:              ln,
 		state:           state,
 		failureDetector: failureDetector,
 		readBuf:         make([]byte, maxPacketSize),
@@ -235,12 +231,7 @@ func newPacketListener(
 	}
 }
 
-func (l *packetListener) Serve(ln net.PacketConn) {
-	if l.ln != nil {
-		panic("already serving")
-	}
-	l.ln = ln
-
+func (l *packetListener) Serve() {
 	for {
 		n, addr, err := l.ln.ReadFrom(l.readBuf)
 		if err != nil {
@@ -265,10 +256,7 @@ func (l *packetListener) Serve(ln net.PacketConn) {
 }
 
 func (l *packetListener) Close() error {
-	if l.ln != nil {
-		return l.ln.Close()
-	}
-	return nil
+	return l.ln.Close()
 }
 
 func (l *packetListener) handlePacket(b []byte) error {

@@ -72,14 +72,14 @@ func New(
 	)
 
 	streamListener := newStreamListener(
-		state, streamTimeout, metrics, logger,
+		streamLn, state, streamTimeout, metrics, logger,
 	)
-	go streamListener.Serve(streamLn)
+	go streamListener.Serve()
 
 	packetListener := newPacketListener(
-		state, failureDetector, config.MaxPacketSize, metrics, logger,
+		packetLn, state, failureDetector, config.MaxPacketSize, metrics, logger,
 	)
-	go packetListener.Serve(packetLn)
+	go packetListener.Serve()
 
 	gossip := &Gossip{
 		state:          state,
