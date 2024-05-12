@@ -50,7 +50,22 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [
+        "pico"
+      ],
+      "targetBlank": false,
+      "title": "Pico",
+      "tooltip": "",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
   "panels": [
     {
       "gridPos": {
@@ -258,7 +273,9 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": [],
+  "tags": [
+    "pico"
+  ],
   "templating": {
     "list": []
   },
@@ -270,6 +287,6 @@
   "timezone": "browser",
   "title": "Pico Cluster",
   "uid": "edlgamwsm3e2od",
-  "version": 2,
+  "version": 3,
   "weekStart": ""
 }

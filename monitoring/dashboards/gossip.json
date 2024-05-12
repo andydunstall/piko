@@ -50,7 +50,22 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "links": [],
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": true,
+      "tags": [
+        "pico"
+      ],
+      "targetBlank": false,
+      "title": "Pico",
+      "tooltip": "",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
   "panels": [
     {
       "gridPos": {
@@ -691,8 +706,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -786,8 +800,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
-                "value": null
+                "color": "green"
               },
               {
                 "color": "red",
@@ -837,7 +850,9 @@
   ],
   "refresh": "30s",
   "schemaVersion": 39,
-  "tags": [],
+  "tags": [
+    "pico"
+  ],
   "templating": {
     "list": []
   },
@@ -849,6 +864,6 @@
   "timezone": "browser",
   "title": "Pico Gossip",
   "uid": "edlgksa08jvuof",
-  "version": 3,
+  "version": 4,
   "weekStart": ""
 }
