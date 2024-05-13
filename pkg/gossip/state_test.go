@@ -701,6 +701,10 @@ func TestClusterState_Compact(t *testing.T) {
 			},
 		})
 
+		// Sort deletes as not guaranteed to be deleted in version order.
+		sort.Slice(watcher.deletes, func(i, j int) bool {
+			return watcher.deletes[i].Key < watcher.deletes[j].Key
+		})
 		assert.Equal(t, []stateDelete{
 			{"node-2", "k2"},
 			{"node-2", "k3"},
