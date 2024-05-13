@@ -69,6 +69,32 @@ func (n *Node) Copy() *Node {
 	}
 }
 
+func (n *Node) Metadata() *NodeMetadata {
+	upstreams := 0
+	for _, endpointUpstreams := range n.Endpoints {
+		upstreams += endpointUpstreams
+	}
+	return &NodeMetadata{
+		ID:        n.ID,
+		Status:    n.Status,
+		ProxyAddr: n.ProxyAddr,
+		AdminAddr: n.AdminAddr,
+		Endpoints: len(n.Endpoints),
+		Upstreams: upstreams,
+	}
+}
+
+// NodeMetadata contains metadata fields from Node.
+type NodeMetadata struct {
+	ID        string     `json:"id"`
+	Status    NodeStatus `json:"status"`
+	ProxyAddr string     `json:"proxy_addr"`
+	AdminAddr string     `json:"admin_addr"`
+	Endpoints int        `json:"endpoints"`
+	// Upstreams is the number of upstreams connected to this node.
+	Upstreams int `json:"upstreams"`
+}
+
 func GenerateNodeID() string {
 	b := make([]byte, 7)
 	for i := range b {

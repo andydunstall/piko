@@ -87,6 +87,18 @@ func (s *State) Nodes() []*Node {
 	return nodes
 }
 
+// NodesMetadata returns the metadata of the known nodes.
+func (s *State) NodesMetadata() []*NodeMetadata {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	nodes := make([]*NodeMetadata, 0, len(s.nodes))
+	for _, node := range s.nodes {
+		nodes = append(nodes, node.Metadata())
+	}
+	return nodes
+}
+
 // LookupEndpoint looks up a node that the endpoint with the given ID is active
 // on.
 func (s *State) LookupEndpoint(endpointID string) (*Node, bool) {

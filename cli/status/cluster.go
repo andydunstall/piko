@@ -55,7 +55,7 @@ Examples:
 }
 
 type clusterNodesOutput struct {
-	Nodes []*cluster.Node `json:"nodes"`
+	Nodes []*cluster.NodeMetadata `json:"nodes"`
 }
 
 func showClusterNodes(conf *config.Config) {

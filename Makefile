@@ -18,6 +18,12 @@ integration-test:
 system-test:
 	go test ./tests -tags system -v
 
+.PHONY: test-all
+test-all:
+	$(MAKE) unit-test
+	$(MAKE) integration-test
+	$(MAKE) system-test
+
 .PHONY: fmt
 fmt:
 	go fmt ./...

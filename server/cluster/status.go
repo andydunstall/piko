@@ -24,7 +24,7 @@ func (s *Status) Register(group *gin.RouterGroup) {
 }
 
 func (s *Status) listNodesRoute(c *gin.Context) {
-	nodes := s.state.Nodes()
+	nodes := s.state.NodesMetadata()
 	c.JSON(http.StatusOK, nodes)
 }
 

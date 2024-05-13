@@ -45,14 +45,14 @@ func (c *Client) ProxyEndpoints() (map[string][]string, error) {
 	return endpoints, nil
 }
 
-func (c *Client) ClusterNodes() ([]*cluster.Node, error) {
+func (c *Client) ClusterNodes() ([]*cluster.NodeMetadata, error) {
 	r, err := c.request("/status/cluster/nodes")
 	if err != nil {
 		return nil, err
 	}
 	defer r.Close()
 
-	var nodes []*cluster.Node
+	var nodes []*cluster.NodeMetadata
 	if err := json.NewDecoder(r).Decode(&nodes); err != nil {
 		return nil, fmt.Errorf("decode response: %w", err)
 	}
