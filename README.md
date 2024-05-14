@@ -76,6 +76,7 @@ See [Getting Started](./docs/getting-started.md).
 - Architecture
   - [Overview](./docs/architecture/overview.md)
 - Manage
-  - [Configure](./docs/configure.md)
-  - [Kubernetes](./docs/deploy/kubernetes.md)
-  - [Observability](./docs/deploy/observability.md)
+  - [Overview](./docs/manage/overview.md)
+  - [Configure](./docs/manage/configure.md)
+  - [Kubernetes](./docs/manage/kubernetes.md)
+  - [Observability](./docs/manage/observability.md)

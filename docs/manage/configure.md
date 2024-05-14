@@ -20,8 +20,7 @@ string. You can also define a default value using form `${VAR:default}`.
 
 ## Server
 
-A Pico server node is run using `pico server`. It has the following
-configuration:
+The Pico server is run using `pico server`. It has the following configuration:
 ```
 proxy:
     # The host/port to listen for incoming proxy HTTP requests.

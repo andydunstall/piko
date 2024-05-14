@@ -6,27 +6,126 @@ joining.
 
 ## Discovery
 
-Pico is configured to join a set of known nodes in a cluster using
-`--cluster.join`. Rather than maintain a static list of IP addresses, the
-easiest option is to create a headless service for Pico. This will create a
-DNS record that resolves to the addresses of each Pico pod.
+To deploy Pico as a cluster, configure `--cluster.join` to a list of cluster
+members in the cluster to join.
 
-You can then configure `--cluster.join` with this DNS record, such as
-`pico.pico-ns.svc.cluster.local`, then when Pico starts it will attempt to
-join any existing nodes.
+The addresses may be either addresses of specific nodes, such as
+`10.26.104.14`, or a domain name that resolves to the IP addresses of all nodes
+in the cluster.
 
-## Ports
+On Kubernetes, its best to create a headless service for Pico that resolves to
+the IP addresses of each Pico pod in the cluster.
 
-The proxy port accepts connections from proxy clients. It only
-supports HTTP and defaults to port `8000`.
+You can then configure `--cluster.join` with the service name, `pico`.
 
-The upstream port accepts connections from upstream listeners via
-WebSockets, so if you route using a HTTP load balancer or gateway, you must
-ensure WebSockets are supported/enabled. It defaults to port `8001`.
+## Example
 
-The admin port accepts admin connections to inspect the status of the server.
-This includes Prometheus metrics at `/metrics` and a status API at `/status`
-which is used by the `pico status` CLI. It defaults to port `8002`.
+This example creates a Pico cluster with 3 replicas using a StatefulSet.
 
-Finally the gossip port is used for inter-node traffic to propagate the cluster
-state which defaults to port `8003`.
+First create a headless service which is used for cluster discovery:
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: pico
+  labels:
+    app: pico
+spec:
+  ports:
+  - port: 8000
+    name: proxy
+  - port: 8001
+    name: upstream
+  - port: 8002
+    name: admin
+  - port: 8003
+    name: gossip
+  clusterIP: None
+  selector:
+    app: pico
+```
+
+Next create a YAML config map. To make debugging easier, this uses the pod name
+as the Pico node ID prefix. Note the pod name must not be used as the node ID
+itself since each restart requires a new node ID. This also configures cluster
+discovery to use the service created above:
+
+```
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: server-config
+data:
+  server.yaml: |
+    cluster:
+      node_id_prefix: ${POD_NAME}-
+      join:
+        - pico
+```
+
+Finally create a StatefulSet with three replicas:
+
+```
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: pico
+spec:
+  selector:
+    matchLabels:
+      app: pico
+  serviceName: "pico"
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app: pico
+    spec:
+      terminationGracePeriodSeconds: 60
+      containers:
+      - name: pico
+        image: my-repo/pico:latest
+        ports:
+        - containerPort: 8000
+          name: proxy
+        - containerPort: 8001
+          name: upstream
+        - containerPort: 8002
+          name: admin
+        - containerPort: 8003
+          name: gossip
+        args:
+          - server
+          - --config.path
+          - /config/server.yaml
+          - --config.expand-env
+       resources:
+          limits:
+            cpu: 250m
+            ephemeral-storage: 1Gi
+            memory: 1Gi
+          requests:
+            cpu: 250m
+            ephemeral-storage: 1Gi
+            memory: 1Gi
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        volumeMounts:
+          - name: config
+            mountPath: "/config"
+            readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: server-config
+            items:
+            - key: "server.yaml"
+              path: "server.yaml"
+```
+
+You can then setup the any required load balancers (such as a Kubernetes
+Gatweay) or services to route requests to the server.
+to Pico. 

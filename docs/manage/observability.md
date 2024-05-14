@@ -32,7 +32,7 @@ list. Such as `rpc` will match `rpc` but not `rpc.stream`.
 The Pico server exposes Prometheus on the admin port at `/metrics`.
 
 Pico also includes a number of Grafana dashboards at
-[../../monitoring/dashboards](monitoring/dashboards).
+[monitoring/dashboards](../../monitoring/dashboards).
 
 ## Status
 Pico includes a status CLI to inspect a Pico server. Servers register endpoints
@@ -42,6 +42,6 @@ Such as to view the endpoints registers on a server use
 `pico status proxy endpoints`. Or to inspect the set of known nodes in the
 cluster use `pico status cluster nodes`.
 
-Configure the server URL with `--server.url`. You can also forward to a
-particular node ID using `--forward` (which can be useful when all nodes are
-behind a load balancer).
+Configure the server URL with `--server.url`. You can also forward the request
+ to a particular node ID using `--forward` (which can be useful when all nodes
+are behind a load balancer).
