@@ -18,7 +18,9 @@ the `Host` header or an `x-pico-endpoint` header. If multiple upstream services
 have registered the same endpoint, Pico load balances requests for that
 endpoint among the registered upstreams.
 
-![overview](assets/images/overview.png)
+<p align="center">
+  <img src="assets/images/overview.png" alt="overview" width="80%"/>
+</p>
 
 ## Contents
 
@@ -71,8 +73,9 @@ See [Getting Started](./docs/getting-started.md).
 ## Docs
 
 - [Getting Started](./docs/getting-started.md)
-- [Architecture](./docs/architecture.md)
-- [Configure](./docs/configure.md)
+- Architecture
+  - [Overview](./docs/architecture/overview.md)
 - Manage
+  - [Configure](./docs/configure.md)
   - [Kubernetes](./docs/deploy/kubernetes.md)
   - [Observability](./docs/deploy/observability.md)
