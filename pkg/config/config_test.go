@@ -19,7 +19,7 @@ type fakeSubConfig struct {
 
 func TestLoad(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
-		f, err := os.CreateTemp("", "pico")
+		f, err := os.CreateTemp("", "piko")
 		assert.NoError(t, err)
 
 		_, err = f.WriteString(`foo: val1
@@ -37,16 +37,16 @@ sub:
 	})
 
 	t.Run("expand env", func(t *testing.T) {
-		f, err := os.CreateTemp("", "pico")
+		f, err := os.CreateTemp("", "piko")
 		assert.NoError(t, err)
 
-		_ = os.Setenv("PICO_VAL1", "val1")
-		_ = os.Setenv("PICO_VAL2", "val2")
+		_ = os.Setenv("PIKO_VAL1", "val1")
+		_ = os.Setenv("PIKO_VAL2", "val2")
 
-		_, err = f.WriteString(`foo: $PICO_VAL1
-bar: ${PICO_VAL2}
+		_, err = f.WriteString(`foo: $PIKO_VAL1
+bar: ${PIKO_VAL2}
 sub:
-  car: ${PICO_VAL3:5}`)
+  car: ${PIKO_VAL3:5}`)
 		assert.NoError(t, err)
 
 		var conf fakeConfig
@@ -58,7 +58,7 @@ sub:
 	})
 
 	t.Run("invalid yaml", func(t *testing.T) {
-		f, err := os.CreateTemp("", "pico")
+		f, err := os.CreateTemp("", "piko")
 		assert.NoError(t, err)
 
 		_, err = f.WriteString(`invalid yaml...`)

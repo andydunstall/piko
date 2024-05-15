@@ -7,15 +7,15 @@ import (
 	"os"
 	"strings"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/auth"
-	"github.com/andydunstall/pico/server/cluster"
-	"github.com/andydunstall/pico/server/config"
-	"github.com/andydunstall/pico/server/gossip"
-	"github.com/andydunstall/pico/server/proxy"
-	adminserver "github.com/andydunstall/pico/server/server/admin"
-	proxyserver "github.com/andydunstall/pico/server/server/proxy"
-	upstreamserver "github.com/andydunstall/pico/server/server/upstream"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/auth"
+	"github.com/andydunstall/piko/server/cluster"
+	"github.com/andydunstall/piko/server/config"
+	"github.com/andydunstall/piko/server/gossip"
+	"github.com/andydunstall/piko/server/proxy"
+	adminserver "github.com/andydunstall/piko/server/server/admin"
+	proxyserver "github.com/andydunstall/piko/server/server/proxy"
+	upstreamserver "github.com/andydunstall/piko/server/server/upstream"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-sockaddr"
 	rungroup "github.com/oklog/run"
@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 )
 
-// Server manages setting up and running a Pico server node.
+// Server manages setting up and running a Piko server node.
 type Server struct {
 	proxyLn    net.Listener
 	upstreamLn net.Listener
@@ -155,7 +155,7 @@ func (s *Server) Run(ctx context.Context) error {
 		verifier = auth.NewJWTVerifier(verifierConf)
 	}
 
-	s.logger.Info("starting pico server", zap.Any("conf", s.conf))
+	s.logger.Info("starting piko server", zap.Any("conf", s.conf))
 
 	registry := prometheus.NewRegistry()
 

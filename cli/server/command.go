@@ -7,10 +7,10 @@ import (
 	"os/signal"
 	"syscall"
 
-	picoconfig "github.com/andydunstall/pico/pkg/config"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server"
-	"github.com/andydunstall/pico/server/config"
+	pikoconfig "github.com/andydunstall/piko/pkg/config"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server"
+	"github.com/andydunstall/piko/server/config"
 	rungroup "github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -22,28 +22,28 @@ func NewCommand() *cobra.Command {
 		Short: "start a server node",
 		Long: `Start a server node.
 
-The Pico server is responsible for proxying requests from proxy clients to
+The Piko server is responsible for proxying requests from proxy clients to
 registered upstream listeners.
 
-Pico may run as a cluster of nodes for fault tolerance and scalability. Use
+Piko may run as a cluster of nodes for fault tolerance and scalability. Use
 '--cluster.join' to configure addresses of existing members in the cluster
 to join.
 
 Examples:
-  # Start a Pico server.
-  pico server
+  # Start a Piko server.
+  piko server
 
-  # Start a Pico server, listening for proxy connections on :7000, upstream
+  # Start a Piko server, listening for proxy connections on :7000, upstream
   # connections on :7001 and admin connections on :7002.
-  pico server --proxy.bind-addr :7000 --upstream.bind-addr :7001 --admin.bind-addr :7002
+  piko server --proxy.bind-addr :7000 --upstream.bind-addr :7001 --admin.bind-addr :7002
 
-  # Start a Pico server and join an existing cluster by specifying each member.
-  pico server --cluster.join 10.26.104.14,10.26.104.75
+  # Start a Piko server and join an existing cluster by specifying each member.
+  piko server --cluster.join 10.26.104.14,10.26.104.75
 
-  # Start a Pico server and join an existing cluster by specifying a domain.
+  # Start a Piko server and join an existing cluster by specifying a domain.
   # The server will resolve the domain and attempt to join each returned
   # member.
-  pico server --cluster.join cluster.pico-ns.svc.cluster.local
+  piko server --cluster.join cluster.piko-ns.svc.cluster.local
 `,
 	}
 
@@ -78,7 +78,7 @@ default value can be given using form ${VAR:default}.`,
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if configPath != "" {
-			if err := picoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
+			if err := pikoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
 				fmt.Printf("load config: %s\n", err.Error())
 				os.Exit(1)
 			}

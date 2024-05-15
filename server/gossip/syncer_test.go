@@ -3,8 +3,8 @@ package gossip
 import (
 	"testing"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/cluster"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/cluster"
 	"github.com/stretchr/testify/assert"
 )
 

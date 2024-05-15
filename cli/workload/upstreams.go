@@ -8,10 +8,10 @@ import (
 	"strconv"
 	"syscall"
 
-	picoconfig "github.com/andydunstall/pico/pkg/config"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/workload/config"
-	"github.com/andydunstall/pico/workload/upstream"
+	pikoconfig "github.com/andydunstall/piko/pkg/config"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/workload/config"
+	"github.com/andydunstall/piko/workload/upstream"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -33,14 +33,14 @@ servers per endpoint.
 
 Examples:
   # Start 1000 upstream servers with 100 endpoints.
-  pico workload upstreams
+  piko workload upstreams
 
   # Start 5000 upstream servers with 5000 endpoints (so each upstream has a
   # unique endpoint ID).
-  pico workload upstreams --upstreams 5000 --endpoints 5000
+  piko workload upstreams --upstreams 5000 --endpoints 5000
 
-  # Specify the Pico server address.
-  pico workload upstreams --server.url https://pico.example.com:8001
+  # Specify the Piko server address.
+  piko workload upstreams --server.url https://piko.example.com:8001
 `,
 	}
 
@@ -75,7 +75,7 @@ default value can be given using form ${VAR:default}.`,
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if configPath != "" {
-			if err := picoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
+			if err := pikoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
 				fmt.Printf("load config: %s\n", err.Error())
 				os.Exit(1)
 			}

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/cluster"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/cluster"
 	"go.uber.org/zap"
 )
 
@@ -56,8 +56,8 @@ func (p *Proxy) Request(
 	ctx context.Context,
 	r *http.Request,
 ) *http.Response {
-	// Whether the request was forwarded from another Pico node.
-	forwarded := r.Header.Get("x-pico-forward") == "true"
+	// Whether the request was forwarded from another Piko node.
+	forwarded := r.Header.Get("x-piko-forward") == "true"
 
 	logger := p.logger.With(
 		zap.String("host", r.Host),
@@ -69,7 +69,7 @@ func (p *Proxy) Request(
 	endpointID := endpointIDFromRequest(r)
 	if endpointID == "" {
 		logger.Warn("request: missing endpoint id")
-		return errorResponse(http.StatusBadRequest, "missing pico endpoint id")
+		return errorResponse(http.StatusBadRequest, "missing piko endpoint id")
 	}
 
 	logger = logger.With(zap.String("endpoint-id", endpointID))
@@ -102,7 +102,7 @@ func (p *Proxy) Request(
 		)
 	}
 
-	// If the request is from another Pico node though we don't have a
+	// If the request is from another Piko node though we don't have a
 	// connection for the endpoint, we don't forward again but return an
 	// error.
 	if forwarded {
@@ -110,10 +110,10 @@ func (p *Proxy) Request(
 		return errorResponse(http.StatusServiceUnavailable, "endpoint not found")
 	}
 
-	// Set the 'x-pico-forward' before forwarding to a remote node.
-	r.Header.Set("x-pico-forward", "true")
+	// Set the 'x-piko-forward' before forwarding to a remote node.
+	r.Header.Set("x-piko-forward", "true")
 
-	// Attempt to send the request to a Pico node with a connection for the
+	// Attempt to send the request to a Piko node with a connection for the
 	// endpoint.
 	resp, err = p.remote.Request(ctx, endpointID, r)
 	if err == nil {
@@ -180,10 +180,10 @@ func (p *Proxy) Metrics() *Metrics {
 // endpointIDFromRequest returns the endpoint ID from the HTTP request, or an
 // empty string if no endpoint ID is specified.
 //
-// This will check both the 'x-pico-endpoint' header and 'Host' header, where
-// x-pico-endpoint takes precedence.
+// This will check both the 'x-piko-endpoint' header and 'Host' header, where
+// x-piko-endpoint takes precedence.
 func endpointIDFromRequest(r *http.Request) string {
-	endpointID := r.Header.Get("x-pico-endpoint")
+	endpointID := r.Header.Get("x-piko-endpoint")
 	if endpointID != "" {
 		return endpointID
 	}
@@ -193,7 +193,7 @@ func endpointIDFromRequest(r *http.Request) string {
 		// If a host is given and contains a separator, use the bottom-level
 		// domain as the endpoint ID.
 		//
-		// Such as if the domain is 'xyz.pico.example.com', then 'xyz' is the
+		// Such as if the domain is 'xyz.piko.example.com', then 'xyz' is the
 		// endpoint ID.
 		return strings.Split(host, ".")[0]
 	}

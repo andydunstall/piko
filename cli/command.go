@@ -1,10 +1,10 @@
 package cli
 
 import (
-	"github.com/andydunstall/pico/cli/agent"
-	"github.com/andydunstall/pico/cli/server"
-	"github.com/andydunstall/pico/cli/status"
-	"github.com/andydunstall/pico/cli/workload"
+	"github.com/andydunstall/piko/cli/agent"
+	"github.com/andydunstall/piko/cli/server"
+	"github.com/andydunstall/piko/cli/status"
+	"github.com/andydunstall/piko/cli/workload"
 	"github.com/spf13/cobra"
 )
 
@@ -12,12 +12,12 @@ func NewCommand() *cobra.Command {
 	cobra.EnableCommandSorting = false
 
 	cmd := &cobra.Command{
-		Use:          "pico [command] (flags)",
+		Use:          "piko [command] (flags)",
 		SilenceUsage: true,
 		CompletionOptions: cobra.CompletionOptions{
 			DisableDefaultCmd: true,
 		},
-		Short: "pico proxy",
+		Short: "piko proxy",
 	}
 
 	cmd.AddCommand(agent.NewCommand())

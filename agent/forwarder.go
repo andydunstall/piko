@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )

@@ -2,16 +2,16 @@
 
 ## Sources
 
-Pico server and agent support both YAML configuration and command-line flags.
+Piko server and agent support both YAML configuration and command-line flags.
 
 The YAML file path can be set using `--config.path`.
 
-See `pico server -h` and `pico agent -h` for the available configuration
+See `piko server -h` and `piko agent -h` for the available configuration
 options.
 
 ### Variable Substitution
 
-When enabling `--config.expand-env`, Pico will expand environment variables
+When enabling `--config.expand-env`, Piko will expand environment variables
 in the loaded YAML configuration. This will replace references to `${VAR}`
 and `$VAR` with the corresponding environment variable.
 
@@ -20,7 +20,7 @@ string. You can also define a default value using form `${VAR:default}`.
 
 ## Server
 
-The Pico server is run using `pico server`. It has the following configuration:
+The Piko server is run using `piko server`. It has the following configuration:
 ```
 proxy:
     # The host/port to listen for incoming proxy HTTP requests.
@@ -112,7 +112,7 @@ cluster:
 
     # A prefix for the node ID.
     # 
-    # Pico will generate a unique random identifier for the node and append it to
+    # Piko will generate a unique random identifier for the node and append it to
     # the given prefix.
     # 
     # Such as you could use the node or pod  name as a prefix, then add a unique
@@ -124,7 +124,7 @@ cluster:
     # This may be either addresses of specific nodes, such as
     # '--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
     # the addresses of the nodes in the cluster (e.g. a Kubernetes headless
-    # service), such as '--cluster.join pico.prod-pico-ns'.
+    # service), such as '--cluster.join piko.prod-piko-ns'.
     # 
     # Each address must include the host, and may optionally include a port. If no
     # port is given, the gossip port of this node is used.
@@ -185,28 +185,28 @@ log:
 
 ### Cluster
 
-To deploy Pico as a cluster, configure `--cluster.join` to a list of cluster
+To deploy Piko as a cluster, configure `--cluster.join` to a list of cluster
 members in the cluster to join.
 
 The addresses may be either addresses of specific nodes, such as
 `10.26.104.14`, or a domain name that resolves to the IP addresses of all nodes
 in the cluster.
 
-To deploy Pico to Kubernetes, you can create a headless service whose domain
+To deploy Piko to Kubernetes, you can create a headless service whose domain
 resolves to the IP addresses of the pods in the service, such as
-`pico.prod-pico-ns.svc.cluster.local`. When Pico starts, it will then attempt
+`piko.prod-piko-ns.svc.cluster.local`. When Piko starts, it will then attempt
 to join the other pods.
 
 ### Authentication
 
-To authenticate upstream endpoint connections, Pico can use a
+To authenticate upstream endpoint connections, Piko can use a
 [JSON Web Token (JWT)](https://jwt.io/) provided by your application.
 
-You configure Pico with the secret key or public key to verify the JWT, then
-configure the upstream endpoint with the JWT. Pico will then verify endpoints
+You configure Piko with the secret key or public key to verify the JWT, then
+configure the upstream endpoint with the JWT. Piko will then verify endpoints
 connection token.
 
-Pico supports HMAC, RSA, and ECDSA JWT algorithms, specifically HS256, HS384,
+Piko supports HMAC, RSA, and ECDSA JWT algorithms, specifically HS256, HS384,
 HS512, RSA256, RSA384, RSA512, EC256, EC384, and EC512.
 
 The server has the following configuration options to pass a secret key or
@@ -215,35 +215,35 @@ public key:
 - `auth.token_rsa_public_key`: Add RSA public key
 - `auth.token_ecdsa_public_key`: Add ECDSA public key
 
-If no keys secret or public keys are given, Pico will allow unauthenticated
+If no keys secret or public keys are given, Piko will allow unauthenticated
 endpoint connections.
 
-Pico will verify the `exp` (expiry) and `iat` (issued at) claims if given, and
+Piko will verify the `exp` (expiry) and `iat` (issued at) claims if given, and
 drop the connection to the upstream endpoint once its token expires.
 
-By default Pico will not verify the `aud` (audience) or `iss` (issuer) claims,
+By default Piko will not verify the `aud` (audience) or `iss` (issuer) claims,
 though you can enable these checks with `auth.token_audience` and
 `auth.token_issuer` respectively.
 
-You may also include Pico specific fields in your JWT. Pico supports the
-`pico.endpoints` claim which contains an array of endpoint IDs the token is
+You may also include Piko specific fields in your JWT. Piko supports the
+`piko.endpoints` claim which contains an array of endpoint IDs the token is
 permitted to register. Such as if the JWT includes claim
-`"pico": {"endpoints": ["endpoint-123"]}`, it will be permitted to register
+`"piko": {"endpoints": ["endpoint-123"]}`, it will be permitted to register
 endpoint ID `endpoint-123` but not `endpoint-xyz`.
 
-Note Pico does (yet) not authenticate proxy requests as proxy clients will
+Note Piko does (yet) not authenticate proxy requests as proxy clients will
 typically be deployed to the same network as the Pcio server. Your upstream
 services may then authenticate incoming requests if needed after they've been
-forwarded by Pico.
+forwarded by Piko.
 
 ## Agent
 
-The Pico agent is run using `pico agent`. It has the following configuration:
+The Piko agent is run using `piko agent`. It has the following configuration:
 ```
-# The endpoints to register with the Pico server.
+# The endpoints to register with the Piko server.
 # 
 # Each endpoint has an ID and forwarding address. The agent will register the
-# endpoint with the Pico server then receive incoming requests for that endpoint
+# endpoint with the Piko server then receive incoming requests for that endpoint
 # and forward them to the configured address.
 # 
 # '--endpoints' is a comma separated list of endpoints with format:
@@ -251,19 +251,19 @@ The Pico agent is run using `pico agent`. It has the following configuration:
 # will register the endpoint '6ae6db60' then forward incoming requests to
 # 'localhost:3000'.
 # 
-# You may register multiple endpoints which have their own connection to Pico,
+# You may register multiple endpoints which have their own connection to Piko,
 # such as '--endpoints 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.
 #
 # (Required).
 endpoints: []
 
 server:
-    # Pico server URL.
+    # Piko server URL.
     # 
-    # The listener will add path /pico/v1/listener/:endpoint_id to the given URL,
+    # The listener will add path /piko/v1/listener/:endpoint_id to the given URL,
     # so if you include a path it will be used as a prefix.
     # 
-    # Note Pico connects to the server with WebSockets, so will replace http/https
+    # Note Piko connects to the server with WebSockets, so will replace http/https
     # with ws/wss (you can configure either).
     url: http://localhost:8001
 
@@ -281,13 +281,13 @@ server:
     heartbeat_timeout: 10s
 
 auth:
-    # An API key to authenticate the connection to Pico.
+    # An API key to authenticate the connection to Piko.
     api_key: ""
 
 forwarder:
     # Forwarder timeout.
     # 
-    # This is the timeout between a listener receiving a request from Pico then
+    # This is the timeout between a listener receiving a request from Piko then
     # forwarding it to the configured forward address, and receiving a response.
     # 
     # If the upstream does not respond within the given timeout a

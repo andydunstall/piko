@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/andydunstall/pico/cli"
+	"github.com/andydunstall/piko/cli"
 )
 
 func main() {

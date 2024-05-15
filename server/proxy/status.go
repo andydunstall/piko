@@ -3,7 +3,7 @@ package proxy
 import (
 	"net/http"
 
-	"github.com/andydunstall/pico/server/status"
+	"github.com/andydunstall/piko/server/status"
 	"github.com/gin-gonic/gin"
 )
 

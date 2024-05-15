@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/pico/agent"
-	agentconfig "github.com/andydunstall/pico/agent/config"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server"
-	statusclient "github.com/andydunstall/pico/status/client"
+	"github.com/andydunstall/piko/agent"
+	agentconfig "github.com/andydunstall/piko/agent/config"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server"
+	statusclient "github.com/andydunstall/piko/status/client"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -87,7 +87,7 @@ func TestProxy(t *testing.T) {
 		assert.NoError(t, agent.Run(ctx))
 	}()
 
-	// Wait for the agent to register the endpoint with Pico.
+	// Wait for the agent to register the endpoint with Piko.
 	for {
 		statusClient := statusclient.NewClient(&url.URL{
 			Scheme: "http",
@@ -106,10 +106,10 @@ func TestProxy(t *testing.T) {
 		break
 	}
 
-	// Send a request to Pico which should be forwarded to the upstream server.
+	// Send a request to Piko which should be forwarded to the upstream server.
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", "http://"+serverConf.Proxy.AdvertiseAddr, nil)
-	req.Header.Set("x-pico-endpoint", "my-endpoint")
+	req.Header.Set("x-piko-endpoint", "my-endpoint")
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	defer resp.Body.Close()
@@ -159,7 +159,7 @@ func TestProxy_Authenticated(t *testing.T) {
 		assert.NoError(t, agent.Run(ctx))
 	}()
 
-	// Wait for the agent to register the endpoint with Pico.
+	// Wait for the agent to register the endpoint with Piko.
 	for {
 		statusClient := statusclient.NewClient(&url.URL{
 			Scheme: "http",
@@ -178,10 +178,10 @@ func TestProxy_Authenticated(t *testing.T) {
 		break
 	}
 
-	// Send a request to Pico which should be forwarded to the upstream server.
+	// Send a request to Piko which should be forwarded to the upstream server.
 	client := &http.Client{}
 	req, _ := http.NewRequest("GET", "http://"+serverConf.Proxy.AdvertiseAddr, nil)
-	req.Header.Set("x-pico-endpoint", "my-endpoint")
+	req.Header.Set("x-piko-endpoint", "my-endpoint")
 	resp, err := client.Do(req)
 	assert.NoError(t, err)
 	defer resp.Body.Close()

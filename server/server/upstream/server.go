@@ -7,12 +7,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/conn"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/pkg/rpc"
-	"github.com/andydunstall/pico/server/auth"
-	proxy "github.com/andydunstall/pico/server/proxy"
-	"github.com/andydunstall/pico/server/server/middleware"
+	"github.com/andydunstall/piko/pkg/conn"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/rpc"
+	"github.com/andydunstall/piko/server/auth"
+	proxy "github.com/andydunstall/piko/server/proxy"
+	"github.com/andydunstall/piko/server/server/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus"
@@ -100,8 +100,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 }
 
 func (s *Server) registerRoutes() {
-	pico := s.router.Group("/pico/v1")
-	pico.GET("/listener/:endpointID", s.listenerRoute)
+	piko := s.router.Group("/piko/v1")
+	piko.GET("/listener/:endpointID", s.listenerRoute)
 }
 
 // listenerRoute handles WebSocket connections from upstream listeners.

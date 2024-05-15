@@ -1,4 +1,4 @@
-module github.com/andydunstall/pico
+module github.com/andydunstall/piko
 
 go 1.21.1
 

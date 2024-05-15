@@ -6,11 +6,11 @@ WORKDIR /app
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -o ./pico main.go
+RUN CGO_ENABLED=0 go build -o ./piko main.go
 
 
 FROM alpine:latest
 
-COPY --from=build app/pico /bin/pico
+COPY --from=build app/piko /bin/piko
 
-ENTRYPOINT [ "/bin/pico" ]
+ENTRYPOINT [ "/bin/piko" ]

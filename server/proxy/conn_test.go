@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/rpc"
+	"github.com/andydunstall/piko/pkg/rpc"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -70,7 +70,7 @@ func TestRPCStream(t *testing.T) {
 		URL: &url.URL{
 			Path: "/foo",
 		},
-		Host: "my-endpoint.pico.com:8000",
+		Host: "my-endpoint.piko.com:8000",
 	})
 	assert.NoError(t, err)
 

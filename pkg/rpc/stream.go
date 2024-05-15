@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/conn"
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/conn"
+	"github.com/andydunstall/piko/pkg/log"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 )

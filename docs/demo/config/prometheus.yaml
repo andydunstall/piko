@@ -5,14 +5,14 @@ global:
     namespace: demo
 
 scrape_configs:
-  - job_name: demo/pico
+  - job_name: demo/piko
     static_configs:
-      - targets: ["pico-1:8002"]
+      - targets: ["piko-1:8002"]
         labels:
-          pod: "pico-1"
-      - targets: ["pico-2:8002"]
+          pod: "piko-1"
+      - targets: ["piko-2:8002"]
         labels:
-          pod: "pico-2"
-      - targets: ["pico-3:8002"]
+          pod: "piko-2"
+      - targets: ["piko-3:8002"]
         labels:
-          pod: "pico-3"
+          pod: "piko-3"

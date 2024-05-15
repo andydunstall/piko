@@ -36,7 +36,7 @@ func newMetrics() *Metrics {
 	return &Metrics{
 		ConnectionsInbound: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "gossip",
 				Name:      "connections_inbound_total",
 				Help:      "Total number of incoming stream connections",
@@ -44,7 +44,7 @@ func newMetrics() *Metrics {
 		),
 		StreamBytesInbound: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "gossip",
 				Name:      "stream_bytes_inbound_total",
 				Help:      "Total number of read bytes via a stream connection",
@@ -52,7 +52,7 @@ func newMetrics() *Metrics {
 		),
 		PacketBytesInbound: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "gossip",
 				Name:      "packet_bytes_inbound_total",
 				Help:      "Total number of read bytes via a packet connection",
@@ -60,7 +60,7 @@ func newMetrics() *Metrics {
 		),
 		ConnectionsOutbound: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "gossip",
 				Name:      "connections_outbound_total",
 				Help:      "Total number of outbound stream connections",
@@ -68,7 +68,7 @@ func newMetrics() *Metrics {
 		),
 		StreamBytesOutbound: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "gossip",
 				Name:      "stream_bytes_outbound_total",
 				Help:      "Total number of written bytes via a stream connection",
@@ -76,7 +76,7 @@ func newMetrics() *Metrics {
 		),
 		PacketBytesOutbound: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "gossip",
 				Name:      "packet_bytes_outbound_total",
 				Help:      "Total number of written bytes via a packet connection",
@@ -84,7 +84,7 @@ func newMetrics() *Metrics {
 		),
 		Entries: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "gossip",
 				Name:      "entries",
 				Help:      "Number of entries",

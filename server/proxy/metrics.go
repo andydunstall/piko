@@ -22,7 +22,7 @@ func NewMetrics() *Metrics {
 	return &Metrics{
 		ConnectedUpstreams: prometheus.NewGauge(
 			prometheus.GaugeOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "proxy",
 				Name:      "connected_upstreams",
 				Help:      "Number of upstreams connected to this node",
@@ -30,7 +30,7 @@ func NewMetrics() *Metrics {
 		),
 		RegisteredEndpoints: prometheus.NewGauge(
 			prometheus.GaugeOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "proxy",
 				Name:      "registered_endpoints",
 				Help:      "Number of endpoints registered to this node",
@@ -38,7 +38,7 @@ func NewMetrics() *Metrics {
 		),
 		ForwardedLocalTotal: prometheus.NewCounter(
 			prometheus.CounterOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "proxy",
 				Name:      "forwarded_local_total",
 				Help:      "Number of requests forwarded to an upstream connected to the local node",
@@ -46,7 +46,7 @@ func NewMetrics() *Metrics {
 		),
 		ForwardedRemoteTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "proxy",
 				Name:      "forwarded_remote_total",
 				Help:      "Number of requests forwarded to a remote node",

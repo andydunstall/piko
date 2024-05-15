@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server"
-	statusclient "github.com/andydunstall/pico/status/client"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server"
+	statusclient "github.com/andydunstall/piko/status/client"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
 )
 
@@ -38,7 +38,7 @@ type AuthConfig struct {
 }
 
 // ForwarderConfig contains the configuration for how to forward requests
-// from Pico.
+// from Piko.
 type ForwarderConfig struct {
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 }
@@ -96,10 +96,10 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 		"endpoints",
 		nil,
 		`
-The endpoints to register with the Pico server.
+The endpoints to register with the Piko server.
 
 Each endpoint has an ID and forwarding address. The agent will register the
-endpoint with the Pico server then receive incoming requests for that endpoint
+endpoint with the Piko server then receive incoming requests for that endpoint
 and forward them to the configured address.
 
 '--endpoints' is a comma separated list of endpoints with format:
@@ -107,7 +107,7 @@ and forward them to the configured address.
 will register the endpoint '6ae6db60' then forward incoming requests to
 'localhost:3000'.
 
-You may register multiple endpoints which have their own connection to Pico,
+You may register multiple endpoints which have their own connection to Piko,
 such as '--endpoints 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.`,
 	)
 
@@ -116,12 +116,12 @@ such as '--endpoints 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.`,
 		"server.url",
 		"http://localhost:8001",
 		`
-Pico server URL.
+Piko server URL.
 
-The listener will add path /pico/v1/listener/:endpoint_id to the given URL,
+The listener will add path /piko/v1/listener/:endpoint_id to the given URL,
 so if you include a path it will be used as a prefix.
 
-Note Pico connects to the server with WebSockets, so will replace http/https
+Note Piko connects to the server with WebSockets, so will replace http/https
 with ws/wss (you can configure either).`,
 	)
 	fs.DurationVar(
@@ -152,7 +152,7 @@ interval, with a timeout of '--server.heartbeat-timeout'.`,
 		"auth.api-key",
 		"",
 		`
-An API key to authenticate the connection to Pico.`,
+An API key to authenticate the connection to Piko.`,
 	)
 
 	fs.DurationVar(
@@ -162,7 +162,7 @@ An API key to authenticate the connection to Pico.`,
 		`
 Forwarder timeout.
 
-This is the timeout between a listener receiving a request from Pico then
+This is the timeout between a listener receiving a request from Piko then
 forwarding it to the configured forward address, and receiving a response.
 
 If the upstream does not respond within the given timeout a

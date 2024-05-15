@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/andydunstall/pico/agent"
-	agentconfig "github.com/andydunstall/pico/agent/config"
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/agent"
+	agentconfig "github.com/andydunstall/piko/agent/config"
+	"github.com/andydunstall/piko/pkg/log"
 	"go.uber.org/zap"
 )
 

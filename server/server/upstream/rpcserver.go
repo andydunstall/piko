@@ -1,6 +1,6 @@
 package server
 
-import "github.com/andydunstall/pico/pkg/rpc"
+import "github.com/andydunstall/piko/pkg/rpc"
 
 type rpcServer struct {
 	rpcHandler *rpc.Handler

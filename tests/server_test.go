@@ -8,10 +8,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/gossip"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server"
-	serverconfig "github.com/andydunstall/pico/server/config"
+	"github.com/andydunstall/piko/pkg/gossip"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server"
+	serverconfig "github.com/andydunstall/piko/server/config"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

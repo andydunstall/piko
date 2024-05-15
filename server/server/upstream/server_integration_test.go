@@ -9,11 +9,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/conn"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/pkg/rpc"
-	"github.com/andydunstall/pico/server/auth"
-	proxy "github.com/andydunstall/pico/server/proxy"
+	"github.com/andydunstall/piko/pkg/conn"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/rpc"
+	"github.com/andydunstall/piko/server/auth"
+	proxy "github.com/andydunstall/piko/server/proxy"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -68,7 +68,7 @@ func TestServer_AddConn(t *testing.T) {
 		defer upstreamServer.Shutdown(context.TODO())
 
 		url := fmt.Sprintf(
-			"ws://%s/pico/v1/listener/my-endpoint",
+			"ws://%s/piko/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
@@ -112,7 +112,7 @@ func TestServer_AddConn(t *testing.T) {
 		defer upstreamServer.Shutdown(context.TODO())
 
 		url := fmt.Sprintf(
-			"ws://%s/pico/v1/listener/my-endpoint",
+			"ws://%s/piko/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
@@ -157,7 +157,7 @@ func TestServer_AddConn(t *testing.T) {
 		defer upstreamServer.Shutdown(context.TODO())
 
 		url := fmt.Sprintf(
-			"ws://%s/pico/v1/listener/my-endpoint",
+			"ws://%s/piko/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
@@ -201,7 +201,7 @@ func TestServer_AddConn(t *testing.T) {
 		defer upstreamServer.Shutdown(context.TODO())
 
 		url := fmt.Sprintf(
-			"ws://%s/pico/v1/listener/my-endpoint",
+			"ws://%s/piko/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
 		_, err = conn.DialWebsocket(context.TODO(), url, "123")
@@ -232,7 +232,7 @@ func TestServer_AddConn(t *testing.T) {
 		defer upstreamServer.Shutdown(context.TODO())
 
 		url := fmt.Sprintf(
-			"ws://%s/pico/v1/listener/my-endpoint",
+			"ws://%s/piko/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
 		_, err = conn.DialWebsocket(context.TODO(), url, "123")

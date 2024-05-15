@@ -6,9 +6,9 @@ import (
 	"os"
 	"sort"
 
-	"github.com/andydunstall/pico/server/cluster"
-	"github.com/andydunstall/pico/status/client"
-	"github.com/andydunstall/pico/status/config"
+	"github.com/andydunstall/piko/server/cluster"
+	"github.com/andydunstall/piko/status/client"
+	"github.com/andydunstall/piko/status/config"
 	yaml "github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +35,7 @@ Queries the server for the set of nodes the cluster that this node knows about.
 The output contains the state of each known node.
 
 Examples:
-  pico status cluster nodes
+  piko status cluster nodes
 `,
 	}
 
@@ -94,10 +94,10 @@ a node ID of 'local' to query the local node.
 
 Examples:
   # Inspect node bbc69214.
-  pico status cluster node bbc69214
+  piko status cluster node bbc69214
 
   # Inspect local node.
-  pico status cluster node local
+  piko status cluster node local
 `,
 	}
 

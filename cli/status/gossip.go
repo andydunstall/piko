@@ -6,9 +6,9 @@ import (
 	"os"
 	"sort"
 
-	"github.com/andydunstall/pico/pkg/gossip"
-	"github.com/andydunstall/pico/status/client"
-	"github.com/andydunstall/pico/status/config"
+	"github.com/andydunstall/piko/pkg/gossip"
+	"github.com/andydunstall/piko/status/client"
+	"github.com/andydunstall/piko/status/config"
 	yaml "github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 )
@@ -35,7 +35,7 @@ Queries the server for the metadata for each known gossip node in the
 cluster.
 
 Examples:
-  pico status gossip nodes
+  piko status gossip nodes
 `,
 	}
 
@@ -92,7 +92,7 @@ func newGossipNodeCommand() *cobra.Command {
 Queries the server for the known state of the gossip node with the given ID.
 
 Examples:
-  pico status gossip node bbc69214
+  piko status gossip node bbc69214
 `,
 	}
 
