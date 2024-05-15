@@ -9,8 +9,8 @@ import (
 	fspath "path"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/gossip"
-	"github.com/andydunstall/pico/server/cluster"
+	"github.com/andydunstall/piko/pkg/gossip"
+	"github.com/andydunstall/piko/server/cluster"
 )
 
 type Client struct {

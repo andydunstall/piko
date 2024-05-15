@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/andydunstall/pico/pkg/rpc"
+	"github.com/andydunstall/piko/pkg/rpc"
 )
 
 // Conn represents a connection to an upstream endpoint.

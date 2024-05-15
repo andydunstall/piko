@@ -5,9 +5,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/andydunstall/pico/pkg/gossip"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/cluster"
+	"github.com/andydunstall/piko/pkg/gossip"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/cluster"
 	"go.uber.org/zap"
 )
 

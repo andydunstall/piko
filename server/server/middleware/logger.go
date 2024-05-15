@@ -3,7 +3,7 @@ package middleware
 import (
 	"time"
 
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/log"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )

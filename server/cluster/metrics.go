@@ -12,7 +12,7 @@ func NewMetrics() *Metrics {
 	return &Metrics{
 		Nodes: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
-				Namespace: "pico",
+				Namespace: "piko",
 				Subsystem: "cluster",
 				Name:      "nodes",
 				Help:      "Number of nodes in the cluster state",

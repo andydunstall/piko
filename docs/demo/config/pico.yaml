@@ -1,5 +1,0 @@
-cluster:
-  join:
-    - pico-1
-    - pico-2
-    - pico-3

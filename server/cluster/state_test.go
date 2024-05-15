@@ -4,7 +4,7 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/log"
 	"github.com/stretchr/testify/assert"
 )
 

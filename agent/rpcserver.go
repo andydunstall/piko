@@ -8,8 +8,8 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/pkg/rpc"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/rpc"
 	"go.uber.org/zap"
 )
 

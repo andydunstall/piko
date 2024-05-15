@@ -1,49 +1,49 @@
 version: "3.4"
 services:
-  pico-1:
-    image: pico:latest
+  piko-1:
+    image: piko:latest
     command:
       - server
       - --config.path
-      - /etc/pico.yaml
+      - /etc/piko.yaml
       - --cluster.node-id-prefix
-      - pico-1-
-    hostname: pico-1
+      - piko-1-
+    hostname: piko-1
     volumes:
-      - ./config/pico.yaml:/etc/pico.yaml
+      - ./config/piko.yaml:/etc/piko.yaml
 
-  pico-2:
-    image: pico:latest
+  piko-2:
+    image: piko:latest
     command:
       - server
       - --config.path
-      - /etc/pico.yaml
+      - /etc/piko.yaml
       - --cluster.node-id-prefix
-      - pico-2-
-    hostname: pico-2
+      - piko-2-
+    hostname: piko-2
     volumes:
-      - ./config/pico.yaml:/etc/pico.yaml
+      - ./config/piko.yaml:/etc/piko.yaml
 
-  pico-3:
-    image: pico:latest
+  piko-3:
+    image: piko:latest
     command:
       - server
       - --config.path
-      - /etc/pico.yaml
+      - /etc/piko.yaml
       - --cluster.node-id-prefix
-      - pico-3-
-    hostname: pico-3
+      - piko-3-
+    hostname: piko-3
     volumes:
-      - ./config/pico.yaml:/etc/pico.yaml
+      - ./config/piko.yaml:/etc/piko.yaml
 
   load-balancer:
     image: nginx:latest
     volumes:
       - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - "pico-1"
-      - "pico-2"
-      - "pico-3"
+      - "piko-1"
+      - "piko-2"
+      - "piko-3"
     ports:
       - 8000:8000
       - 8001:8001
@@ -57,9 +57,9 @@ services:
     volumes:
       - ./config/prometheus.yaml:/etc/prometheus/prometheus.yml
     depends_on:
-      - "pico-1"
-      - "pico-2"
-      - "pico-3"
+      - "piko-1"
+      - "piko-2"
+      - "piko-3"
     ports:
       - 9090:9090
 
@@ -72,6 +72,6 @@ services:
       - 3000:3000
 
 networks:
-  pico-network:
+  piko-network:
     driver: bridge
-    name: pico-network
+    name: piko-network

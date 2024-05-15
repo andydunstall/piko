@@ -5,8 +5,8 @@ import (
 	"net/url"
 	"os"
 
-	"github.com/andydunstall/pico/status/client"
-	"github.com/andydunstall/pico/status/config"
+	"github.com/andydunstall/piko/status/client"
+	"github.com/andydunstall/piko/status/config"
 	yaml "github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +33,7 @@ connected to this node. The output contains the endpoint IDs and set of
 listeners for that endpoint.
 
 Examples:
-  pico status proxy endpoints
+  piko status proxy endpoints
 `,
 	}
 

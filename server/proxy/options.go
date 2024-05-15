@@ -1,8 +1,8 @@
 package proxy
 
 import (
-	"github.com/andydunstall/pico/pkg/forwarder"
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/forwarder"
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 type options struct {

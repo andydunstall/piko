@@ -4,13 +4,13 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/andydunstall/pico/pkg/forwarder"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/cluster"
+	"github.com/andydunstall/piko/pkg/forwarder"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/cluster"
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-// remoteProxy is responsible for forwarding requests to Pico server nodes with
+// remoteProxy is responsible for forwarding requests to Piko server nodes with
 // an upstream connection for the target endpoint.
 type remoteProxy struct {
 	clusterState *cluster.State

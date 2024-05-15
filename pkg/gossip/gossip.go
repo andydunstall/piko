@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/log"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 )

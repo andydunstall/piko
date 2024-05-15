@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/auth"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 )

@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 // localEndpoint contains the local connections for an endpoint ID.

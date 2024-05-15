@@ -2,7 +2,7 @@ package status
 
 import "github.com/gin-gonic/gin"
 
-// Handler is a handler in the Pico status API.
+// Handler is a handler in the Piko status API.
 //
 // The handler registers routes for that expose APIs to inspect the status of
 // that component.

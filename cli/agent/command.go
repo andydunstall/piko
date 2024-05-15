@@ -8,11 +8,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/andydunstall/pico/agent"
-	"github.com/andydunstall/pico/agent/config"
-	picoconfig "github.com/andydunstall/pico/pkg/config"
-	"github.com/andydunstall/pico/pkg/log"
-	adminserver "github.com/andydunstall/pico/server/server/admin"
+	"github.com/andydunstall/piko/agent"
+	"github.com/andydunstall/piko/agent/config"
+	pikoconfig "github.com/andydunstall/piko/pkg/config"
+	"github.com/andydunstall/piko/pkg/log"
+	adminserver "github.com/andydunstall/piko/server/server/admin"
 	rungroup "github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
@@ -22,13 +22,13 @@ import (
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "agent [flags]",
-		Short: "start the pico agent",
-		Long: `Start the Pico agent.
+		Short: "start the piko agent",
+		Long: `Start the Piko agent.
 
-The Pico agent is a CLI that runs alongside your upstream service that
+The Piko agent is a CLI that runs alongside your upstream service that
 registers one or more endpoints.
 
-The agent will open an outbound connection to a Pico server for each of the
+The agent will open an outbound connection to a Piko server for each of the
 configured endpoints. This connection is kept open and is used to receive
 proxied requests from the server which are then forwarded to the configured
 address.
@@ -39,14 +39,14 @@ endpoint 'my-endpoint' that forwards requests to that local service.
 Examples:
   # Register an endpoint with ID 'my-endpoint-123' that forwards requests to
   # to 'localhost:3000'.
-  pico agent --endpoints my-endpoint-123/localhost:3000
+  piko agent --endpoints my-endpoint-123/localhost:3000
 
   # Register multiple endpoints.
-  pico agent --endpoints my-endpoint-1/localhost:3000 my-endpoint-2/localhost:6000
+  piko agent --endpoints my-endpoint-1/localhost:3000 my-endpoint-2/localhost:6000
 
-  # Specify the Pico server address.
-  pico agent --endpoints my-endpoint-123/localhost:3000 \
-      --server.url https://pico.example.com
+  # Specify the Piko server address.
+  piko agent --endpoints my-endpoint-123/localhost:3000 \
+      --server.url https://piko.example.com
 `,
 	}
 
@@ -81,7 +81,7 @@ default value can be given using form ${VAR:default}.`,
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if configPath != "" {
-			if err := picoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
+			if err := pikoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
 				fmt.Printf("load config: %s\n", err.Error())
 				os.Exit(1)
 			}
@@ -108,7 +108,7 @@ default value can be given using form ${VAR:default}.`,
 }
 
 func run(conf *config.Config, logger log.Logger) error {
-	logger.Info("starting pico agent", zap.Any("conf", conf))
+	logger.Info("starting piko agent", zap.Any("conf", conf))
 
 	registry := prometheus.NewRegistry()
 

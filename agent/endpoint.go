@@ -7,14 +7,14 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/andydunstall/pico/agent/config"
-	"github.com/andydunstall/pico/pkg/conn"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/pkg/rpc"
+	"github.com/andydunstall/piko/agent/config"
+	"github.com/andydunstall/piko/pkg/conn"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/rpc"
 	"go.uber.org/zap"
 )
 
-// endpoint is responsible for registering with the Pico server then forwarding
+// endpoint is responsible for registering with the Piko server then forwarding
 // incoming requests to the forward address.
 type endpoint struct {
 	endpointID  string
@@ -124,7 +124,7 @@ func (e *endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 func (e *endpoint) serverURL() string {
 	// Already verified URL in Config.Validate.
 	url, _ := url.Parse(e.conf.Server.URL)
-	url.Path = "/pico/v1/listener/" + e.endpointID
+	url.Path = "/piko/v1/listener/" + e.endpointID
 	if url.Scheme == "http" {
 		url.Scheme = "ws"
 	}

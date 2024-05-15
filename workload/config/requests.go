@@ -3,7 +3,7 @@ package config
 import (
 	"fmt"
 
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
 )
 
@@ -74,7 +74,7 @@ On each request, the client selects a random endpoint ID from 0 to
 		"server.url",
 		"http://localhost:8000",
 		`
-Pico server proxy URL.`,
+Piko server proxy URL.`,
 	)
 
 	c.Log.RegisterFlags(fs)

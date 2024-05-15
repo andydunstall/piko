@@ -1,10 +1,10 @@
 .PHONY: all
-all: pico
+all: piko
 
-.PHONY: pico
-pico:
+.PHONY: piko
+piko:
 	mkdir -p bin
-	go build -o bin/pico main.go
+	go build -o bin/piko main.go
 
 .PHONY: unit-test
 unit-test:
@@ -40,5 +40,5 @@ coverage:
 
 .PHONY: image
 image:
-	docker build . -f build/Dockerfile -t pico:$(shell git rev-parse HEAD)
-	docker tag pico:$(shell git rev-parse HEAD) pico:latest
+	docker build . -f build/Dockerfile -t piko:$(shell git rev-parse HEAD)
+	docker tag piko:$(shell git rev-parse HEAD) piko:latest

@@ -5,14 +5,14 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/auth"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/auth"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
 
 const (
-	TokenContextKey = "_pico_token"
+	TokenContextKey = "_piko_token"
 )
 
 // AuthMiddleware verifies the request token.

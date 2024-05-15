@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
 )
 
@@ -63,7 +63,7 @@ func (c *UpstreamsConfig) RegisterFlags(fs *pflag.FlagSet) {
 		`
 The number of upstream servers to register.
 
-Each upstream server registers with Pico using an endpoint ID selected from
+Each upstream server registers with Piko using an endpoint ID selected from
 the number endpoints to register.`,
 	)
 
@@ -86,9 +86,9 @@ Therefore 'endpoints' must be greater than or equal to 'upstreams'.`,
 		"server.url",
 		"http://localhost:8001",
 		`
-Pico server URL.
+Piko server URL.
 
-Note Pico connects to the server with WebSockets, so will replace http/https
+Note Piko connects to the server with WebSockets, so will replace http/https
 with ws/wss (you can configure either).`,
 	)
 

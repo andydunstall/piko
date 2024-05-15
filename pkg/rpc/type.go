@@ -6,7 +6,7 @@ type Type uint16
 const (
 	// TypeHeartbeat sends health checks between peers.
 	TypeHeartbeat Type = iota + 1
-	// TypeProxyHTTP sends a HTTP request and response between the Pico server
+	// TypeProxyHTTP sends a HTTP request and response between the Piko server
 	// and an upstream listener.
 	TypeProxyHTTP
 )

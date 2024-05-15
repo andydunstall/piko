@@ -41,7 +41,7 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 		"server.url",
 		"http://localhost:8002",
 		`
-Pico server URL. This URL should point to the server admin port.
+Piko server URL. This URL should point to the server admin port.
 `,
 	)
 

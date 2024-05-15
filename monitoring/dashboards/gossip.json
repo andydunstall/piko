@@ -57,10 +57,10 @@
       "includeVars": false,
       "keepTime": true,
       "tags": [
-        "pico"
+        "piko"
       ],
       "targetBlank": false,
-      "title": "Pico",
+      "title": "Piko",
       "tooltip": "",
       "type": "dashboards",
       "url": ""
@@ -163,7 +163,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (instance) (pico_gossip_entries{deleted=\"false\"})",
+          "expr": "sum by (instance) (piko_gossip_entries{deleted=\"false\"})",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -258,7 +258,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (instance) (pico_gossip_entries{deleted=\"true\"})",
+          "expr": "sum by (instance) (piko_gossip_entries{deleted=\"true\"})",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -364,7 +364,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(pico_gossip_connections_inbound_total{}[$__rate_interval])",
+          "expr": "rate(piko_gossip_connections_inbound_total{}[$__rate_interval])",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -459,7 +459,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(pico_gossip_connections_outbound_total{}[$__rate_interval])",
+          "expr": "rate(piko_gossip_connections_outbound_total{}[$__rate_interval])",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -554,7 +554,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(pico_gossip_stream_bytes_inbound_total{}[$__rate_interval])",
+          "expr": "rate(piko_gossip_stream_bytes_inbound_total{}[$__rate_interval])",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -649,7 +649,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(pico_gossip_stream_bytes_outbound_total{}[$__rate_interval])",
+          "expr": "rate(piko_gossip_stream_bytes_outbound_total{}[$__rate_interval])",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -743,7 +743,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(pico_gossip_packet_bytes_inbound_total{}[$__rate_interval])",
+          "expr": "rate(piko_gossip_packet_bytes_inbound_total{}[$__rate_interval])",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -837,7 +837,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(pico_gossip_packet_bytes_outbound_total{}[$__rate_interval])",
+          "expr": "rate(piko_gossip_packet_bytes_outbound_total{}[$__rate_interval])",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -851,7 +851,7 @@
   "refresh": "30s",
   "schemaVersion": 39,
   "tags": [
-    "pico"
+    "piko"
   ],
   "templating": {
     "list": []
@@ -862,7 +862,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Pico Gossip",
+  "title": "Piko Gossip",
   "uid": "edlgksa08jvuof",
   "version": 4,
   "weekStart": ""

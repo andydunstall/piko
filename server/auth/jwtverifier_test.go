@@ -20,7 +20,7 @@ func TestJWTVerifier_HS(t *testing.T) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
-		Pico: picoEndpointClaims{
+		Piko: pikoEndpointClaims{
 			Endpoints: []string{"my-endpoint"},
 		},
 	}
@@ -68,7 +68,7 @@ func TestJWTVerifier_RS(t *testing.T) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
-		Pico: picoEndpointClaims{
+		Piko: pikoEndpointClaims{
 			Endpoints: []string{"my-endpoint"},
 		},
 	}
@@ -119,7 +119,7 @@ func TestJWTVerifier_EC(t *testing.T) {
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
-		Pico: picoEndpointClaims{
+		Piko: pikoEndpointClaims{
 			Endpoints: []string{"my-endpoint"},
 		},
 	}
@@ -188,7 +188,7 @@ func TestJWTVerifier_Invalid(t *testing.T) {
 				// Expires in the past.
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour)),
 			},
-			Pico: picoEndpointClaims{
+			Piko: pikoEndpointClaims{
 				Endpoints: []string{"my-endpoint"},
 			},
 		}
@@ -212,7 +212,7 @@ func TestJWTVerifier_Invalid(t *testing.T) {
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 				Audience:  jwt.ClaimStrings([]string{"bar"}),
 			},
-			Pico: picoEndpointClaims{
+			Piko: pikoEndpointClaims{
 				Endpoints: []string{"my-endpoint"},
 			},
 		}
@@ -237,7 +237,7 @@ func TestJWTVerifier_Invalid(t *testing.T) {
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 				Issuer:    "bar",
 			},
-			Pico: picoEndpointClaims{
+			Piko: pikoEndpointClaims{
 				Endpoints: []string{"my-endpoint"},
 			},
 		}

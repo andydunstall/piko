@@ -10,13 +10,13 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type picoEndpointClaims struct {
+type pikoEndpointClaims struct {
 	Endpoints []string `json:"endpoints"`
 }
 
 type endpointJWTClaims struct {
 	jwt.RegisteredClaims
-	Pico picoEndpointClaims `json:"pico"`
+	Piko pikoEndpointClaims `json:"piko"`
 }
 
 type JWTVerifierConfig struct {
@@ -117,7 +117,7 @@ func (v *JWTVerifier) VerifyEndpointToken(tokenString string) (EndpointToken, er
 	}
 	return EndpointToken{
 		Expiry:    expiry,
-		Endpoints: claims.Pico.Endpoints,
+		Endpoints: claims.Piko.Endpoints,
 	}, nil
 }
 

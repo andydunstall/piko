@@ -7,9 +7,9 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/config"
-	"github.com/andydunstall/pico/server/server/middleware"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/config"
+	"github.com/andydunstall/piko/server/server/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"

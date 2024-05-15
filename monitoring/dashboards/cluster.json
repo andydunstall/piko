@@ -57,10 +57,10 @@
       "includeVars": false,
       "keepTime": true,
       "tags": [
-        "pico"
+        "piko"
       ],
       "targetBlank": false,
-      "title": "Pico",
+      "title": "Piko",
       "tooltip": "",
       "type": "dashboards",
       "url": ""
@@ -164,7 +164,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "pico_cluster_nodes{status=\"active\"}",
+          "expr": "piko_cluster_nodes{status=\"active\"}",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -260,7 +260,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "pico_cluster_nodes{status=\"unreachable\"}",
+          "expr": "piko_cluster_nodes{status=\"unreachable\"}",
           "instant": false,
           "legendFormat": "{{instance}}",
           "range": true,
@@ -274,7 +274,7 @@
   "refresh": "30s",
   "schemaVersion": 39,
   "tags": [
-    "pico"
+    "piko"
   ],
   "templating": {
     "list": []
@@ -285,7 +285,7 @@
   },
   "timepicker": {},
   "timezone": "browser",
-  "title": "Pico Cluster",
+  "title": "Piko Cluster",
   "uid": "edlgamwsm3e2od",
   "version": 3,
   "weekStart": ""

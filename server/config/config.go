@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/andydunstall/pico/pkg/gossip"
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/auth"
+	"github.com/andydunstall/piko/pkg/gossip"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/auth"
 	"github.com/spf13/pflag"
 )
 
@@ -66,7 +66,7 @@ type ClusterConfig struct {
 	// NodeID is a unique identifier for this node in the cluster.
 	NodeID string `json:"node_id" yaml:"node_id"`
 
-	// NodeIDPrefix is a node ID prefix, where Pico will generate the rest of
+	// NodeIDPrefix is a node ID prefix, where Piko will generate the rest of
 	// the node ID to ensure uniqueness.
 	NodeIDPrefix string `json:"node_id_prefix" yaml:"node_id_prefix"`
 
@@ -252,7 +252,7 @@ By default a random ID will be generated for the node.`,
 		`
 A prefix for the node ID.
 
-Pico will generate a unique random identifier for the node and append it to
+Piko will generate a unique random identifier for the node and append it to
 the given prefix.
 
 Such as you could use the node or pod  name as a prefix, then add a unique
@@ -268,7 +268,7 @@ A list of addresses of members in the cluster to join.
 This may be either addresses of specific nodes, such as
 '--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
 the addresses of the nodes in the cluster (e.g. a Kubernetes headless
-service), such as '--cluster.join pico.prod-pico-ns'.
+service), such as '--cluster.join piko.prod-piko-ns'.
 
 Each address must include the host, and may optionally include a port. If no
 port is given, the gossip port of this node is used.

@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/andydunstall/pico/agent/config"
-	"github.com/andydunstall/pico/pkg/log"
+	"github.com/andydunstall/piko/agent/config"
+	"github.com/andydunstall/piko/pkg/log"
 	"golang.org/x/sync/errgroup"
 )
 
-// Agent is responsible for registering the configured listeners with the Pico
+// Agent is responsible for registering the configured listeners with the Piko
 // server for forwarding incoming requests.
 type Agent struct {
 	conf *config.Config

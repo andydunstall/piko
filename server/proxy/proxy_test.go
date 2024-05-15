@@ -8,8 +8,8 @@ import (
 	"net/url"
 	"testing"
 
-	"github.com/andydunstall/pico/pkg/log"
-	"github.com/andydunstall/pico/server/cluster"
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/cluster"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -60,7 +60,7 @@ func TestProxy(t *testing.T) {
 
 		handler := func(addr string, r *http.Request) (*http.Response, error) {
 			assert.Equal(t, "1.2.3.4:1234", addr)
-			assert.Equal(t, "true", r.Header.Get("x-pico-forward"))
+			assert.Equal(t, "true", r.Header.Get("x-piko-forward"))
 			return &http.Response{
 				StatusCode: http.StatusOK,
 			}, nil
@@ -75,7 +75,7 @@ func TestProxy(t *testing.T) {
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host:   "my-endpoint.pico.com",
+			Host:   "my-endpoint.piko.com",
 			Header: header,
 		})
 
@@ -106,7 +106,7 @@ func TestProxy(t *testing.T) {
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host:   "my-endpoint.pico.com",
+			Host:   "my-endpoint.piko.com",
 			Header: header,
 		})
 
@@ -141,7 +141,7 @@ func TestProxy(t *testing.T) {
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host:   "my-endpoint.pico.com",
+			Host:   "my-endpoint.piko.com",
 			Header: header,
 		})
 		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
@@ -161,7 +161,7 @@ func TestProxy(t *testing.T) {
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host:   "my-endpoint.pico.com",
+			Host:   "my-endpoint.piko.com",
 			Header: header,
 		})
 
@@ -194,7 +194,7 @@ func TestProxy(t *testing.T) {
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host: "my-endpoint.pico.com",
+			Host: "my-endpoint.piko.com",
 		})
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
@@ -219,7 +219,7 @@ func TestProxy(t *testing.T) {
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host: "my-endpoint.pico.com",
+			Host: "my-endpoint.piko.com",
 		})
 		assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
 
@@ -248,7 +248,7 @@ func TestProxy(t *testing.T) {
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host: "my-endpoint.pico.com",
+			Host: "my-endpoint.piko.com",
 		})
 		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
 
@@ -264,12 +264,12 @@ func TestProxy(t *testing.T) {
 
 		header := make(http.Header)
 		// Set forward header to avoid being forwarded to a remote node.
-		header.Set("x-pico-forward", "true")
+		header.Set("x-piko-forward", "true")
 		req := &http.Request{
 			URL: &url.URL{
 				Path: "/foo",
 			},
-			Host:   "my-endpoint.pico.com",
+			Host:   "my-endpoint.piko.com",
 			Header: header,
 		}
 
@@ -328,25 +328,25 @@ func TestProxy(t *testing.T) {
 
 		var m errorMessage
 		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
-		assert.Equal(t, "missing pico endpoint id", m.Error)
+		assert.Equal(t, "missing piko endpoint id", m.Error)
 	})
 }
 
 func TestEndpointIDFromRequest(t *testing.T) {
 	t.Run("host header", func(t *testing.T) {
 		endpointID := endpointIDFromRequest(&http.Request{
-			Host: "my-endpoint.pico.com:9000",
+			Host: "my-endpoint.piko.com:9000",
 		})
 		assert.Equal(t, "my-endpoint", endpointID)
 	})
 
-	t.Run("x-pico-endpoint header", func(t *testing.T) {
+	t.Run("x-piko-endpoint header", func(t *testing.T) {
 		header := make(http.Header)
-		header.Add("x-pico-endpoint", "my-endpoint")
+		header.Add("x-piko-endpoint", "my-endpoint")
 		endpointID := endpointIDFromRequest(&http.Request{
-			// Even though the host header is provided, 'x-pico-endpoint'
+			// Even though the host header is provided, 'x-piko-endpoint'
 			// takes precedence.
-			Host:   "another-endpoint.pico.com:9000",
+			Host:   "another-endpoint.piko.com:9000",
 			Header: header,
 		})
 		assert.Equal(t, "my-endpoint", endpointID)
