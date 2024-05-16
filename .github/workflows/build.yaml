@@ -17,7 +17,7 @@ jobs:
 
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.22'
 
       - name: Build
         run: go build ./...
@@ -30,7 +30,7 @@ jobs:
 
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.21'
+          go-version: '1.22'
 
       - name: Unit Tests
         run: go test ./... -v
@@ -49,7 +49,7 @@ jobs:
 
       - uses: actions/setup-go@v3
         with:
-          go-version: '1.21'
+          go-version: '1.22'
 
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v3
