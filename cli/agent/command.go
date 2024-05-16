@@ -36,6 +36,10 @@ address.
 Such as if you have a service running at 'localhost:3000', you can register
 endpoint 'my-endpoint' that forwards requests to that local service.
 
+The agent supports both YAML configuration and command line flags. Configure
+a YAML file using '--config.path'. When enabling '--config.expand-env', Piko
+will expand environment variables in the loaded YAML configuration.
+
 Examples:
   # Register an endpoint with ID 'my-endpoint-123' that forwards requests to
   # to 'localhost:3000'.
