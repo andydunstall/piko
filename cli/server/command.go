@@ -22,20 +22,25 @@ func NewCommand() *cobra.Command {
 		Short: "start a server node",
 		Long: `Start a server node.
 
-The Piko server is responsible for proxying requests from proxy clients to
-registered upstream listeners.
+The Piko server is responsible for routing incoming proxy requests to upstream
+services. Upstream services open outbound-connections to the server and
+register endpoints. Piko will then route incoming requests to the appropriate
+upstream service via the upstreams outbound-only connection.
 
 Piko may run as a cluster of nodes for fault tolerance and scalability. Use
 '--cluster.join' to configure addresses of existing members in the cluster
 to join.
 
+The server supports both YAML configuration and command line flags. Configure
+a YAML file using '--config.path'. When enabling '--config.expand-env', Piko
+will expand environment variables in the loaded YAML configuration.
+
 Examples:
-  # Start a Piko server.
+  # Start a Piko server node.
   piko server
 
-  # Start a Piko server, listening for proxy connections on :7000, upstream
-  # connections on :7001 and admin connections on :7002.
-  piko server --proxy.bind-addr :7000 --upstream.bind-addr :7001 --admin.bind-addr :7002
+  # Load configuration from YAML.
+  piko server --config.path ./server.yaml
 
   # Start a Piko server and join an existing cluster by specifying each member.
   piko server --cluster.join 10.26.104.14,10.26.104.75
