@@ -9,6 +9,7 @@ register upstream services to handle incoming requests proxied by Piko.
 Start by cloning Piko and building the Piko Docker image:
 ```shell
 git clone git@github.com:andydunstall/piko.git
+cd piko
 make piko
 make image
 ```
