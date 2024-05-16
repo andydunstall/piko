@@ -67,6 +67,28 @@ the endpoint ID. `x-piko-endpoint` will take precedence over `Host`.
   <img src="../../assets/images/routing.png" alt="routing" width="40%"/>
 </p>
 
+When an upstream service is disconnected, either due to a node leaving or
+failing, or if the connection dropped, it will reconnect to another node. The
+new routing information will then be propagated around the cluster.
+
+Since the cluster state is eventually consistent, it could take a second for
+the updated routing information to propagate. Therefore to minimise disruption,
+if a node finds its routing information is outdated (such as N<sub>1</sub>
+responds that it no longer has an upstream connection for endpoint E), the node
+will backoff and retry.
+
+Such as if in the above example the upstream reconnects to node N<sub>3</sub>,
+though N<sub>2</sub> hasn’t learned about the update so continues to send a
+request for that endpoint to N<sub>1</sub>, N<sub>1</sub> will respond that the
+endpoint is not active on the node. N<sub>2</sub> will then backoff and retry.
+When it retries it should have received the latest routing information from
+N<sub>1</sub> and N<sub>3</sub> so the request will succeed.
+
+Note to ensure requests are never processed multiple times (which could cause
+issues if the request isn't idempotent), Piko will only retry if it is sure the
+request never reached the upstream service. Therefore it only retries if a node
+responds that it doesn't have an upstream connection for the endpoint.
+
 ## Upstreams
 
 Upstream services open outbound-only connections to Piko and register an
