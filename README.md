@@ -27,6 +27,8 @@ endpoint among the registered upstreams.
 - [Design Goals](#design-goals)
 - [Getting Started](#getting-started)
 - [Docs](#docs)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Design Goals
 
@@ -80,3 +82,10 @@ See [Getting Started](./docs/getting-started.md).
   - [Configure](./docs/manage/configure.md)
   - [Kubernetes](./docs/manage/kubernetes.md)
   - [Observability](./docs/manage/observability.md)
+
+## Contributing
+
+See [CONTRIBUTING](./CONTRIBUTING.md).
+
+## License
+MIT License, please see [LICENSE](LICENSE) for details.
