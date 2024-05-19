@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "piko.fullname" . }}
+  labels:
+    {{- include "piko.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "piko.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "piko.fullname" . }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "piko.labels" . | nindent 8 }}
+        {{- with .Values.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ include "piko.serviceAccountName" . }}
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      containers:
+      - name: piko
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: "{{ .Values.image.pullPolicy }}"
+        ports:
+          - containerPort: {{ .Values.server.proxyPort }}
+            name: proxy
+          - containerPort: {{ .Values.server.upstreamPort }}
+            name: upstream
+          - containerPort: {{ .Values.server.adminPort }}
+            name: admin
+          - containerPort: {{ .Values.server.gossipPort }}
+            name: gossip
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 12 }}
+        args:
+          - server
+          - --config.path
+          - /config/server.yaml
+          - --config.expand-env
+        env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        volumeMounts:
+          - name: config
+            mountPath: "/config"
+            readOnly: true
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "piko.fullname" . }}
+            items:
+            - key: "server.yaml"
+              path: "server.yaml"
+

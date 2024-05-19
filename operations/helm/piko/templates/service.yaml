@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "piko.fullname" . }}
+  labels:
+    {{- include "piko.labels" . | nindent 4 }}
+spec:
+  ports:
+  - port: {{ .Values.server.proxyPort }}
+    name: proxy
+    protocol: TCP
+  - port: {{ .Values.server.upstreamPort }}
+    name: upstream
+    protocol: TCP
+  - port: {{ .Values.server.adminPort }}
+    name: admin
+    protocol: TCP
+  clusterIP: None
+  selector:
+    {{- include "piko.selectorLabels" . | nindent 4 }}

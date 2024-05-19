@@ -1,0 +1,12 @@
+apiVersion: v2
+name: piko
+description: Piko proxy
+
+home: https://github.com/andydunstall/piko
+
+version: 0.1.0
+
+appVersion: "0.1.0"
+
+sources:
+  - https://github.com/dragonflydb/dragonfly

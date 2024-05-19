@@ -100,6 +100,7 @@ func (s *Server) Close() error {
 
 func (s *Server) registerRoutes() {
 	s.router.GET("/health", s.healthRoute)
+	s.router.GET("/ready", s.readyRoute)
 
 	if s.registry != nil {
 		s.router.GET("/metrics", s.metricsHandler())
@@ -107,6 +108,10 @@ func (s *Server) registerRoutes() {
 }
 
 func (s *Server) healthRoute(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
+
+func (s *Server) readyRoute(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
