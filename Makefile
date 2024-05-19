@@ -1,3 +1,5 @@
+IMAGE_TAG ?= $(shell git rev-parse HEAD)
+
 .PHONY: all
 all: piko
 
@@ -40,5 +42,5 @@ coverage:
 
 .PHONY: image
 image:
-	docker build . -f build/Dockerfile -t piko:$(shell git rev-parse HEAD)
-	docker tag piko:$(shell git rev-parse HEAD) piko:latest
+	docker build . -f build/Dockerfile -t piko:$(IMAGE_TAG)
+	docker tag piko:$(IMAGE_TAG) piko:latest

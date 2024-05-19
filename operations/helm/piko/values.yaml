@@ -1,0 +1,41 @@
+replicaCount: 1
+
+image:
+  repository: piko
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: ""
+
+serviceAccount:
+  # -- Specifies whether a service account should be created
+  create: true
+  # -- Annotations to add to the service account
+  annotations: {}
+  # -- The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+podLabels: {}
+
+server:
+  # -- Specifies the proxy port to listen on. The proxy port listens for
+  # requests that are forwarded to upstream services.
+  proxyPort: 8000
+  # -- Specifies the upstream port to listen on. The upstream port listens
+  # for connections from upstream service.
+  upstreamPort: 8001
+  # -- Specifies the admin port to listen on. The admin port exposes an API for
+  # metrics and observability.
+  adminPort: 8002
+  # -- Specifies the gossip port for inter-node traffic.
+  gossipPort: 8003
+
+terminationGracePeriodSeconds: 60
+
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: admin
+
+affinity: {}

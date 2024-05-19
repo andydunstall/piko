@@ -129,3 +129,8 @@ spec:
 You can then setup the any required load balancers (such as a Kubernetes
 Gatweay) or services to route requests to the server.
 to Piko. 
+
+## Helm
+
+Piko includes a simple helm chart at [operations/helm](../../operations/helm).
+This chart creates a headless service and StatefulSet as described above.
