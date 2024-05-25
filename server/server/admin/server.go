@@ -17,6 +17,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Server is the admin HTTP server, which exposes endpoints for metrics, health
@@ -50,8 +51,9 @@ func NewServer(
 		ln:     ln,
 		router: router,
 		httpServer: &http.Server{
-			Addr:    ln.Addr().String(),
-			Handler: router,
+			Addr:     ln.Addr().String(),
+			Handler:  router,
+			ErrorLog: logger.StdLogger(zapcore.WarnLevel),
 		},
 		clusterState: clusterState,
 		forwarder:    forwarder.NewForwarder(),
