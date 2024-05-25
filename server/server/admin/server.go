@@ -65,9 +65,12 @@ func NewServer(
 	server.router.Use(gin.CustomRecoveryWithWriter(nil, server.panicRoute))
 
 	server.router.Use(middleware.NewLogger(logger))
+
+	metrics := middleware.NewMetrics("admin")
 	if registry != nil {
-		router.Use(middleware.NewMetrics("admin", registry))
+		metrics.Register(registry)
 	}
+	router.Use(metrics.Handler())
 
 	if clusterState != nil {
 		router.Use(server.forwardInterceptor)

@@ -15,7 +15,6 @@ import (
 	"github.com/andydunstall/piko/server/server/middleware"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -48,7 +47,6 @@ func NewServer(
 	ln net.Listener,
 	proxy Proxy,
 	verifier auth.Verifier,
-	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
 	logger = logger.WithSubsystem("upstream.server")
@@ -81,9 +79,6 @@ func NewServer(
 	server.router.Use(gin.CustomRecoveryWithWriter(nil, server.panicRoute))
 
 	server.router.Use(middleware.NewLogger(logger))
-	if registry != nil {
-		router.Use(middleware.NewMetrics("upstream", registry))
-	}
 
 	server.registerRoutes()
 

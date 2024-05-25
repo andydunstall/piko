@@ -14,7 +14,6 @@ import (
 	"github.com/andydunstall/piko/pkg/rpc"
 	"github.com/andydunstall/piko/server/auth"
 	proxy "github.com/andydunstall/piko/server/proxy"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -59,7 +58,6 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			proxy,
 			nil,
-			prometheus.NewRegistry(),
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -103,7 +101,6 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			proxy,
 			verifier,
-			prometheus.NewRegistry(),
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -148,7 +145,6 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			proxy,
 			verifier,
-			prometheus.NewRegistry(),
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -192,7 +188,6 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			nil,
 			verifier,
-			prometheus.NewRegistry(),
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -223,7 +218,6 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			nil,
 			verifier,
-			prometheus.NewRegistry(),
 			log.NewNopLogger(),
 		)
 		go func() {

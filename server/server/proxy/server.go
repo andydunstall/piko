@@ -75,9 +75,12 @@ func NewServer(
 	server.router.Use(gin.CustomRecoveryWithWriter(nil, server.panicRoute))
 
 	server.router.Use(middleware.NewLogger(logger))
+
+	metrics := middleware.NewMetrics("proxy")
 	if registry != nil {
-		router.Use(middleware.NewMetrics("proxy", registry))
+		metrics.Register(registry)
 	}
+	router.Use(metrics.Handler())
 
 	server.registerRoutes()
 
