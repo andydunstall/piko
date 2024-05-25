@@ -17,6 +17,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Proxy interface {
@@ -59,8 +60,9 @@ func NewServer(
 		ln:     ln,
 		router: router,
 		httpServer: &http.Server{
-			Addr:    ln.Addr().String(),
-			Handler: router,
+			Addr:     ln.Addr().String(),
+			Handler:  router,
+			ErrorLog: logger.StdLogger(zapcore.WarnLevel),
 		},
 		rpcServer:         newRPCServer(),
 		websocketUpgrader: &websocket.Upgrader{},

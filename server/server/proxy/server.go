@@ -13,6 +13,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Proxy interface {
@@ -61,6 +62,7 @@ func NewServer(
 			WriteTimeout:      conf.HTTP.WriteTimeout,
 			IdleTimeout:       conf.HTTP.IdleTimeout,
 			MaxHeaderBytes:    conf.HTTP.MaxHeaderBytes,
+			ErrorLog:          logger.StdLogger(zapcore.WarnLevel),
 		},
 		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,

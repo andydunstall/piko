@@ -1,13 +1,25 @@
 package log
 
 import (
+	"bytes"
 	"fmt"
+	stdlog "log"
 	"os"
 	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
+
+type loggerWriter struct {
+	logFunc func(msg string, fields ...zap.Field)
+}
+
+func (l *loggerWriter) Write(p []byte) (int, error) {
+	p = bytes.TrimSpace(p)
+	l.logFunc(string(p))
+	return len(p), nil
+}
 
 // Logger is a logger which writes structured logs to stderr formatted
 // as JSON.
@@ -28,6 +40,9 @@ type Logger interface {
 	Warn(msg string, fields ...zap.Field)
 	Error(msg string, fields ...zap.Field)
 	Sync() error
+	// StdLogger returns a standard library log.Logger that logs records using
+	// with the given level.
+	StdLogger(level zapcore.Level) *stdlog.Logger
 }
 
 type logger struct {
@@ -126,6 +141,16 @@ func (l *logger) Sync() error {
 	return l.core.Sync()
 }
 
+func (l *logger) StdLogger(level zapcore.Level) *stdlog.Logger {
+	return stdlog.New(&loggerWriter{
+		logFunc: func(msg string, fields ...zap.Field) {
+			if ce := l.check(level, msg); ce != nil {
+				ce.Write(fields...)
+			}
+		},
+	}, "", 0)
+}
+
 func (l *logger) clone() *logger {
 	clone := *l
 	return &clone
@@ -191,6 +216,13 @@ func (l *nopLogger) Error(_ string, _ ...zap.Field) {
 
 func (l *nopLogger) Sync() error {
 	return nil
+}
+
+func (l *nopLogger) StdLogger(_ zapcore.Level) *stdlog.Logger {
+	return stdlog.New(&loggerWriter{
+		logFunc: func(msg string, fields ...zap.Field) {
+		},
+	}, "", 0)
 }
 
 func subsystemMatch(subsystem string, enabled []string) bool {
