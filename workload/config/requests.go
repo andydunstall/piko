@@ -16,6 +16,9 @@ type RequestsConfig struct {
 	// Endpoints is the number of available endpoint IDs.
 	Endpoints int `json:"endpoints" yaml:"endpoints"`
 
+	// RequestSize is the size of each request.
+	RequestSize int `json:"request_size" yaml:"request_size"`
+
 	Server ServerConfig `json:"server" yaml:"server"`
 
 	Log log.Config `json:"log" yaml:"log"`
@@ -67,6 +70,15 @@ The number of available endpoint IDs to send requests to.
 
 On each request, the client selects a random endpoint ID from 0 to
 'endpoints'.`,
+	)
+
+	fs.IntVar(
+		&c.RequestSize,
+		"request-size",
+		1024,
+		`
+The size of each request. As the upstream echos the response body, the response
+will have the same size.`,
 	)
 
 	fs.StringVar(

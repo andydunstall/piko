@@ -1,6 +1,7 @@
 package workload
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/rand"
@@ -129,12 +130,14 @@ func runClient(ctx context.Context, conf *config.RequestsConfig, logger log.Logg
 	ticker := time.NewTicker(time.Duration(int(time.Second) / conf.Rate))
 	defer ticker.Stop()
 
+	body := make([]byte, conf.RequestSize)
+
 	client := &http.Client{}
 	for {
 		select {
 		case <-ticker.C:
 			endpointID := rand.Int() % conf.Endpoints
-			req, _ := http.NewRequest("GET", conf.Server.URL, nil)
+			req, _ := http.NewRequest("GET", conf.Server.URL, bytes.NewReader(body))
 			req.Header.Set("x-piko-endpoint", strconv.Itoa(endpointID))
 			resp, err := client.Do(req)
 			if err != nil {
