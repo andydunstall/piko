@@ -49,6 +49,26 @@ proxy:
     # '504 Gateway Timeout' is returned to the client.
     gateway_timeout: 15s
 
+    http:
+        # The maximum duration for reading the entire request, including the
+        # body. A zero or negative value means there will be no timeout.
+        read_timeout: 10s
+
+        # The maximum duration for reading the request headers. If zero,
+        # http.read-timeout is used.
+        read_header_timeout: 10s
+
+        # The maximum duration before timing out writes of the response.`,
+        write_timeout: 10s
+
+        # The maximum amount of time to wait for the next request when
+        # keep-alives are enabled.
+        idle_timeout: 5m0s
+
+        # The maximum number of bytes the server will read parsing the request
+        # header's keys and values, including the request line.
+        max_header_bytes: 1048576
+
 upstream:
     # The host/port to listen for connections from upstream listeners.
     # 
@@ -160,14 +180,6 @@ auth:
     # is ignored.
     token_issuer: ""
 
-server:
-    # Maximum duration after a shutdown signal is received (SIGTERM or
-    # SIGINT) to gracefully shutdown the server node before terminating.
-    # This includes handling in-progress HTTP requests, gracefully closing
-    # connections to upstream listeners, announcing to the cluster the node is
-    # leaving...
-    graceful_shutdown_timeout: 1m
-
 log:
     # Minimum log level to output.
     # 
@@ -182,6 +194,13 @@ log:
     # 
     # Such as you can enable 'gossip' logs with '--log.subsystems gossip'.
     subsystems: []
+
+# Maximum duration after a shutdown signal is received (SIGTERM or
+# SIGINT) to gracefully shutdown the server node before terminating.
+# This includes handling in-progress HTTP requests, gracefully closing
+# connections to upstream listeners, announcing to the cluster the node is
+# leaving...
+grace_period: 1m0s
 ```
 
 ### Cluster

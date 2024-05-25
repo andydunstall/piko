@@ -50,6 +50,8 @@ func NewServer(
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
+	logger = logger.WithSubsystem("upstream.server")
+
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	router := gin.New()
@@ -65,7 +67,7 @@ func NewServer(
 		shutdownCtx:       shutdownCtx,
 		shutdownCancel:    shutdownCancel,
 		proxy:             proxy,
-		logger:            logger.WithSubsystem("upstream.server"),
+		logger:            logger,
 	}
 
 	if verifier != nil {

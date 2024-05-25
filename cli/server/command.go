@@ -84,7 +84,7 @@ default value can be given using form ${VAR:default}.`,
 	cmd.Run = func(cmd *cobra.Command, args []string) {
 		if configPath != "" {
 			if err := pikoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
-				fmt.Printf("load config: %s\n", err.Error())
+				fmt.Printf("load config: %s: %s\n", configPath, err.Error())
 				os.Exit(1)
 			}
 		}
