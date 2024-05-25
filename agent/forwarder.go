@@ -1,8 +1,11 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -79,6 +82,18 @@ func (f *forwarder) Forward(req *http.Request) (*http.Response, error) {
 		}
 		return nil, errUpstreamUnreachable
 	}
+
+	// We must copy the response body before replying. The request context is
+	// cancelled when Forward returns so attempting top copy the body again
+	// may fail.
+	//
+	// TODO(andydunstall): Understand this better as should be avoidable.
+	var buf bytes.Buffer
+	if _, err := io.Copy(&buf, resp.Body); err != nil {
+		return nil, fmt.Errorf("copy body: %w", err)
+	}
+	resp.Body.Close()
+	resp.Body = io.NopCloser(&buf)
 
 	f.metrics.ForwardRequestsTotal.With(prometheus.Labels{
 		"method":      req.Method,
