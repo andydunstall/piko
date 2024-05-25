@@ -155,7 +155,7 @@ func (s *Server) Run(ctx context.Context) error {
 		verifier = auth.NewJWTVerifier(verifierConf)
 	}
 
-	s.logger.Info("starting piko server", zap.Any("conf", s.conf))
+	s.logger.Info("starting piko server")
 
 	registry := prometheus.NewRegistry()
 
@@ -245,7 +245,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}, func(error) {
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
-			s.conf.Server.GracefulShutdownTimeout,
+			s.conf.GracePeriod,
 		)
 		defer cancel()
 
@@ -265,7 +265,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}, func(error) {
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
-			s.conf.Server.GracefulShutdownTimeout,
+			s.conf.GracePeriod,
 		)
 		defer cancel()
 
@@ -285,7 +285,7 @@ func (s *Server) Run(ctx context.Context) error {
 	}, func(error) {
 		shutdownCtx, cancel := context.WithTimeout(
 			context.Background(),
-			s.conf.Server.GracefulShutdownTimeout,
+			s.conf.GracePeriod,
 		)
 		defer cancel()
 
@@ -319,7 +319,7 @@ func (s *Server) Run(ctx context.Context) error {
 
 		leaveCtx, cancel := context.WithTimeout(
 			context.Background(),
-			s.conf.Server.GracefulShutdownTimeout,
+			s.conf.GracePeriod,
 		)
 		defer cancel()
 

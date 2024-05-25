@@ -10,28 +10,6 @@ import (
 	"github.com/spf13/pflag"
 )
 
-type ProxyConfig struct {
-	// BindAddr is the address to bind to listen for incoming HTTP connections.
-	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
-
-	// AdvertiseAddr is the address to advertise to other nodes.
-	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
-
-	// GatewayTimeout is the timeout in seconds of forwarding requests to an
-	// upstream listener.
-	GatewayTimeout time.Duration `json:"gateway_timeout" yaml:"gateway_timeout"`
-}
-
-func (c *ProxyConfig) Validate() error {
-	if c.BindAddr == "" {
-		return fmt.Errorf("missing bind addr")
-	}
-	if c.GatewayTimeout == 0 {
-		return fmt.Errorf("missing gateway timeout")
-	}
-	return nil
-}
-
 type UpstreamConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
@@ -83,19 +61,6 @@ func (c *ClusterConfig) Validate() error {
 	return nil
 }
 
-type ServerConfig struct {
-	// GracefulShutdownTimeout is the timeout to allow for graceful shutdown
-	// of the server in seconds.
-	GracefulShutdownTimeout time.Duration `json:"graceful_shutdown_timeout" yaml:"graceful_shutdown_timeout"`
-}
-
-func (c *ServerConfig) Validate() error {
-	if c.GracefulShutdownTimeout == 0 {
-		return fmt.Errorf("missing grafeful shutdown timeout")
-	}
-	return nil
-}
-
 type Config struct {
 	Proxy    ProxyConfig    `json:"proxy" yaml:"proxy"`
 	Upstream UpstreamConfig `json:"upstream" yaml:"upstream"`
@@ -103,8 +68,12 @@ type Config struct {
 	Gossip   gossip.Config  `json:"gossip" yaml:"gossip"`
 	Cluster  ClusterConfig  `json:"cluster" yaml:"cluster"`
 	Auth     auth.Config    `json:"auth" yaml:"auth"`
-	Server   ServerConfig   `json:"server" yaml:"server"`
 	Log      log.Config     `json:"log" yaml:"log"`
+
+	// GracePeriod is the duration to gracefully shutdown the server. During
+	// the grace period, listeners and idle connections are closed, then waits
+	// for active requests to complete and closes their connections.
+	GracePeriod time.Duration `json:"grace_period" yaml:"grace_period"`
 }
 
 func (c *Config) Validate() error {
@@ -123,53 +92,19 @@ func (c *Config) Validate() error {
 	if err := c.Cluster.Validate(); err != nil {
 		return fmt.Errorf("cluster: %w", err)
 	}
-	if err := c.Server.Validate(); err != nil {
-		return fmt.Errorf("server: %w", err)
-	}
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)
 	}
+
+	if c.GracePeriod == 0 {
+		return fmt.Errorf("missing grace period")
+	}
+
 	return nil
 }
 
 func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
-	fs.StringVar(
-		&c.Proxy.BindAddr,
-		"proxy.bind-addr",
-		":8000",
-		`
-The host/port to listen for incoming proxy HTTP requests.
-
-If the host is unspecified it defaults to all listeners, such as
-'--proxy.bind-addr :8000' will listen on '0.0.0.0:8000'`,
-	)
-	fs.StringVar(
-		&c.Proxy.AdvertiseAddr,
-		"proxy.advertise-addr",
-		"",
-		`
-Proxy listen address to advertise to other nodes in the cluster. This is the
-address other nodes will used to forward proxy requests.
-
-Such as if the listen address is ':8000', the advertised address may be
-'10.26.104.45:8000' or 'node1.cluster:8000'.
-
-By default, if the bind address includes an IP to bind to that will be used.
-If the bind address does not include an IP (such as ':8000') the nodes
-private IP will be used, such as a bind address of ':8000' may have an
-advertise address of '10.26.104.14:8000'.`,
-	)
-	fs.DurationVar(
-		&c.Proxy.GatewayTimeout,
-		"proxy.gateway-timeout",
-		time.Second*15,
-		`
-The timeout when sending proxied requests to upstream listeners for forwarding
-to other nodes in the cluster.
-
-If the upstream does not respond within the given timeout a
-'504 Gateway Timeout' is returned to the client.`,
-	)
+	c.Proxy.RegisterFlags(fs)
 
 	fs.StringVar(
 		&c.Upstream.BindAddr,
@@ -222,18 +157,6 @@ By default, if the bind address includes an IP to bind to that will be used.
 If the bind address does not include an IP (such as ':8002') the nodes
 private IP will be used, such as a bind address of ':8002' may have an
 advertise address of '10.26.104.14:8002'.`,
-	)
-
-	fs.DurationVar(
-		&c.Server.GracefulShutdownTimeout,
-		"server.graceful-shutdown-timeout",
-		time.Minute,
-		`
-Maximum timeout after a shutdown signal is received (SIGTERM or
-SIGINT) to gracefully shutdown the server node before terminating.
-This includes handling in-progress HTTP requests, gracefully closing
-connections to upstream listeners, announcing to the cluster the node is
-leaving...`,
 	)
 
 	fs.StringVar(
@@ -290,4 +213,16 @@ node to join (excluding itself) but fails to join any members.`,
 	c.Gossip.RegisterFlags(fs)
 
 	c.Log.RegisterFlags(fs)
+
+	fs.DurationVar(
+		&c.GracePeriod,
+		"grace-period",
+		time.Minute,
+		`
+Maximum duration after a shutdown signal is received (SIGTERM or
+SIGINT) to gracefully shutdown the server node before terminating.
+This includes handling in-progress HTTP requests, gracefully closing
+connections to upstream listeners, announcing to the cluster the node is
+leaving...`,
+	)
 }

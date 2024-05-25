@@ -45,6 +45,8 @@ func NewServer(
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
+	logger = logger.WithSubsystem("proxy.server")
+
 	shutdownCtx, shutdownCancel := context.WithCancel(context.Background())
 
 	router := gin.New()
@@ -52,14 +54,19 @@ func NewServer(
 		ln:     ln,
 		router: router,
 		httpServer: &http.Server{
-			Addr:    ln.Addr().String(),
-			Handler: router,
+			Addr:              ln.Addr().String(),
+			Handler:           router,
+			ReadTimeout:       conf.HTTP.ReadTimeout,
+			ReadHeaderTimeout: conf.HTTP.ReadHeaderTimeout,
+			WriteTimeout:      conf.HTTP.WriteTimeout,
+			IdleTimeout:       conf.HTTP.IdleTimeout,
+			MaxHeaderBytes:    conf.HTTP.MaxHeaderBytes,
 		},
 		shutdownCtx:    shutdownCtx,
 		shutdownCancel: shutdownCancel,
 		proxy:          proxy,
 		conf:           conf,
-		logger:         logger.WithSubsystem("proxy.server"),
+		logger:         logger,
 	}
 
 	// Recover from panics.

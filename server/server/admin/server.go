@@ -43,6 +43,8 @@ func NewServer(
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
+	logger = logger.WithSubsystem("admin.server")
+
 	router := gin.New()
 	server := &Server{
 		ln:     ln,
@@ -54,7 +56,7 @@ func NewServer(
 		clusterState: clusterState,
 		forwarder:    forwarder.NewForwarder(),
 		registry:     registry,
-		logger:       logger.WithSubsystem("admin.server"),
+		logger:       logger,
 	}
 
 	// Recover from panics.
