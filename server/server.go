@@ -218,7 +218,6 @@ func (s *Server) Run(ctx context.Context) error {
 		s.upstreamLn,
 		p,
 		verifier,
-		registry,
 		s.logger,
 	)
 
