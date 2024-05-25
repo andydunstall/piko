@@ -144,7 +144,7 @@ func runClient(ctx context.Context, conf *config.RequestsConfig, logger log.Logg
 				logger.Warn("request", zap.Error(err))
 				continue
 			}
-			defer resp.Body.Close()
+			resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
 				logger.Warn("bad status", zap.Int("status", resp.StatusCode))
