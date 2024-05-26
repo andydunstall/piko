@@ -73,7 +73,7 @@ service.
 
 Such as you may configure the agent to register the endpoint `my-endpoint` then
 forward requests to `localhost:4000` using
-`piko agent –endpoints my-endpoint/localhost:4000`.
+`piko agent my-endpoint/localhost:4000`.
 
 See [Configure](./configure.md) for details.
 

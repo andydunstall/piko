@@ -3,12 +3,16 @@ package config
 import (
 	"fmt"
 	"net/url"
-	"strings"
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
 )
+
+type EndpointConfig struct {
+	ID   string `json:"id" yaml:"id"`
+	Addr string `json:"addr" yaml:"addr"`
+}
 
 type ServerConfig struct {
 	// URL is the server URL.
@@ -116,26 +120,17 @@ func (c *AdminConfig) Validate() error {
 }
 
 type Config struct {
-	// Endpoints is a list of endpoints and forward addresses to register.
-	//
-	// Each endpoint has format '<endpoint ID>/<forward addr>', such
-	// as 'd3934d4f/localhost:3000'.
-	Endpoints []string        `json:"endpoints" yaml:"endpoints"`
-	Server    ServerConfig    `json:"server" yaml:"server"`
-	Auth      AuthConfig      `json:"auth" yaml:"auth"`
-	Forwarder ForwarderConfig `json:"forwarder" yaml:"forwarder"`
-	Admin     AdminConfig     `json:"admin" yaml:"admin"`
-	Log       log.Config      `json:"log" yaml:"log"`
+	Endpoints []EndpointConfig `json:"endpoints" yaml:"endpoints"`
+	Server    ServerConfig     `json:"server" yaml:"server"`
+	Auth      AuthConfig       `json:"auth" yaml:"auth"`
+	Forwarder ForwarderConfig  `json:"forwarder" yaml:"forwarder"`
+	Admin     AdminConfig      `json:"admin" yaml:"admin"`
+	Log       log.Config       `json:"log" yaml:"log"`
 }
 
 func (c *Config) Validate() error {
 	if len(c.Endpoints) == 0 {
 		return fmt.Errorf("must have at least one endpoint")
-	}
-	for _, ln := range c.Endpoints {
-		if len(strings.Split(ln, "/")) != 2 {
-			return fmt.Errorf("invalid endpoint: %s", ln)
-		}
 	}
 
 	if err := c.Server.Validate(); err != nil {
@@ -151,26 +146,6 @@ func (c *Config) Validate() error {
 }
 
 func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
-	fs.StringSliceVar(
-		&c.Endpoints,
-		"endpoints",
-		nil,
-		`
-The endpoints to register with the Piko server.
-
-Each endpoint has an ID and forwarding address. The agent will register the
-endpoint with the Piko server then receive incoming requests for that endpoint
-and forward them to the configured address.
-
-'--endpoints' is a comma separated list of endpoints with format:
-'<endpoint ID>/<forward addr>'. Such as '--endpoints 6ae6db60/localhost:3000'
-will register the endpoint '6ae6db60' then forward incoming requests to
-'localhost:3000'.
-
-You may register multiple endpoints which have their own connection to Piko,
-such as '--endpoints 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.`,
-	)
-
 	c.Server.RegisterFlags(fs)
 
 	fs.StringVar(

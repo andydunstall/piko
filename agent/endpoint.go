@@ -51,7 +51,7 @@ func NewEndpoint(
 		),
 		conf:    conf,
 		metrics: metrics,
-		logger:  logger.WithSubsystem("listener"),
+		logger:  logger.WithSubsystem("endpoint").With(zap.String("endpoint-id", endpointID)),
 	}
 	e.rpcServer = newRPCServer(e, logger)
 	return e
@@ -59,8 +59,7 @@ func NewEndpoint(
 
 func (e *Endpoint) Run(ctx context.Context) error {
 	e.logger.Info(
-		"starting endpoint",
-		zap.String("endpoint-id", e.endpointID),
+		"registering endpoint",
 		zap.String("forward-addr", e.forwardAddr),
 	)
 
