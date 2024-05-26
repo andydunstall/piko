@@ -13,25 +13,23 @@ type Metrics struct {
 	// forward address in seconds. Labelled by response status code and
 	// endpoint ID.
 	ForwardRequestLatency *prometheus.HistogramVec
-
-	// ServerConnectionErrorsTotal is the total number of errors attempting to
-	// connect to the server.
-	ServerConnectionErrorsTotal prometheus.Counter
 }
 
 func NewMetrics() *Metrics {
 	return &Metrics{
 		ForwardRequestsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "forward",
+				Namespace: "piko",
+				Subsystem: "forward",
 				Name:      "requests_total",
 				Help:      "Total requests to the forward address.",
 			},
-			[]string{"method", "status", "endpoint_id"},
+			[]string{"status", "method", "endpoint_id"},
 		),
 		ForwardErrorsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
-				Namespace: "forward",
+				Namespace: "piko",
+				Subsystem: "forward",
 				Name:      "errors_total",
 				Help:      "Total errors from the forward address.",
 			},
@@ -39,10 +37,11 @@ func NewMetrics() *Metrics {
 		),
 		ForwardRequestLatency: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Namespace: "forward",
+				Namespace: "piko",
+				Subsystem: "forward",
 				Name:      "request_latency_seconds",
 				Help:      "Forward request latency in seconds",
-				Buckets:   prometheus.ExponentialBuckets(0.01, 2, 10),
+				Buckets:   prometheus.DefBuckets,
 			},
 			[]string{"status", "endpoint_id"},
 		),
