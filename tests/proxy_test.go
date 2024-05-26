@@ -79,12 +79,11 @@ func TestProxy(t *testing.T) {
 	defer upstream.Close()
 
 	agentConf := defaultAgentConfig(serverConf.Upstream.AdvertiseAddr)
-	agentConf.Endpoints = []string{
-		"my-endpoint/" + upstream.Addr(),
-	}
-	agent := agent.NewAgent(agentConf, log.NewNopLogger())
+	endpoint := agent.NewEndpoint(
+		"my-endpoint", upstream.Addr(), agentConf, agent.NewMetrics(), log.NewNopLogger(),
+	)
 	go func() {
-		assert.NoError(t, agent.Run(ctx))
+		assert.NoError(t, endpoint.Run(ctx))
 	}()
 
 	// Wait for the agent to register the endpoint with Piko.
@@ -151,12 +150,11 @@ func TestProxy_Authenticated(t *testing.T) {
 
 	agentConf := defaultAgentConfig(serverConf.Upstream.AdvertiseAddr)
 	agentConf.Auth.APIKey = apiKey
-	agentConf.Endpoints = []string{
-		"my-endpoint/" + upstream.Addr(),
-	}
-	agent := agent.NewAgent(agentConf, log.NewNopLogger())
+	endpoint := agent.NewEndpoint(
+		"my-endpoint", upstream.Addr(), agentConf, agent.NewMetrics(), log.NewNopLogger(),
+	)
 	go func() {
-		assert.NoError(t, agent.Run(ctx))
+		assert.NoError(t, endpoint.Run(ctx))
 	}()
 
 	// Wait for the agent to register the endpoint with Piko.
