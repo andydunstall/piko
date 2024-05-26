@@ -15,9 +15,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// endpoint is responsible for registering with the Piko server then forwarding
+// Endpoint is responsible for registering with the Piko server then forwarding
 // incoming requests to the forward address.
-type endpoint struct {
+type Endpoint struct {
 	endpointID  string
 	forwardAddr string
 
@@ -32,14 +32,14 @@ type endpoint struct {
 	logger log.Logger
 }
 
-func newEndpoint(
+func NewEndpoint(
 	endpointID string,
 	forwardAddr string,
 	conf *config.Config,
 	metrics *Metrics,
 	logger log.Logger,
-) *endpoint {
-	e := &endpoint{
+) *Endpoint {
+	e := &Endpoint{
 		endpointID:  endpointID,
 		forwardAddr: forwardAddr,
 		forwarder: newForwarder(
@@ -57,7 +57,7 @@ func newEndpoint(
 	return e
 }
 
-func (e *endpoint) Run(ctx context.Context) error {
+func (e *Endpoint) Run(ctx context.Context) error {
 	e.logger.Info(
 		"starting endpoint",
 		zap.String("endpoint-id", e.endpointID),
@@ -69,6 +69,9 @@ func (e *endpoint) Run(ctx context.Context) error {
 		if err != nil {
 			// connect only returns an error if it gets a non-retryable
 			// response or the context is cancelled, therefore return.
+			if errors.Is(err, context.Canceled) {
+				return nil
+			}
 			return err
 		}
 		defer stream.Close()
@@ -82,7 +85,7 @@ func (e *endpoint) Run(ctx context.Context) error {
 		); err != nil {
 			if ctx.Err() != nil {
 				// Shutdown.
-				return ctx.Err()
+				return nil
 			}
 
 			// Reconnect.
@@ -91,7 +94,7 @@ func (e *endpoint) Run(ctx context.Context) error {
 	}
 }
 
-func (e *endpoint) ProxyHTTP(r *http.Request) (*http.Response, error) {
+func (e *Endpoint) ProxyHTTP(r *http.Request) (*http.Response, error) {
 	return e.forwarder.Forward(r)
 }
 
@@ -99,7 +102,7 @@ func (e *endpoint) ProxyHTTP(r *http.Request) (*http.Response, error) {
 //
 // Retries with backoff until either the given context is cancelled or it gets
 // a non-retryable response (such as an authentication error).
-func (e *endpoint) connect(ctx context.Context) (rpc.Stream, error) {
+func (e *Endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 	backoff := backoff.New(
 		// Retry forever.
 		0,
@@ -134,7 +137,7 @@ func (e *endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 	}
 }
 
-func (e *endpoint) serverURL() string {
+func (e *Endpoint) serverURL() string {
 	// Already verified URL in Config.Validate.
 	url, _ := url.Parse(e.conf.Server.URL)
 	url.Path = "/piko/v1/listener/" + e.endpointID

@@ -14,14 +14,14 @@ import (
 )
 
 type rpcServer struct {
-	endpoint *endpoint
+	endpoint *Endpoint
 
 	rpcHandler *rpc.Handler
 
 	logger log.Logger
 }
 
-func newRPCServer(endpoint *endpoint, logger log.Logger) *rpcServer {
+func newRPCServer(endpoint *Endpoint, logger log.Logger) *rpcServer {
 	server := &rpcServer{
 		endpoint:   endpoint,
 		rpcHandler: rpc.NewHandler(),

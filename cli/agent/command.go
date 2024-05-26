@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/andydunstall/piko/agent"
@@ -127,9 +128,6 @@ func run(conf *config.Config, logger log.Logger) error {
 		logger,
 	)
 
-	agent := agent.NewAgent(conf, logger)
-	agent.Metrics().Register(registry)
-
 	var group rungroup.Group
 
 	// Termination handler.
@@ -151,16 +149,30 @@ func run(conf *config.Config, logger log.Logger) error {
 		signalCancel()
 	})
 
-	// Agent.
-	agentCtx, agentCancel := context.WithCancel(context.Background())
-	group.Add(func() error {
-		if err := agent.Run(agentCtx); err != nil {
-			return fmt.Errorf("agent: %w", err)
-		}
-		return nil
-	}, func(error) {
-		agentCancel()
-	})
+	// Endpoints.
+	metrics := agent.NewMetrics()
+	metrics.Register(registry)
+
+	for _, e := range conf.Endpoints {
+		// Already verified format in Config.Validate.
+		elems := strings.Split(e, "/")
+		endpointID := elems[0]
+		forwardAddr := elems[1]
+
+		endpoint := agent.NewEndpoint(
+			endpointID, forwardAddr, conf, metrics, logger,
+		)
+
+		endpointCtx, endpointCancel := context.WithCancel(context.Background())
+		group.Add(func() error {
+			if err := endpoint.Run(endpointCtx); err != nil {
+				return fmt.Errorf("endpoint: %s: %w", endpointID, err)
+			}
+			return nil
+		}, func(error) {
+			endpointCancel()
+		})
+	}
 
 	// Admin server.
 	group.Add(func() error {

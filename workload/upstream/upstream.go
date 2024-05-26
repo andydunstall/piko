@@ -85,12 +85,11 @@ func (u *Upstream) Run(ctx context.Context) error {
 	}()
 
 	agentConf := agentConfig(u.serverURL)
-	agentConf.Endpoints = []string{
-		u.endpointID + "/" + server.Addr(),
-	}
-	agent := agent.NewAgent(agentConf, u.logger)
-	if err = agent.Run(ctx); err != nil {
-		return fmt.Errorf("agent: %w", err)
+	endpoint := agent.NewEndpoint(
+		u.endpointID, server.Addr(), agentConf, agent.NewMetrics(), log.NewNopLogger(),
+	)
+	if err = endpoint.Run(ctx); err != nil {
+		return fmt.Errorf("endpoint: %w", err)
 	}
 	return nil
 }
