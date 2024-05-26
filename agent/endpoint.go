@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -66,7 +67,9 @@ func (e *endpoint) Run(ctx context.Context) error {
 	for {
 		stream, err := e.connect(ctx)
 		if err != nil {
-			return fmt.Errorf("connect: %w", err)
+			// connect only returns an error if it gets a non-retryable
+			// response or the context is cancelled, therefore return.
+			return err
 		}
 		defer stream.Close()
 
@@ -95,12 +98,20 @@ func (e *endpoint) ProxyHTTP(r *http.Request) (*http.Response, error) {
 func (e *endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 	backoff := time.Second
 	for {
-		conn, err := conn.DialWebsocket(ctx, e.serverURL(), e.conf.Auth.APIKey)
+		c, err := conn.DialWebsocket(ctx, e.serverURL(), e.conf.Auth.APIKey)
 		if err == nil {
-			return rpc.NewStream(conn, e.rpcServer.Handler(), e.logger), nil
+			return rpc.NewStream(c, e.rpcServer.Handler(), e.logger), nil
 		}
 
-		// TODO(andydunstall): Handle non-retryable errors like 401.
+		var retryableError *conn.RetryableError
+		if !errors.As(err, &retryableError) {
+			e.logger.Error(
+				"failed to connect to server; non-retryable",
+				zap.String("url", e.serverURL()),
+				zap.Error(err),
+			)
+			return nil, fmt.Errorf("connect: %w", err)
+		}
 
 		e.logger.Warn(
 			"failed to connect to server; retrying",
