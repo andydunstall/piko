@@ -12,9 +12,11 @@ import (
 
 type ServerConfig struct {
 	// URL is the server URL.
-	URL               string        `json:"url" yaml:"url"`
-	HeartbeatInterval time.Duration `json:"heartbeat_interval" yaml:"heartbeat_interval"`
-	HeartbeatTimeout  time.Duration `json:"heartbeat_timeout" yaml:"heartbeat_timeout"`
+	URL                 string        `json:"url" yaml:"url"`
+	HeartbeatInterval   time.Duration `json:"heartbeat_interval" yaml:"heartbeat_interval"`
+	HeartbeatTimeout    time.Duration `json:"heartbeat_timeout" yaml:"heartbeat_timeout"`
+	ReconnectMinBackoff time.Duration `json:"reconnect_min_backoff" yaml:"reconnect_min_backoff"`
+	ReconnectMaxBackoff time.Duration `json:"reconnect_max_backoff" yaml:"reconnect_max_backoff"`
 }
 
 func (c *ServerConfig) Validate() error {
@@ -30,7 +32,65 @@ func (c *ServerConfig) Validate() error {
 	if c.HeartbeatTimeout == 0 {
 		return fmt.Errorf("missing heartbeat timeout")
 	}
+	if c.ReconnectMinBackoff == 0 {
+		return fmt.Errorf("missing reconnect min backoff")
+	}
+	if c.ReconnectMaxBackoff == 0 {
+		return fmt.Errorf("missing reconnect max backoff")
+	}
 	return nil
+}
+
+func (c *ServerConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.StringVar(
+		&c.URL,
+		"server.url",
+		"http://localhost:8001",
+		`
+Piko server URL.
+
+The listener will add path /piko/v1/listener/:endpoint_id to the given URL,
+so if you include a path it will be used as a prefix.
+
+Note Piko connects to the server with WebSockets, so will replace http/https
+with ws/wss (you can configure either).`,
+	)
+	fs.DurationVar(
+		&c.HeartbeatInterval,
+		"server.heartbeat-interval",
+		time.Second*10,
+		`
+Heartbeat interval.
+
+To verify the connection to the server is ok, the listener sends a
+heartbeat to the upstream at the '--server.heartbeat-interval'
+interval, with a timeout of '--server.heartbeat-timeout'.`,
+	)
+	fs.DurationVar(
+		&c.HeartbeatTimeout,
+		"server.heartbeat-timeout",
+		time.Second*10,
+		`
+Heartbeat timeout.
+
+To verify the connection to the server is ok, the listener sends a
+heartbeat to the upstream at the '--server.heartbeat-interval'
+interval, with a timeout of '--server.heartbeat-timeout'.`,
+	)
+	fs.DurationVar(
+		&c.ReconnectMinBackoff,
+		"server.reconnect-min-backoff",
+		time.Millisecond*500,
+		`
+Minimum backoff when reconnecting to the server.`,
+	)
+	fs.DurationVar(
+		&c.ReconnectMaxBackoff,
+		"server.reconnect-max-backoff",
+		time.Second*15,
+		`
+Maximum backoff when reconnecting to the server.`,
+	)
 }
 
 type AuthConfig struct {
@@ -111,41 +171,7 @@ You may register multiple endpoints which have their own connection to Piko,
 such as '--endpoints 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.`,
 	)
 
-	fs.StringVar(
-		&c.Server.URL,
-		"server.url",
-		"http://localhost:8001",
-		`
-Piko server URL.
-
-The listener will add path /piko/v1/listener/:endpoint_id to the given URL,
-so if you include a path it will be used as a prefix.
-
-Note Piko connects to the server with WebSockets, so will replace http/https
-with ws/wss (you can configure either).`,
-	)
-	fs.DurationVar(
-		&c.Server.HeartbeatInterval,
-		"server.heartbeat-interval",
-		time.Second*10,
-		`
-Heartbeat interval.
-
-To verify the connection to the server is ok, the listener sends a
-heartbeat to the upstream at the '--server.heartbeat-interval'
-interval, with a timeout of '--server.heartbeat-timeout'.`,
-	)
-	fs.DurationVar(
-		&c.Server.HeartbeatTimeout,
-		"server.heartbeat-timeout",
-		time.Second*10,
-		`
-Heartbeat timeout.
-
-To verify the connection to the server is ok, the listener sends a
-heartbeat to the upstream at the '--server.heartbeat-interval'
-interval, with a timeout of '--server.heartbeat-timeout'.`,
-	)
+	c.Server.RegisterFlags(fs)
 
 	fs.StringVar(
 		&c.Auth.APIKey,

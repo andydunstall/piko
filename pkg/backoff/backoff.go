@@ -18,6 +18,9 @@ type Backoff struct {
 	lastBackoff time.Duration
 }
 
+// New creates a new backoff.
+//
+// Set 'retries' to zero to retry forever.
 func New(retries int, minBackoff time.Duration, maxBackoff time.Duration) *Backoff {
 	return &Backoff{
 		retries:    retries,
@@ -30,7 +33,7 @@ func New(retries int, minBackoff time.Duration, maxBackoff time.Duration) *Backo
 // Wait blocks until the next retry. Returns false if the number of retries has
 // been reached so the client should stop.
 func (b *Backoff) Wait(ctx context.Context) bool {
-	if b.attempts > b.retries {
+	if b.retries != 0 && b.attempts > b.retries {
 		return false
 	}
 	b.attempts++

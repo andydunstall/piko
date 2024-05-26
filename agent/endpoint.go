@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/andydunstall/piko/agent/config"
+	"github.com/andydunstall/piko/pkg/backoff"
 	"github.com/andydunstall/piko/pkg/conn"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/rpc"
@@ -95,8 +95,17 @@ func (e *endpoint) ProxyHTTP(r *http.Request) (*http.Response, error) {
 	return e.forwarder.Forward(r)
 }
 
+// connnect attempts to connect to the server.
+//
+// Retries with backoff until either the given context is cancelled or it gets
+// a non-retryable response (such as an authentication error).
 func (e *endpoint) connect(ctx context.Context) (rpc.Stream, error) {
-	backoff := time.Second
+	backoff := backoff.New(
+		// Retry forever.
+		0,
+		e.conf.Server.ReconnectMinBackoff,
+		e.conf.Server.ReconnectMaxBackoff,
+	)
 	for {
 		c, err := conn.DialWebsocket(ctx, e.serverURL(), e.conf.Auth.APIKey)
 		if err == nil {
@@ -115,19 +124,12 @@ func (e *endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 
 		e.logger.Warn(
 			"failed to connect to server; retrying",
-			zap.Duration("backoff", backoff),
+			zap.String("url", e.serverURL()),
 			zap.Error(err),
 		)
 
-		select {
-		case <-time.After(backoff):
-			backoff *= 2
-			if backoff > time.Second*30 {
-				backoff = time.Second * 30
-			}
-			continue
-		case <-ctx.Done():
-			return nil, err
+		if !backoff.Wait(ctx) {
+			return nil, ctx.Err()
 		}
 	}
 }
