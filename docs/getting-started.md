@@ -75,7 +75,7 @@ First create a local HTTP server to forward requests to, such as
 
 Then run the Piko agent and register endpoint `my-endpoint` using:
 ```shell
-piko agent --endpoints my-endpoint/localhost:4000
+piko agent my-endpoint/localhost:4000
 ```
 
 This will connect to the cluster load balancer, which routes the request to

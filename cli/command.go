@@ -41,7 +41,7 @@ services.
 Such as to register endpoint 'my-endpoint' that forwards incoming requests to
 'localhost:4000', use:
 
-  $ piko agent --endpoints my-endpoint/localhost:4000
+  $ piko agent my-endpoint/localhost:4000
 `,
 	}
 

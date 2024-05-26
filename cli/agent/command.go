@@ -26,32 +26,43 @@ func NewCommand() *cobra.Command {
 		Short: "start the piko agent",
 		Long: `Start the Piko agent.
 
-The Piko agent is a CLI that runs alongside your upstream service that
-registers one or more endpoints.
+The Piko agent is a command line tool that registers endpoints with Piko and
+forwards requests to your upstream service.
 
-The agent will open an outbound connection to a Piko server for each of the
-configured endpoints. This connection is kept open and is used to receive
-proxied requests from the server which are then forwarded to the configured
-address.
+To register an endpoint, you configure both the endpoint ID and address to
+forward requests to (which will typically be on the same host as the agent).
+Such as you may register endpoint 'my-endpoint' that forwards requests to
+'localhost:4000'.
 
-Such as if you have a service running at 'localhost:3000', you can register
-endpoint 'my-endpoint' that forwards requests to that local service.
+For each registered endpoint, the agent will open an outbound-only connection
+to Piko. This connection is used to receive proxied requests from the server
+which are then forwarded to the configured address.
+
+If multiple upstreams register the same endpoint, Piko load balances requests
+for the endpoint among the connected upstreams.
 
 The agent supports both YAML configuration and command line flags. Configure
 a YAML file using '--config.path'. When enabling '--config.expand-env', Piko
 will expand environment variables in the loaded YAML configuration.
 
+Endpoints can be configured either using the YAML configuration or as command
+line arguments. When using command line arguments, each endpoint has format
+'<endpoint ID>/<forward addr>', such as 'my-endpoint-123/localhost:3000'.
+For more advanced endpoint configurations use the YAML configuration.
+
 Examples:
   # Register an endpoint with ID 'my-endpoint-123' that forwards requests to
   # to 'localhost:3000'.
-  piko agent --endpoints my-endpoint-123/localhost:3000
+  piko agent my-endpoint-123/localhost:3000
 
   # Register multiple endpoints.
-  piko agent --endpoints my-endpoint-1/localhost:3000 my-endpoint-2/localhost:6000
+  piko agent my-endpoint-1/localhost:3000 my-endpoint-2/localhost:6000
 
   # Specify the Piko server address.
-  piko agent --endpoints my-endpoint-123/localhost:3000 \
-      --server.url https://piko.example.com
+  piko agent my-endpoint-123/localhost:3000 --server.url https://piko.example.com
+
+  # Load configuration from a YAML file.
+  piko agent --config.path ./agent.yaml
 `,
 	}
 
@@ -90,6 +101,19 @@ default value can be given using form ${VAR:default}.`,
 				fmt.Printf("load config: %s\n", err.Error())
 				os.Exit(1)
 			}
+		}
+
+		for _, arg := range args {
+			elems := strings.Split(arg, "/")
+			if len(elems) != 2 {
+				fmt.Printf("invalid endpoint: %s\n", arg)
+				os.Exit(1)
+			}
+
+			conf.Endpoints = append(conf.Endpoints, config.EndpointConfig{
+				ID:   elems[0],
+				Addr: elems[1],
+			})
 		}
 
 		if err := conf.Validate(); err != nil {
@@ -154,19 +178,14 @@ func run(conf *config.Config, logger log.Logger) error {
 	metrics.Register(registry)
 
 	for _, e := range conf.Endpoints {
-		// Already verified format in Config.Validate.
-		elems := strings.Split(e, "/")
-		endpointID := elems[0]
-		forwardAddr := elems[1]
-
 		endpoint := agent.NewEndpoint(
-			endpointID, forwardAddr, conf, metrics, logger,
+			e.ID, e.Addr, conf, metrics, logger,
 		)
 
 		endpointCtx, endpointCancel := context.WithCancel(context.Background())
 		group.Add(func() error {
 			if err := endpoint.Run(endpointCtx); err != nil {
-				return fmt.Errorf("endpoint: %s: %w", endpointID, err)
+				return fmt.Errorf("endpoint: %s: %w", e.ID, err)
 			}
 			return nil
 		}, func(error) {

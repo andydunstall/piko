@@ -20,7 +20,8 @@ string. You can also define a default value using form `${VAR:default}`.
 
 ## Server
 
-The Piko server is run using `piko server`. It has the following configuration:
+The Piko server node is run using `piko server`. It has the following
+configuration:
 ```
 proxy:
     # The host/port to listen for incoming proxy HTTP requests.
@@ -47,6 +48,26 @@ proxy:
     # If the upstream does not respond within the given timeout a
     # '504 Gateway Timeout' is returned to the client.
     gateway_timeout: 15s
+
+    http:
+        # The maximum duration for reading the entire request, including the
+        # body. A zero or negative value means there will be no timeout.
+        read_timeout: 10s
+
+        # The maximum duration for reading the request headers. If zero,
+        # http.read-timeout is used.
+        read_header_timeout: 10s
+
+        # The maximum duration before timing out writes of the response.`,
+        write_timeout: 10s
+
+        # The maximum amount of time to wait for the next request when
+        # keep-alives are enabled.
+        idle_timeout: 5m0s
+
+        # The maximum number of bytes the server will read parsing the request
+        # header's keys and values, including the request line.
+        max_header_bytes: 1048576
 
 upstream:
     # The host/port to listen for connections from upstream listeners.
@@ -159,14 +180,6 @@ auth:
     # is ignored.
     token_issuer: ""
 
-server:
-    # Maximum duration after a shutdown signal is received (SIGTERM or
-    # SIGINT) to gracefully shutdown the server node before terminating.
-    # This includes handling in-progress HTTP requests, gracefully closing
-    # connections to upstream listeners, announcing to the cluster the node is
-    # leaving...
-    graceful_shutdown_timeout: 1m
-
 log:
     # Minimum log level to output.
     # 
@@ -181,6 +194,13 @@ log:
     # 
     # Such as you can enable 'gossip' logs with '--log.subsystems gossip'.
     subsystems: []
+
+# Maximum duration after a shutdown signal is received (SIGTERM or
+# SIGINT) to gracefully shutdown the server node before terminating.
+# This includes handling in-progress HTTP requests, gracefully closing
+# connections to upstream listeners, announcing to the cluster the node is
+# leaving...
+grace_period: 1m0s
 ```
 
 ### Cluster
@@ -241,21 +261,15 @@ forwarded by Piko.
 The Piko agent is run using `piko agent`. It has the following configuration:
 ```
 # The endpoints to register with the Piko server.
-# 
-# Each endpoint has an ID and forwarding address. The agent will register the
-# endpoint with the Piko server then receive incoming requests for that endpoint
-# and forward them to the configured address.
-# 
-# '--endpoints' is a comma separated list of endpoints with format:
-# '<endpoint ID>/<forward addr>'. Such as '--endpoints 6ae6db60/localhost:3000'
-# will register the endpoint '6ae6db60' then forward incoming requests to
-# 'localhost:3000'.
-# 
-# You may register multiple endpoints which have their own connection to Piko,
-# such as '--endpoints 6ae6db60/localhost:3000,941c3c2e/localhost:4000'.
 #
-# (Required).
-endpoints: []
+# Each endpoint has an ID and forwarding address.
+#
+# At least one endpoint must be configured.
+endpoints:
+    - id: endpoint-1
+      addr: localhost:4000
+    - id: endpoint-2
+      addr: localhost:5000
 
 server:
     # Piko server URL.
