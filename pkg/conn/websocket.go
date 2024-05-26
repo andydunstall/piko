@@ -9,6 +9,17 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// retryableStatusCodes contains a set of HTTP status codes that should be
+// retried.
+var retryableStatusCodes = map[int]struct{}{
+	http.StatusRequestTimeout:      {},
+	http.StatusTooManyRequests:     {},
+	http.StatusInternalServerError: {},
+	http.StatusBadGateway:          {},
+	http.StatusServiceUnavailable:  {},
+	http.StatusGatewayTimeout:      {},
+}
+
 type WebsocketConn struct {
 	wsConn *websocket.Conn
 }
@@ -24,11 +35,17 @@ func DialWebsocket(ctx context.Context, url string, token string) (*WebsocketCon
 	if token != "" {
 		header.Set("Authorization", "Bearer "+token)
 	}
-	wsConn, _, err := websocket.DefaultDialer.DialContext(
+	wsConn, resp, err := websocket.DefaultDialer.DialContext(
 		ctx, url, header,
 	)
 	if err != nil {
-		return nil, err
+		if resp != nil {
+			if _, ok := retryableStatusCodes[resp.StatusCode]; ok {
+				return nil, &RetryableError{err}
+			}
+			return nil, fmt.Errorf("%d: %w", resp.StatusCode, err)
+		}
+		return nil, &RetryableError{err}
 	}
 	return NewWebsocketConn(wsConn), nil
 }

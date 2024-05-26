@@ -103,7 +103,7 @@ default value can be given using form ${VAR:default}.`,
 		}
 
 		if err := run(&conf, logger); err != nil {
-			logger.Error("failed to run server", zap.Error(err))
+			logger.Error("failed to run agent", zap.Error(err))
 			os.Exit(1)
 		}
 	}
