@@ -26,6 +26,7 @@ endpoint among the registered upstreams.
 
 - [Design Goals](#design-goals)
 - [Getting Started](#getting-started)
+- [Support](#support)
 - [Docs](#docs)
 - [Contributing](#contributing)
 - [License](#license)
@@ -71,6 +72,11 @@ Piko.
 ## Getting Started
 
 See [Getting Started](./docs/getting-started.md).
+
+## Support
+
+Use [Github Discussions](https://github.com/andydunstall/piko/discussions) to
+ask questions, get help, or suggest ideas.
 
 ## Docs
 
