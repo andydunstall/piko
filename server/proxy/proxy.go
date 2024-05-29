@@ -12,6 +12,7 @@ import (
 
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/cluster"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 )
 
@@ -19,10 +20,17 @@ var (
 	errEndpointNotFound = errors.New("not endpoint found")
 )
 
+type Usage struct {
+	Requests  *atomic.Uint64
+	Upstreams *atomic.Uint64
+}
+
 // Proxy is responsible for forwarding requests to upstream endpoints.
 type Proxy struct {
 	local  *localProxy
 	remote *remoteProxy
+
+	usage *Usage
 
 	metrics *Metrics
 
@@ -38,8 +46,12 @@ func NewProxy(clusterState *cluster.State, opts ...Option) *Proxy {
 	metrics := NewMetrics()
 	logger := options.logger.WithSubsystem("proxy")
 	return &Proxy{
-		local:   newLocalProxy(metrics, logger),
-		remote:  newRemoteProxy(clusterState, options.forwarder, metrics, logger),
+		local:  newLocalProxy(metrics, logger),
+		remote: newRemoteProxy(clusterState, options.forwarder, metrics, logger),
+		usage: &Usage{
+			Requests:  atomic.NewUint64(0),
+			Upstreams: atomic.NewUint64(0),
+		},
 		metrics: metrics,
 		logger:  logger,
 	}
@@ -65,6 +77,7 @@ func (p *Proxy) Request(
 		zap.String("path", r.URL.Path),
 		zap.Bool("forwarded", forwarded),
 	)
+	p.usage.Requests.Inc()
 
 	endpointID := endpointIDFromRequest(r)
 	if endpointID == "" {
@@ -152,6 +165,9 @@ func (p *Proxy) AddConn(conn Conn) {
 		zap.String("endpoint-id", conn.EndpointID()),
 		zap.String("addr", conn.Addr()),
 	)
+
+	p.usage.Upstreams.Inc()
+
 	p.local.AddConn(conn)
 	p.remote.AddConn(conn)
 }
@@ -171,6 +187,10 @@ func (p *Proxy) RemoveConn(conn Conn) {
 // all local connected endpoints.
 func (p *Proxy) ConnAddrs() map[string][]string {
 	return p.local.ConnAddrs()
+}
+
+func (p *Proxy) Usage() *Usage {
+	return p.usage
 }
 
 func (p *Proxy) Metrics() *Metrics {
