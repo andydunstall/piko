@@ -75,7 +75,7 @@ See [Getting Started](./docs/getting-started.md).
 
 ## Support
 
-Use [Github Discussions](https://github.com/andydunstall/piko/discussions) to
+Use [GitHub Discussions](https://github.com/andydunstall/piko/discussions) to
 ask questions, get help, or suggest ideas.
 
 ## Docs
