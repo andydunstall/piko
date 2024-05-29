@@ -16,6 +16,7 @@ import (
 	adminserver "github.com/andydunstall/piko/server/server/admin"
 	proxyserver "github.com/andydunstall/piko/server/server/proxy"
 	upstreamserver "github.com/andydunstall/piko/server/server/upstream"
+	"github.com/andydunstall/piko/server/usage"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-sockaddr"
 	rungroup "github.com/oklog/run"
@@ -221,6 +222,8 @@ func (s *Server) Run(ctx context.Context) error {
 		s.logger,
 	)
 
+	reporter := usage.NewReporter(p, s.logger)
+
 	var group rungroup.Group
 
 	// Termination handler.
@@ -334,6 +337,17 @@ func (s *Server) Run(ctx context.Context) error {
 	}, func(error) {
 		gossipCancel()
 	})
+
+	if !s.conf.Usage.Disable {
+		// Usage.
+		usageCtx, usageCancel := context.WithCancel(ctx)
+		group.Add(func() error {
+			reporter.Run(usageCtx)
+			return nil
+		}, func(error) {
+			usageCancel()
+		})
+	}
 
 	if err := group.Run(); err != nil {
 		return err

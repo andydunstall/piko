@@ -61,6 +61,11 @@ func (c *ClusterConfig) Validate() error {
 	return nil
 }
 
+type UsageConfig struct {
+	// Disable indicates whether to disable anonymous usage collection.
+	Disable bool `json:"disable" yaml:"disable"`
+}
+
 type Config struct {
 	Proxy    ProxyConfig    `json:"proxy" yaml:"proxy"`
 	Upstream UpstreamConfig `json:"upstream" yaml:"upstream"`
@@ -68,6 +73,7 @@ type Config struct {
 	Gossip   gossip.Config  `json:"gossip" yaml:"gossip"`
 	Cluster  ClusterConfig  `json:"cluster" yaml:"cluster"`
 	Auth     auth.Config    `json:"auth" yaml:"auth"`
+	Usage    UsageConfig    `json:"usage" yaml:"usage"`
 	Log      log.Config     `json:"log" yaml:"log"`
 
 	// GracePeriod is the duration to gracefully shutdown the server. During
@@ -211,6 +217,18 @@ node to join (excluding itself) but fails to join any members.`,
 	c.Auth.RegisterFlags(fs)
 
 	c.Gossip.RegisterFlags(fs)
+
+	fs.BoolVar(
+		&c.Usage.Disable,
+		"usage.disable",
+		false,
+		`
+Whether to disable anonymous usage tracking.
+
+The Piko server periodically sends an anonymous report to help understand how
+Piko is being used. This report includes the Piko version, host OS, host
+architecture, requests processed and upstreams registered.`,
+	)
 
 	c.Log.RegisterFlags(fs)
 
