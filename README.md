@@ -1,4 +1,8 @@
-# Piko [![Build](https://github.com/andydunstall/piko/actions/workflows/build.yaml/badge.svg)](https://github.com/andydunstall/piko/actions/workflows/build.yaml)
+<p align="center">
+  <img src="assets/images/logo.png?raw=true" width='50%'>
+</p>
+
+---
 
 Piko is an open-source alternative to [Ngrok](https://ngrok.com/), designed to
 serve production traffic and be simple to host (particularly on Kubernetes).
