@@ -1,0 +1,54 @@
+package config
+
+import (
+	"net/url"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestParseAddrToURL(t *testing.T) {
+	tests := []struct {
+		addr string
+		url  *url.URL
+		ok   bool
+	}{
+		{
+			addr: "8080",
+			url: &url.URL{
+				Scheme: "http",
+				Host:   "localhost:8080",
+			},
+		},
+		{
+			addr: "1.2.3.4:8080",
+			url: &url.URL{
+				Scheme: "http",
+				Host:   "1.2.3.4:8080",
+			},
+		},
+		{
+			addr: "https://1.2.3.4:8080",
+			url: &url.URL{
+				Scheme: "https",
+				Host:   "1.2.3.4:8080",
+			},
+		},
+		{
+			addr: "invalid",
+			ok:   false,
+		},
+	}
+
+	for _, tt := range tests {
+		tt := tt // for t.Parallel
+		t.Run(tt.addr, func(t *testing.T) {
+			u, ok := ParseAddrToURL(tt.addr)
+			if !ok {
+				assert.Equal(t, tt.ok, ok)
+				return
+			}
+			assert.Equal(t, tt.url, u)
+		})
+	}
+}

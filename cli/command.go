@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/andydunstall/piko/cli/agent"
+	agentv2 "github.com/andydunstall/piko/cli/agentv2"
 	"github.com/andydunstall/piko/cli/server"
 	"github.com/andydunstall/piko/cli/status"
 	"github.com/andydunstall/piko/cli/workload"
@@ -46,6 +47,7 @@ Such as to register endpoint 'my-endpoint' that forwards incoming requests to
 	}
 
 	cmd.AddCommand(agent.NewCommand())
+	cmd.AddCommand(agentv2.NewCommand())
 	cmd.AddCommand(server.NewCommand())
 	cmd.AddCommand(status.NewCommand())
 	cmd.AddCommand(workload.NewCommand())
