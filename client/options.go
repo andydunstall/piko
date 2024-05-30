@@ -1,23 +1,23 @@
 package piko
 
 type connectOptions struct {
-	apiKey string
-	url    string
+	token string
+	url   string
 }
 
 type ConnectOption interface {
 	apply(*connectOptions)
 }
 
-type apiKeyOption string
+type tokenOption string
 
-func (o apiKeyOption) apply(opts *connectOptions) {
-	opts.apiKey = string(o)
+func (o tokenOption) apply(opts *connectOptions) {
+	opts.token = string(o)
 }
 
-// WithAPIKey configures the API key to authenticate the client.
-func WithAPIKey(key string) ConnectOption {
-	return apiKeyOption(key)
+// WithToken configures the API key to authenticate the client.
+func WithToken(key string) ConnectOption {
+	return tokenOption(key)
 }
 
 type urlOption string

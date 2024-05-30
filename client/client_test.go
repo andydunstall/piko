@@ -10,12 +10,12 @@ import (
 )
 
 func Example() {
-	pikoAPIKey := os.Getenv("PIKO_API_KEY")
+	pikoToken := os.Getenv("PIKO_TOKEN")
 
 	// Connect to the Piko server.
 	piko, err := piko.Connect(
 		context.Background(),
-		piko.WithAPIKey(pikoAPIKey),
+		piko.WithToken(pikoToken),
 		piko.WithURL("http://piko.example.com:8001"),
 	)
 	if err != nil {

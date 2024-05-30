@@ -18,7 +18,7 @@ type Piko struct {
 // Connect establishes a new outbound connection with the Piko server. This
 //
 // This will block until the client can connect.
-//nolint
+// nolint
 func Connect(ctx context.Context, opts ...ConnectOption) (*Piko, error) {
 	return nil, nil
 }
@@ -27,7 +27,7 @@ func Connect(ctx context.Context, opts ...ConnectOption) (*Piko, error) {
 // which accepts incoming connections for that endpoint.
 //
 // [Listener] is a [net.Listener].
-//nolint
+// nolint
 func (p *Piko) Listen(ctx context.Context, endpointID string) (Listener, error) {
 	return nil, nil
 }
