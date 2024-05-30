@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
@@ -35,13 +36,43 @@ func (c *EndpointConfig) Validate() error {
 	return nil
 }
 
+type ConnectConfig struct {
+	Timeout time.Duration `json:"timeout" yaml:"timeout"`
+}
+
+func (c *ConnectConfig) Validate() error {
+	if c.Timeout == 0 {
+		return fmt.Errorf("missing timeout")
+	}
+	return nil
+}
+
+func (c *ConnectConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.DurationVar(
+		&c.Timeout,
+		"connect.timeout",
+		time.Second*30,
+		`
+Timeout attempting to connect to the Piko server on boot. Note if the agent
+is disconnected after the initial connection succeeds it will keep trying to
+reconnect.`,
+	)
+}
+
 type Config struct {
 	Endpoints []EndpointConfig `json:"endpoints" yaml:"endpoints"`
 
 	// Token is used to authenticate the agent with the server.
 	Token string `json:"token" yaml:"token"`
 
+	Connect ConnectConfig `json:"connect" yaml:"connect"`
+
 	Log log.Config `json:"log" yaml:"log"`
+
+	// GracePeriod is the duration to gracefully shutdown the agent. During
+	// the grace period, listeners and idle connections are closed, then waits
+	// for active requests to complete and closes their connections.
+	GracePeriod time.Duration `json:"grace_period" yaml:"grace_period"`
 }
 
 func (c *Config) Validate() error {
@@ -56,8 +87,16 @@ func (c *Config) Validate() error {
 		}
 	}
 
+	if err := c.Connect.Validate(); err != nil {
+		return fmt.Errorf("connect: %w", err)
+	}
+
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)
+	}
+
+	if c.GracePeriod == 0 {
+		return fmt.Errorf("missing grace period")
 	}
 
 	return nil
@@ -72,7 +111,21 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 A token to authenticate the connection to Piko.`,
 	)
 
+	c.Connect.RegisterFlags(fs)
+
 	c.Log.RegisterFlags(fs)
+
+	fs.DurationVar(
+		&c.GracePeriod,
+		"grace-period",
+		time.Minute,
+		`
+Maximum duration after a shutdown signal is received (SIGTERM or
+SIGINT) to gracefully shutdown the server node before terminating.
+This includes handling in-progress HTTP requests, gracefully closing
+connections to upstream listeners, announcing to the cluster the node is
+leaving...`,
+	)
 }
 
 // ParseAddrToURL parses the given upstream address into a URL. Return false
