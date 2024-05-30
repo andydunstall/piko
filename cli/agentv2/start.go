@@ -1,12 +1,18 @@
 package agent
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"os/signal"
 	"slices"
+	"syscall"
 
 	"github.com/andydunstall/piko/agentv2/config"
+	"github.com/andydunstall/piko/agentv2/endpoint"
+	piko "github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pkg/log"
+	rungroup "github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -57,18 +63,80 @@ Examples:
 	}
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
-		for _, endpoint := range conf.Endpoints {
-			if len(args) != 0 && !slices.Contains(args, endpoint.ID) {
-				continue
-			}
-
-			logger.Info(
-				"registered http endpoint",
-				zap.String("id", endpoint.ID),
-				zap.String("addr", endpoint.Addr),
-			)
+		if err := runStart(args, conf, logger); err != nil {
+			logger.Error("failed to run agent", zap.Error(err))
+			os.Exit(1)
 		}
 	}
 
 	return cmd
+}
+
+func runStart(endpoints []string, conf *config.Config, logger log.Logger) error {
+	logger.Info("starting piko agent")
+
+	connectCtx, connectCancel := context.WithTimeout(
+		context.Background(),
+		conf.Connect.Timeout,
+	)
+	defer connectCancel()
+
+	client, err := piko.Connect(connectCtx, piko.WithToken(conf.Token))
+	if err != nil {
+		return fmt.Errorf("connect: %w", err)
+	}
+
+	var group rungroup.Group
+
+	for _, endpointConfig := range conf.Endpoints {
+		if len(endpoints) != 0 && !slices.Contains(endpoints, endpointConfig.ID) {
+			continue
+		}
+
+		ln, err := client.Listen(context.Background(), endpointConfig.ID)
+		if err != nil {
+			return fmt.Errorf("listen: %s: %w", endpointConfig.ID, err)
+		}
+
+		endpoint := endpoint.NewEndpoint(endpointConfig, logger)
+
+		// Endpoint handler.
+		group.Add(func() error {
+			if err := endpoint.Serve(ln); err != nil {
+				return fmt.Errorf("serve: %w", err)
+			}
+			return nil
+		}, func(error) {
+			shutdownCtx, cancel := context.WithTimeout(
+				context.Background(),
+				conf.GracePeriod,
+			)
+			defer cancel()
+
+			if err := endpoint.Shutdown(shutdownCtx); err != nil {
+				logger.Warn("failed to gracefully shutdown endpoint", zap.Error(err))
+			}
+		})
+	}
+
+	// Termination handler.
+	signalCtx, signalCancel := context.WithCancel(context.Background())
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
+	group.Add(func() error {
+		select {
+		case sig := <-signalCh:
+			logger.Info(
+				"received shutdown signal",
+				zap.String("signal", sig.String()),
+			)
+			return nil
+		case <-signalCtx.Done():
+			return nil
+		}
+	}, func(error) {
+		signalCancel()
+	})
+
+	return group.Run()
 }
