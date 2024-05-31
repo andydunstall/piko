@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/conn"
+	pikowebsocket "github.com/andydunstall/piko/pkg/conn/websocket"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/rpc"
 	"github.com/andydunstall/piko/server/auth"
@@ -131,7 +131,7 @@ func (s *Server) listenerRoute(c *gin.Context) {
 		return
 	}
 	stream := rpc.NewStream(
-		conn.NewWebsocketConn(wsConn),
+		pikowebsocket.NewConn(wsConn),
 		s.rpcServer.Handler(),
 		s.logger,
 	)

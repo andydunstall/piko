@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/conn"
+	"github.com/andydunstall/piko/pkg/conn/websocket"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/rpc"
 	"github.com/andydunstall/piko/server/auth"
@@ -70,7 +70,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
-		conn, err := conn.DialWebsocket(context.TODO(), url, "")
+		conn, err := websocket.Dial(context.TODO(), url)
 		require.NoError(t, err)
 
 		// Add client stream and ensure upstream added to proxy.
@@ -113,7 +113,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
-		conn, err := conn.DialWebsocket(context.TODO(), url, "123")
+		conn, err := websocket.Dial(context.TODO(), url, websocket.WithToken("123"))
 		require.NoError(t, err)
 
 		// Add client stream and ensure upstream added to proxy.
@@ -157,7 +157,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn.Addr().String(),
 		)
 		rpcServer := newRPCServer()
-		conn, err := conn.DialWebsocket(context.TODO(), url, "123")
+		conn, err := websocket.Dial(context.TODO(), url, websocket.WithToken("123"))
 		require.NoError(t, err)
 
 		// Add client stream and ensure upstream added to proxy.
@@ -199,7 +199,7 @@ func TestServer_AddConn(t *testing.T) {
 			"ws://%s/piko/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
-		_, err = conn.DialWebsocket(context.TODO(), url, "123")
+		_, err = websocket.Dial(context.TODO(), url, websocket.WithToken("123"))
 		require.Error(t, err)
 	})
 
@@ -229,7 +229,7 @@ func TestServer_AddConn(t *testing.T) {
 			"ws://%s/piko/v1/listener/my-endpoint",
 			upstreamLn.Addr().String(),
 		)
-		_, err = conn.DialWebsocket(context.TODO(), url, "123")
+		_, err = websocket.Dial(context.TODO(), url, websocket.WithToken("123"))
 		require.Error(t, err)
 	})
 

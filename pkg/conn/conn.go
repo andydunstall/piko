@@ -7,6 +7,10 @@ type RetryableError struct {
 	err error
 }
 
+func NewRetryableError(err error) *RetryableError {
+	return &RetryableError{err}
+}
+
 func (e *RetryableError) Unwrap() error {
 	return e.err
 }
