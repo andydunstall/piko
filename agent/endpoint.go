@@ -10,6 +10,7 @@ import (
 	"github.com/andydunstall/piko/agent/config"
 	"github.com/andydunstall/piko/pkg/backoff"
 	"github.com/andydunstall/piko/pkg/conn"
+	"github.com/andydunstall/piko/pkg/conn/websocket"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/rpc"
 	"go.uber.org/zap"
@@ -109,7 +110,9 @@ func (e *Endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 		e.conf.Server.ReconnectMaxBackoff,
 	)
 	for {
-		c, err := conn.DialWebsocket(ctx, e.serverURL(), e.conf.Auth.APIKey)
+		c, err := websocket.Dial(
+			ctx, e.serverURL(), websocket.WithToken(e.conf.Auth.APIKey),
+		)
 		if err == nil {
 			return rpc.NewStream(c, e.rpcServer.Handler(), e.logger), nil
 		}
