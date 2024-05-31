@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -28,6 +29,8 @@ type Endpoint struct {
 
 	conf *config.Config
 
+	tlsConfig *tls.Config
+
 	metrics *Metrics
 
 	logger log.Logger
@@ -37,6 +40,7 @@ func NewEndpoint(
 	endpointID string,
 	forwardAddr string,
 	conf *config.Config,
+	tlsConfig *tls.Config,
 	metrics *Metrics,
 	logger log.Logger,
 ) *Endpoint {
@@ -50,9 +54,10 @@ func NewEndpoint(
 			metrics,
 			logger,
 		),
-		conf:    conf,
-		metrics: metrics,
-		logger:  logger.WithSubsystem("endpoint").With(zap.String("endpoint-id", endpointID)),
+		conf:      conf,
+		tlsConfig: tlsConfig,
+		metrics:   metrics,
+		logger:    logger.WithSubsystem("endpoint").With(zap.String("endpoint-id", endpointID)),
 	}
 	e.rpcServer = newRPCServer(e, logger)
 	return e
@@ -111,7 +116,10 @@ func (e *Endpoint) connect(ctx context.Context) (rpc.Stream, error) {
 	)
 	for {
 		c, err := websocket.Dial(
-			ctx, e.serverURL(), websocket.WithToken(e.conf.Auth.APIKey),
+			ctx,
+			e.serverURL(),
+			websocket.WithToken(e.conf.Auth.APIKey),
+			websocket.WithTLSConfig(e.tlsConfig),
 		)
 		if err == nil {
 			return rpc.NewStream(c, e.rpcServer.Handler(), e.logger), nil

@@ -16,11 +16,16 @@ type UpstreamConfig struct {
 
 	// AdvertiseAddr is the address to advertise to other nodes.
 	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
+
+	TLS TLSConfig `json:"tls" yaml:"tls"`
 }
 
 func (c *UpstreamConfig) Validate() error {
 	if c.BindAddr == "" {
 		return fmt.Errorf("missing bind addr")
+	}
+	if err := c.TLS.Validate(); err != nil {
+		return fmt.Errorf("tls: %w", err)
 	}
 	return nil
 }
@@ -31,11 +36,16 @@ type AdminConfig struct {
 
 	// AdvertiseAddr is the address to advertise to other nodes.
 	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
+
+	TLS TLSConfig `json:"tls" yaml:"tls"`
 }
 
 func (c *AdminConfig) Validate() error {
 	if c.BindAddr == "" {
 		return fmt.Errorf("missing bind addr")
+	}
+	if err := c.TLS.Validate(); err != nil {
+		return fmt.Errorf("tls: %w", err)
 	}
 	return nil
 }
@@ -137,6 +147,7 @@ If the bind address does not include an IP (such as ':8001') the nodes
 private IP will be used, such as a bind address of ':8001' may have an
 advertise address of '10.16.104.14:8001'.`,
 	)
+	c.Upstream.TLS.RegisterFlags(fs, "upstream")
 
 	fs.StringVar(
 		&c.Admin.BindAddr,
@@ -164,6 +175,7 @@ If the bind address does not include an IP (such as ':8002') the nodes
 private IP will be used, such as a bind address of ':8002' may have an
 advertise address of '10.26.104.14:8002'.`,
 	)
+	c.Admin.TLS.RegisterFlags(fs, "admin")
 
 	fs.StringVar(
 		&c.Cluster.NodeID,

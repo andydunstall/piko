@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -42,6 +43,7 @@ type Server struct {
 func NewServer(
 	ln net.Listener,
 	clusterState *cluster.State,
+	tlsConfig *tls.Config,
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
@@ -52,9 +54,10 @@ func NewServer(
 		ln:     ln,
 		router: router,
 		httpServer: &http.Server{
-			Addr:     ln.Addr().String(),
-			Handler:  router,
-			ErrorLog: logger.StdLogger(zapcore.WarnLevel),
+			Addr:      ln.Addr().String(),
+			Handler:   router,
+			TLSConfig: tlsConfig,
+			ErrorLog:  logger.StdLogger(zapcore.WarnLevel),
 		},
 		clusterState: clusterState,
 		forwarder:    forwarder.NewForwarder(),
@@ -90,7 +93,14 @@ func (s *Server) AddStatus(route string, handler status.Handler) {
 func (s *Server) Serve() error {
 	s.logger.Info("starting http server", zap.String("addr", s.ln.Addr().String()))
 
-	if err := s.httpServer.Serve(s.ln); err != nil && err != http.ErrServerClosed {
+	var err error
+	if s.httpServer.TLSConfig != nil {
+		err = s.httpServer.ServeTLS(s.ln, "", "")
+	} else {
+		err = s.httpServer.Serve(s.ln)
+	}
+
+	if err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("http serve: %w", err)
 	}
 	return nil

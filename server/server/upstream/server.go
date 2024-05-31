@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
@@ -47,6 +48,7 @@ func NewServer(
 	ln net.Listener,
 	proxy Proxy,
 	verifier auth.Verifier,
+	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {
 	logger = logger.WithSubsystem("upstream.server")
@@ -58,9 +60,10 @@ func NewServer(
 		ln:     ln,
 		router: router,
 		httpServer: &http.Server{
-			Addr:     ln.Addr().String(),
-			Handler:  router,
-			ErrorLog: logger.StdLogger(zapcore.WarnLevel),
+			Addr:      ln.Addr().String(),
+			Handler:   router,
+			TLSConfig: tlsConfig,
+			ErrorLog:  logger.StdLogger(zapcore.WarnLevel),
 		},
 		rpcServer:         newRPCServer(),
 		websocketUpgrader: &websocket.Upgrader{},
@@ -87,8 +90,14 @@ func NewServer(
 
 func (s *Server) Serve() error {
 	s.logger.Info("starting http server", zap.String("addr", s.ln.Addr().String()))
+	var err error
+	if s.httpServer.TLSConfig != nil {
+		err = s.httpServer.ServeTLS(s.ln, "", "")
+	} else {
+		err = s.httpServer.Serve(s.ln)
+	}
 
-	if err := s.httpServer.Serve(s.ln); err != nil && err != http.ErrServerClosed {
+	if err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("http serve: %w", err)
 	}
 	return nil

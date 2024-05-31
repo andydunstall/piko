@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net"
@@ -43,6 +44,7 @@ func NewServer(
 	ln net.Listener,
 	proxy Proxy,
 	conf *config.ProxyConfig,
+	tlsConfig *tls.Config,
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
@@ -57,6 +59,7 @@ func NewServer(
 		httpServer: &http.Server{
 			Addr:              ln.Addr().String(),
 			Handler:           router,
+			TLSConfig:         tlsConfig,
 			ReadTimeout:       conf.HTTP.ReadTimeout,
 			ReadHeaderTimeout: conf.HTTP.ReadHeaderTimeout,
 			WriteTimeout:      conf.HTTP.WriteTimeout,
@@ -89,8 +92,14 @@ func NewServer(
 
 func (s *Server) Serve() error {
 	s.logger.Info("starting http server", zap.String("addr", s.ln.Addr().String()))
+	var err error
+	if s.httpServer.TLSConfig != nil {
+		err = s.httpServer.ServeTLS(s.ln, "", "")
+	} else {
+		err = s.httpServer.Serve(s.ln)
+	}
 
-	if err := s.httpServer.Serve(s.ln); err != nil && err != http.ErrServerClosed {
+	if err != nil && err != http.ErrServerClosed {
 		return fmt.Errorf("http serve: %w", err)
 	}
 	return nil
