@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"os"
@@ -26,9 +27,14 @@ import (
 
 // Server manages setting up and running a Piko server node.
 type Server struct {
-	proxyLn    net.Listener
-	upstreamLn net.Listener
-	adminLn    net.Listener
+	proxyLn        net.Listener
+	proxyTLSConfig *tls.Config
+
+	upstreamLn        net.Listener
+	upstreamTLSConfig *tls.Config
+
+	adminLn        net.Listener
+	adminTLSConfig *tls.Config
 
 	gossipStreamLn net.Listener
 	gossipPacketLn net.PacketConn
@@ -43,15 +49,27 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("admin listen: %s: %w", conf.Admin.BindAddr, err)
 	}
+	adminTLSConfig, err := conf.Admin.TLS.Load()
+	if err != nil {
+		return nil, fmt.Errorf("admin tls: %w", err)
+	}
 
 	proxyLn, err := net.Listen("tcp", conf.Proxy.BindAddr)
 	if err != nil {
 		return nil, fmt.Errorf("proxy listen: %s: %w", conf.Proxy.BindAddr, err)
 	}
+	proxyTLSConfig, err := conf.Proxy.TLS.Load()
+	if err != nil {
+		return nil, fmt.Errorf("proxy tls: %w", err)
+	}
 
 	upstreamLn, err := net.Listen("tcp", conf.Upstream.BindAddr)
 	if err != nil {
 		return nil, fmt.Errorf("upstream listen: %s: %w", conf.Upstream.BindAddr, err)
+	}
+	upstreamTLSConfig, err := conf.Upstream.TLS.Load()
+	if err != nil {
+		return nil, fmt.Errorf("upstream tls: %w", err)
 	}
 
 	gossipStreamLn, err := net.Listen("tcp", conf.Gossip.BindAddr)
@@ -116,13 +134,16 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	}
 
 	return &Server{
-		proxyLn:        proxyLn,
-		upstreamLn:     upstreamLn,
-		adminLn:        adminLn,
-		gossipStreamLn: gossipStreamLn,
-		gossipPacketLn: gossipPacketLn,
-		conf:           conf,
-		logger:         logger,
+		proxyLn:           proxyLn,
+		proxyTLSConfig:    proxyTLSConfig,
+		upstreamLn:        upstreamLn,
+		upstreamTLSConfig: upstreamTLSConfig,
+		adminLn:           adminLn,
+		adminTLSConfig:    adminTLSConfig,
+		gossipStreamLn:    gossipStreamLn,
+		gossipPacketLn:    gossipPacketLn,
+		conf:              conf,
+		logger:            logger,
 	}, nil
 }
 
@@ -200,6 +221,7 @@ func (s *Server) Run(ctx context.Context) error {
 	adminServer := adminserver.NewServer(
 		s.adminLn,
 		clusterState,
+		s.adminTLSConfig,
 		registry,
 		s.logger,
 	)
@@ -211,6 +233,7 @@ func (s *Server) Run(ctx context.Context) error {
 		s.proxyLn,
 		p,
 		&s.conf.Proxy,
+		s.proxyTLSConfig,
 		registry,
 		s.logger,
 	)
@@ -219,6 +242,7 @@ func (s *Server) Run(ctx context.Context) error {
 		s.upstreamLn,
 		p,
 		verifier,
+		s.upstreamTLSConfig,
 		s.logger,
 	)
 

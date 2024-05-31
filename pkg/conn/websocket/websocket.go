@@ -2,9 +2,11 @@ package websocket
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/andydunstall/piko/pkg/conn"
 	"github.com/gorilla/websocket"
@@ -21,22 +23,35 @@ var retryableStatusCodes = map[int]struct{}{
 	http.StatusGatewayTimeout:      {},
 }
 
-type Options struct {
-	token string
+type options struct {
+	token     string
+	tlsConfig *tls.Config
 }
 
 type Option interface {
-	apply(*Options)
+	apply(*options)
 }
 
 type tokenOption string
 
-func (o tokenOption) apply(opts *Options) {
+func (o tokenOption) apply(opts *options) {
 	opts.token = string(o)
 }
 
 func WithToken(token string) Option {
 	return tokenOption(token)
+}
+
+type tlsConfigOption struct {
+	TLSConfig *tls.Config
+}
+
+func (o tlsConfigOption) apply(opts *options) {
+	opts.tlsConfig = o.TLSConfig
+}
+
+func WithTLSConfig(config *tls.Config) Option {
+	return tlsConfigOption{TLSConfig: config}
 }
 
 type Conn struct {
@@ -50,16 +65,26 @@ func NewConn(wsConn *websocket.Conn) *Conn {
 }
 
 func Dial(ctx context.Context, url string, opts ...Option) (*Conn, error) {
-	options := Options{}
+	options := options{}
 	for _, o := range opts {
 		o.apply(&options)
+	}
+
+	dialer := &websocket.Dialer{
+		Proxy:            http.ProxyFromEnvironment,
+		HandshakeTimeout: 45 * time.Second,
 	}
 
 	header := make(http.Header)
 	if options.token != "" {
 		header.Set("Authorization", "Bearer "+options.token)
 	}
-	wsConn, resp, err := websocket.DefaultDialer.DialContext(
+
+	if options.tlsConfig != nil {
+		dialer.TLSClientConfig = options.tlsConfig
+	}
+
+	wsConn, resp, err := dialer.DialContext(
 		ctx, url, header,
 	)
 	if err != nil {

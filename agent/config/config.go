@@ -1,8 +1,11 @@
 package config
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
@@ -107,6 +110,48 @@ type ForwarderConfig struct {
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 }
 
+type TLSConfig struct {
+	// RootCAs contains a path to root certificate authorities to validate
+	// the TLS connection to the Piko server.
+	//
+	// Defaults to using the host root CAs.
+	RootCAs string `json:"root_cas" yaml:"root_cas"`
+}
+
+func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.StringVar(
+		&c.RootCAs,
+		"tls.root-cas",
+		"",
+		`
+A path to a certificate PEM file containing root certificiate authorities to
+validate the TLS connection to the Piko server.
+
+Defaults to using the host root CAs.`,
+	)
+}
+
+func (c *TLSConfig) Load() (*tls.Config, error) {
+	if c.RootCAs == "" {
+		return nil, nil
+	}
+
+	tlsConfig := &tls.Config{}
+
+	caCert, err := os.ReadFile(c.RootCAs)
+	if err != nil {
+		return nil, fmt.Errorf("open root cas: %s: %w", c.RootCAs, err)
+	}
+	caCertPool := x509.NewCertPool()
+	ok := caCertPool.AppendCertsFromPEM(caCert)
+	if !ok {
+		return nil, fmt.Errorf("parse root cas: %s: %w", c.RootCAs, err)
+	}
+	tlsConfig.RootCAs = caCertPool
+
+	return tlsConfig, nil
+}
+
 type AdminConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
@@ -124,6 +169,7 @@ type Config struct {
 	Server    ServerConfig     `json:"server" yaml:"server"`
 	Auth      AuthConfig       `json:"auth" yaml:"auth"`
 	Forwarder ForwarderConfig  `json:"forwarder" yaml:"forwarder"`
+	TLS       TLSConfig        `json:"tls" yaml:"tls"`
 	Admin     AdminConfig      `json:"admin" yaml:"admin"`
 	Log       log.Config       `json:"log" yaml:"log"`
 }
@@ -169,6 +215,8 @@ forwarding it to the configured forward address, and receiving a response.
 If the upstream does not respond within the given timeout a
 '504 Gateway Timeout' is returned to the client.`,
 	)
+
+	c.TLS.RegisterFlags(fs)
 
 	fs.StringVar(
 		&c.Admin.BindAddr,

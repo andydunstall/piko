@@ -5,12 +5,14 @@ package admin
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"net/http"
 	"testing"
 
 	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/status"
 	"github.com/gin-gonic/gin"
@@ -38,6 +40,7 @@ func TestServer_AdminRoutes(t *testing.T) {
 
 	adminServer := NewServer(
 		adminLn,
+		nil,
 		nil,
 		prometheus.NewRegistry(),
 		log.NewNopLogger(),
@@ -81,6 +84,7 @@ func TestServer_StatusRoutes(t *testing.T) {
 
 	adminServer := NewServer(
 		adminLn,
+		nil,
 		nil,
 		prometheus.NewRegistry(),
 		log.NewNopLogger(),
@@ -130,6 +134,7 @@ func TestServer_ForwardRequest(t *testing.T) {
 	admin1Server := NewServer(
 		admin1Ln,
 		cluster1State,
+		nil,
 		prometheus.NewRegistry(),
 		log.NewNopLogger(),
 	)
@@ -156,6 +161,7 @@ func TestServer_ForwardRequest(t *testing.T) {
 	admin2Server := NewServer(
 		admin2Ln,
 		cluster2State,
+		nil,
 		prometheus.NewRegistry(),
 		log.NewNopLogger(),
 	)
@@ -186,5 +192,66 @@ func TestServer_ForwardRequest(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusNotFound, resp.StatusCode)
+	})
+}
+
+func TestServer_TLS(t *testing.T) {
+	rootCAPool, cert, err := testutil.LocalTLSServerCert()
+	require.NoError(t, err)
+
+	adminLn, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	tlsConfig := &tls.Config{}
+	tlsConfig.Certificates = []tls.Certificate{cert}
+
+	adminServer := NewServer(
+		adminLn,
+		nil,
+		tlsConfig,
+		prometheus.NewRegistry(),
+		log.NewNopLogger(),
+	)
+	go func() {
+		require.NoError(t, adminServer.Serve())
+	}()
+	defer adminServer.Shutdown(context.TODO())
+
+	t.Run("https ok", func(t *testing.T) {
+		tlsConfig = &tls.Config{
+			RootCAs: rootCAPool,
+		}
+		transport := &http.Transport{
+			TLSClientConfig: tlsConfig,
+		}
+		client := &http.Client{
+			Transport: transport,
+		}
+
+		req, _ := http.NewRequest(
+			http.MethodGet,
+			fmt.Sprintf("https://%s/health", adminLn.Addr().String()),
+			nil,
+		)
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("https bad ca", func(t *testing.T) {
+		url := fmt.Sprintf("https://%s/health", adminLn.Addr().String())
+		_, err := http.Get(url)
+		assert.ErrorContains(t, err, "certificate signed by unknown authority")
+	})
+
+	t.Run("http", func(t *testing.T) {
+		url := fmt.Sprintf("http://%s/health", adminLn.Addr().String())
+		resp, err := http.Get(url)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 	})
 }

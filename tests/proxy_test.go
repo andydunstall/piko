@@ -80,7 +80,7 @@ func TestProxy(t *testing.T) {
 
 	agentConf := defaultAgentConfig(serverConf.Upstream.AdvertiseAddr)
 	endpoint := agent.NewEndpoint(
-		"my-endpoint", upstream.Addr(), agentConf, agent.NewMetrics(), log.NewNopLogger(),
+		"my-endpoint", upstream.Addr(), agentConf, nil, agent.NewMetrics(), log.NewNopLogger(),
 	)
 	go func() {
 		assert.NoError(t, endpoint.Run(ctx))
@@ -151,7 +151,7 @@ func TestProxy_Authenticated(t *testing.T) {
 	agentConf := defaultAgentConfig(serverConf.Upstream.AdvertiseAddr)
 	agentConf.Auth.APIKey = apiKey
 	endpoint := agent.NewEndpoint(
-		"my-endpoint", upstream.Addr(), agentConf, agent.NewMetrics(), log.NewNopLogger(),
+		"my-endpoint", upstream.Addr(), agentConf, nil, agent.NewMetrics(), log.NewNopLogger(),
 	)
 	go func() {
 		assert.NoError(t, endpoint.Run(ctx))

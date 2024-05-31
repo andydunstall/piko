@@ -92,6 +92,8 @@ type ProxyConfig struct {
 	GatewayTimeout time.Duration `json:"gateway_timeout" yaml:"gateway_timeout"`
 
 	HTTP ProxyHTTPConfig `json:"http" yaml:"http"`
+
+	TLS TLSConfig `json:"tls" yaml:"tls"`
 }
 
 func (c *ProxyConfig) Validate() error {
@@ -100,6 +102,9 @@ func (c *ProxyConfig) Validate() error {
 	}
 	if c.GatewayTimeout == 0 {
 		return fmt.Errorf("missing gateway timeout")
+	}
+	if err := c.TLS.Validate(); err != nil {
+		return fmt.Errorf("tls: %w", err)
 	}
 
 	return nil
@@ -144,5 +149,6 @@ If the upstream does not respond within the given timeout a
 '504 Gateway Timeout' is returned to the client.`,
 	)
 
+	c.TLS.RegisterFlags(fs, "proxy")
 	c.HTTP.RegisterFlags(fs, "proxy")
 }

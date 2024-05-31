@@ -4,6 +4,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"testing"
@@ -12,6 +13,7 @@ import (
 	"github.com/andydunstall/piko/pkg/conn/websocket"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/rpc"
+	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/server/auth"
 	proxy "github.com/andydunstall/piko/server/proxy"
 	"github.com/stretchr/testify/assert"
@@ -58,6 +60,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			proxy,
 			nil,
+			nil,
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -101,6 +104,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			proxy,
 			verifier,
+			nil,
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -145,6 +149,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			proxy,
 			verifier,
+			nil,
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -188,6 +193,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			nil,
 			verifier,
+			nil,
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -218,6 +224,7 @@ func TestServer_AddConn(t *testing.T) {
 			upstreamLn,
 			nil,
 			verifier,
+			nil,
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -232,5 +239,69 @@ func TestServer_AddConn(t *testing.T) {
 		_, err = websocket.Dial(context.TODO(), url, websocket.WithToken("123"))
 		require.Error(t, err)
 	})
+}
 
+func TestServer_TLS(t *testing.T) {
+	rootCAPool, cert, err := testutil.LocalTLSServerCert()
+	require.NoError(t, err)
+
+	upstreamLn, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+
+	tlsConfig := &tls.Config{}
+	tlsConfig.Certificates = []tls.Certificate{cert}
+
+	proxy := newFakeProxy()
+	upstreamServer := NewServer(
+		upstreamLn,
+		proxy,
+		nil,
+		tlsConfig,
+		log.NewNopLogger(),
+	)
+	go func() {
+		require.NoError(t, upstreamServer.Serve())
+	}()
+	defer upstreamServer.Shutdown(context.TODO())
+
+	t.Run("wss ok", func(t *testing.T) {
+		url := fmt.Sprintf(
+			"wss://%s/piko/v1/listener/my-endpoint",
+			upstreamLn.Addr().String(),
+		)
+		clientTLSConfig := &tls.Config{
+			RootCAs: rootCAPool,
+		}
+		conn, err := websocket.Dial(
+			context.TODO(), url, websocket.WithTLSConfig(clientTLSConfig),
+		)
+		require.NoError(t, err)
+
+		// Add client stream and ensure upstream added to proxy.
+		rpcServer := newRPCServer()
+		stream := rpc.NewStream(conn, rpcServer.Handler(), log.NewNopLogger())
+		assert.Equal(t, "my-endpoint", <-proxy.addUpstreamCh)
+
+		// Close client stream and ensure upstream removed from proxy.
+		stream.Close()
+		assert.Equal(t, "my-endpoint", <-proxy.removeUpstreamCh)
+	})
+
+	t.Run("wss bad ca", func(t *testing.T) {
+		url := fmt.Sprintf(
+			"wss://%s/piko/v1/listener/my-endpoint",
+			upstreamLn.Addr().String(),
+		)
+		_, err := websocket.Dial(context.TODO(), url)
+		require.ErrorContains(t, err, "certificate signed by unknown authority")
+	})
+
+	t.Run("ws", func(t *testing.T) {
+		url := fmt.Sprintf(
+			"ws://%s/piko/v1/listener/my-endpoint",
+			upstreamLn.Addr().String(),
+		)
+		_, err := websocket.Dial(context.TODO(), url)
+		require.ErrorContains(t, err, "bad handshake")
+	})
 }

@@ -148,9 +148,15 @@ func run(conf *config.Config, logger log.Logger) error {
 	adminServer := adminserver.NewServer(
 		adminLn,
 		nil,
+		nil,
 		registry,
 		logger,
 	)
+
+	endpointTLSConfig, err := conf.TLS.Load()
+	if err != nil {
+		return fmt.Errorf("tls: %w", err)
+	}
 
 	var group rungroup.Group
 
@@ -179,7 +185,7 @@ func run(conf *config.Config, logger log.Logger) error {
 
 	for _, e := range conf.Endpoints {
 		endpoint := agent.NewEndpoint(
-			e.ID, e.Addr, conf, metrics, logger,
+			e.ID, e.Addr, conf, endpointTLSConfig, metrics, logger,
 		)
 
 		endpointCtx, endpointCancel := context.WithCancel(context.Background())
