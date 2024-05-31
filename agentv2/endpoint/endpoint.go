@@ -2,37 +2,57 @@ package endpoint
 
 import (
 	"context"
+	"net/http"
+	"net/http/httputil"
 
 	"github.com/andydunstall/piko/agentv2/config"
 	piko "github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pkg/log"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // Endpoint handles connections for the endpoint and forwards traffic the
 // upstream listener.
 type Endpoint struct {
-	id     string
+	id string
+
+	server *http.Server
+
 	logger log.Logger
 }
 
 func NewEndpoint(conf config.EndpointConfig, logger log.Logger) *Endpoint {
+	u, ok := conf.URL()
+	if !ok {
+		// We've already verified the address on boot so don't need to handle
+		// the error.
+		panic("invalid endpoint addr: " + conf.Addr)
+	}
+
+	// TODO(andydunstall): Configure timeouts, access log, ...
+	proxy := &httputil.ReverseProxy{
+		Rewrite: func(r *httputil.ProxyRequest) {
+			r.SetURL(u)
+		},
+		ErrorLog: logger.StdLogger(zapcore.WarnLevel),
+	}
 	return &Endpoint{
-		id:     conf.ID,
+		id: conf.ID,
+		server: &http.Server{
+			Handler:  proxy,
+			ErrorLog: logger.StdLogger(zapcore.WarnLevel),
+		},
 		logger: logger.WithSubsystem("endpoint").With(zap.String("endpoint-id", conf.ID)),
 	}
 }
 
 // Serve serves connections on the listener.
-func (e *Endpoint) Serve(_ piko.Listener) error {
+func (e *Endpoint) Serve(ln piko.Listener) error {
 	e.logger.Info("serving endpoint")
-
-	// TODO(andydunstall): Run reverse proxy to accept connections, log
-	// requests and forward to the upstream.
-
-	return nil
+	return e.server.Serve(ln)
 }
 
-func (e *Endpoint) Shutdown(_ context.Context) error {
-	return nil
+func (e *Endpoint) Shutdown(ctx context.Context) error {
+	return e.server.Shutdown(ctx)
 }

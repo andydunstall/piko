@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestParseAddrToURL(t *testing.T) {
+func TestEndpointConfig_URL(t *testing.T) {
 	tests := []struct {
 		addr string
 		url  *url.URL
@@ -43,7 +43,8 @@ func TestParseAddrToURL(t *testing.T) {
 	for _, tt := range tests {
 		tt := tt // for t.Parallel
 		t.Run(tt.addr, func(t *testing.T) {
-			u, ok := ParseAddrToURL(tt.addr)
+			conf := &EndpointConfig{Addr: tt.addr}
+			u, ok := conf.URL()
 			if !ok {
 				assert.Equal(t, tt.ok, ok)
 				return

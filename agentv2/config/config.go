@@ -23,6 +23,38 @@ type EndpointConfig struct {
 	AccessLog bool `json:"access_log" yaml:"access_log"`
 }
 
+// URL parses the given upstream address into a URL. Return false if the
+// address is invalid.
+//
+// The addr may be either a full URL, a host and port or just a port.
+func (c *EndpointConfig) URL() (*url.URL, bool) {
+	// Port only.
+	port, err := strconv.Atoi(c.Addr)
+	if err == nil && port >= 0 && port < 0xffff {
+		return &url.URL{
+			Scheme: "http",
+			Host:   "localhost:" + c.Addr,
+		}, true
+	}
+
+	// Host and port.
+	host, portStr, err := net.SplitHostPort(c.Addr)
+	if err == nil {
+		return &url.URL{
+			Scheme: "http",
+			Host:   net.JoinHostPort(host, portStr),
+		}, true
+	}
+
+	// URL.
+	u, err := url.Parse(c.Addr)
+	if err == nil && u.Scheme != "" && u.Host != "" {
+		return u, true
+	}
+
+	return nil, false
+}
+
 func (c *EndpointConfig) Validate() error {
 	if c.ID == "" {
 		return fmt.Errorf("missing id")
@@ -30,7 +62,7 @@ func (c *EndpointConfig) Validate() error {
 	if c.Addr == "" {
 		return fmt.Errorf("missing addr")
 	}
-	if _, ok := ParseAddrToURL(c.Addr); !ok {
+	if _, ok := c.URL(); !ok {
 		return fmt.Errorf("invalid addr")
 	}
 	return nil
@@ -126,36 +158,4 @@ This includes handling in-progress HTTP requests, gracefully closing
 connections to upstream listeners, announcing to the cluster the node is
 leaving...`,
 	)
-}
-
-// ParseAddrToURL parses the given upstream address into a URL. Return false
-// if the address is invalid.
-//
-// The addr may be either a full URL, a host and port or just a port.
-func ParseAddrToURL(addr string) (*url.URL, bool) {
-	// Port only.
-	port, err := strconv.Atoi(addr)
-	if err == nil && port >= 0 && port < 0xffff {
-		return &url.URL{
-			Scheme: "http",
-			Host:   "localhost:" + addr,
-		}, true
-	}
-
-	// Host and port.
-	host, portStr, err := net.SplitHostPort(addr)
-	if err == nil {
-		return &url.URL{
-			Scheme: "http",
-			Host:   net.JoinHostPort(host, portStr),
-		}, true
-	}
-
-	// URL.
-	u, err := url.Parse(addr)
-	if err == nil && u.Scheme != "" && u.Host != "" {
-		return u, true
-	}
-
-	return nil, false
 }
