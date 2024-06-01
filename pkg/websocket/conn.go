@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"time"
@@ -77,11 +78,14 @@ func WithTLSConfig(config *tls.Config) DialOption {
 // it means the connection can be used with HTTP servers and load balancers.
 type Conn struct {
 	wsConn *websocket.Conn
+
+	reader io.Reader
 }
 
 func New(wsConn *websocket.Conn) *Conn {
 	return &Conn{
 		wsConn: wsConn,
+		reader: nil,
 	}
 }
 
@@ -120,14 +124,35 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 }
 
 func (c *Conn) Read(b []byte) (int, error) {
-	mt, r, err := c.wsConn.NextReader()
-	if err != nil {
-		return 0, err
+	for {
+		if c.reader == nil {
+			mt, r, err := c.wsConn.NextReader()
+			if err != nil {
+				return 0, err
+			}
+			if mt != websocket.BinaryMessage {
+				return 0, fmt.Errorf("unexpected message type: %d", mt)
+			}
+			c.reader = r
+		}
+
+		n, err := c.reader.Read(b)
+		if n > 0 {
+			if err != nil {
+				c.reader = nil
+				if err == io.EOF {
+					err = nil
+				}
+			}
+			return n, err
+		}
+		if err != io.EOF {
+			return 0, err
+		}
+
+		// If we get 0 EOF, read from a new reader.
+		c.reader = nil
 	}
-	if mt != websocket.BinaryMessage {
-		return 0, fmt.Errorf("unexpected message type: %d", mt)
-	}
-	return r.Read(b)
 }
 
 func (c *Conn) Write(b []byte) (int, error) {
@@ -138,8 +163,7 @@ func (c *Conn) Write(b []byte) (int, error) {
 }
 
 func (c *Conn) Close() error {
-	// TODO(andydunstall)
-	return nil
+	return c.wsConn.Close()
 }
 
 func (c *Conn) LocalAddr() net.Addr {
