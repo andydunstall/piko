@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
@@ -13,6 +14,7 @@ import (
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"golang.ngrok.com/muxado/v2"
 )
 
 // Server accepts connections from upstream services.
@@ -92,6 +94,24 @@ func (s *Server) wsRoute(c *gin.Context) {
 		"listener connected",
 		zap.String("client-ip", c.ClientIP()),
 	)
+	defer s.logger.Debug(
+		"listener disconnected",
+		zap.String("client-ip", c.ClientIP()),
+	)
+
+	sess := muxado.NewTypedStreamSession(muxado.Server(conn, &muxado.Config{}))
+	heartbeat := muxado.NewHeartbeat(
+		sess,
+		func(d time.Duration, timeout bool) {},
+		muxado.NewHeartbeatConfig(),
+	)
+
+	for {
+		_, err := heartbeat.AcceptTypedStream()
+		if err != nil {
+			return
+		}
+	}
 }
 
 func (s *Server) panicRoute(c *gin.Context, err any) {
