@@ -2,9 +2,12 @@ package piko
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"net/url"
 	"time"
 
+	"github.com/andydunstall/piko/pkg/protocol"
 	"github.com/andydunstall/piko/pkg/websocket"
 	"golang.ngrok.com/muxado/v2"
 )
@@ -56,14 +59,38 @@ func Connect(ctx context.Context, opts ...ConnectOption) (*Piko, error) {
 // which accepts incoming connections for that endpoint.
 //
 // [Listener] is a [net.Listener].
-// nolint
-func (p *Piko) Listen(ctx context.Context, endpointID string) (Listener, error) {
-	p.sess.Wait()
-	return nil, nil
+func (p *Piko) Listen(_ context.Context, endpointID string) (Listener, error) {
+	req := &protocol.ListenRequest{
+		EndpointID: endpointID,
+	}
+	var resp protocol.ListenResponse
+	if err := p.rpc(protocol.RPCTypeListen, req, &resp); err != nil {
+		return nil, fmt.Errorf("rpc: %w", err)
+	}
+
+	return &listener{}, nil
 }
 
 // Close closes the connection to Piko and any open listeners.
 func (p *Piko) Close() error {
+	return nil
+}
+
+func (p *Piko) rpc(rpcType protocol.RPCType, req any, resp any) error {
+	stream, err := p.sess.OpenTypedStream(muxado.StreamType(rpcType))
+	if err != nil {
+		return fmt.Errorf("open stream: %w", err)
+	}
+	defer stream.Close()
+
+	if err := json.NewEncoder(stream).Encode(req); err != nil {
+		return fmt.Errorf("encode req: %w", err)
+	}
+
+	if err := json.NewDecoder(stream).Decode(&resp); err != nil {
+		return fmt.Errorf("decode resp: %w", err)
+	}
+
 	return nil
 }
 

@@ -3,12 +3,14 @@ package server
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/protocol"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -107,10 +109,16 @@ func (s *Server) wsRoute(c *gin.Context) {
 	)
 
 	for {
-		_, err := heartbeat.AcceptTypedStream()
+		stream, err := heartbeat.AcceptTypedStream()
 		if err != nil {
+			s.logger.Warn("accept stream", zap.Error(err))
 			return
 		}
+		go func() {
+			if err := s.handleStream(stream); err != nil {
+				s.logger.Warn("handle stream", zap.Error(err))
+			}
+		}()
 	}
 }
 
@@ -121,6 +129,39 @@ func (s *Server) panicRoute(c *gin.Context, err any) {
 		zap.Any("err", err),
 	)
 	c.AbortWithStatus(http.StatusInternalServerError)
+}
+
+func (s *Server) handleStream(stream muxado.TypedStream) error {
+	switch protocol.RPCType(stream.StreamType()) {
+	case protocol.RPCTypeListen:
+		if err := s.handleListenRequest(stream); err != nil {
+			return fmt.Errorf("listen request: %w", err)
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported rpc type: %d", stream.StreamType())
+	}
+}
+
+func (s *Server) handleListenRequest(stream muxado.TypedStream) error {
+	var req protocol.ListenRequest
+	if err := json.NewDecoder(stream).Decode(&req); err != nil {
+		return fmt.Errorf("decode request: %w", err)
+	}
+
+	resp := protocol.ListenResponse(req)
+	if err := json.NewEncoder(stream).Encode(resp); err != nil {
+		return fmt.Errorf("decode response: %w", err)
+	}
+
+	s.logger.Info(
+		"registered listener",
+		zap.String("endpoint-id", req.EndpointID),
+	)
+
+	// TODO(andydunstall): Register.
+
+	return nil
 }
 
 func init() {
