@@ -1,6 +1,10 @@
 package piko
 
-import "net"
+import (
+	"net"
+
+	"golang.ngrok.com/muxado/v2"
+)
 
 // Listener is a [net.Listener] that accepts incoming connections for endpoints
 // registered with the server by the client.
@@ -15,10 +19,15 @@ type Listener interface {
 }
 
 type listener struct {
+	sess *muxado.Heartbeat
 }
 
 func (l *listener) Accept() (net.Conn, error) {
-	return nil, nil
+	stream, err := l.sess.AcceptTypedStream()
+	if err != nil {
+		return nil, err
+	}
+	return stream, nil
 }
 
 func (l *listener) Close() error {

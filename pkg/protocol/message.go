@@ -6,6 +6,7 @@ type RPCType muxado.StreamType
 
 const (
 	RPCTypeListen RPCType = iota + 1
+	RPCTypeProxy
 )
 
 type ListenRequest struct {

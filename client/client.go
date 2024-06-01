@@ -68,7 +68,10 @@ func (p *Piko) Listen(_ context.Context, endpointID string) (Listener, error) {
 		return nil, fmt.Errorf("rpc: %w", err)
 	}
 
-	return &listener{}, nil
+	return &listener{
+		// TODO(andydunstall): For now only support a single endpoint.
+		sess: p.sess,
+	}, nil
 }
 
 // Close closes the connection to Piko and any open listeners.

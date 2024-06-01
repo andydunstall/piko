@@ -10,7 +10,9 @@ import (
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
+	proxyserver "github.com/andydunstall/piko/serverv2/server/proxy"
 	upstreamserver "github.com/andydunstall/piko/serverv2/server/upstream"
+	"github.com/andydunstall/piko/serverv2/upstream"
 	rungroup "github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -48,14 +50,41 @@ func run(logger log.Logger) error {
 	logger.Info("starting piko server")
 	logger.Warn("piko server v2 is still in development")
 
+	proxyLn, err := net.Listen("tcp", ":8000")
+	if err != nil {
+		return fmt.Errorf("proxy listen: %s: %w", ":8001", err)
+	}
+
 	upstreamLn, err := net.Listen("tcp", ":8001")
 	if err != nil {
 		return fmt.Errorf("upstream listen: %s: %w", ":8001", err)
 	}
 
-	upstreamServer := upstreamserver.NewServer(nil, logger)
+	upstreamManager := upstream.NewManager()
+	proxyServer := proxyserver.NewServer(upstreamManager, logger)
+	upstreamServer := upstreamserver.NewServer(upstreamManager, nil, logger)
 
 	var group rungroup.Group
+
+	// Proxy server.
+	group.Add(func() error {
+		if err := proxyServer.Serve(proxyLn); err != nil {
+			return fmt.Errorf("proxy server serve: %w", err)
+		}
+		return nil
+	}, func(error) {
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			time.Second*10,
+		)
+		defer cancel()
+
+		if err := proxyServer.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown proxy server", zap.Error(err))
+		}
+
+		logger.Info("proxy server shut down")
+	})
 
 	// Upstream server.
 	group.Add(func() error {
