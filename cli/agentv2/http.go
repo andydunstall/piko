@@ -80,6 +80,7 @@ Whether to log all incoming HTTP requests and responses as 'info' logs.`,
 
 func runHTTP(conf *config.Config, logger log.Logger) error {
 	logger.Info("starting piko agent")
+	logger.Warn("piko agent v2 is still in development")
 
 	// We know there is a single endpoint configured.
 	endpointConfig := conf.Endpoints[0]
