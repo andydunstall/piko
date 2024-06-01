@@ -12,6 +12,7 @@ import (
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/protocol"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
+	"github.com/andydunstall/piko/serverv2/upstream"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -21,6 +22,8 @@ import (
 
 // Server accepts connections from upstream services.
 type Server struct {
+	manager *upstream.Manager
+
 	router *gin.Engine
 
 	httpServer *http.Server
@@ -31,12 +34,14 @@ type Server struct {
 }
 
 func NewServer(
+	manager *upstream.Manager,
 	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {
 	router := gin.New()
 	server := &Server{
-		router: router,
+		manager: manager,
+		router:  router,
 		httpServer: &http.Server{
 			Handler:   router,
 			TLSConfig: tlsConfig,
@@ -107,6 +112,12 @@ func (s *Server) wsRoute(c *gin.Context) {
 		func(d time.Duration, timeout bool) {},
 		muxado.NewHeartbeatConfig(),
 	)
+
+	upstream := &upstream.Upstream{
+		Sess: sess,
+	}
+	s.manager.Add(upstream)
+	defer s.manager.Remove(upstream)
 
 	for {
 		stream, err := heartbeat.AcceptTypedStream()
