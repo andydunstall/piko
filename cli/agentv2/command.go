@@ -23,6 +23,8 @@ The agent supports both YAML configuration and command line flags. Configure
 a YAML file using '--config.path'. When enabling '--config.expand-env', Piko
 will expand environment variables in the loaded YAML configuration.
 
+WARNING: Agent V2 is still in development...
+
 Examples:
   # Register HTTP endpoint 'my-endpoint' for forward to localhost:3000.
   piko agent http my-endpoint 3000

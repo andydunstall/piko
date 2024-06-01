@@ -74,6 +74,7 @@ Examples:
 
 func runStart(endpoints []string, conf *config.Config, logger log.Logger) error {
 	logger.Info("starting piko agent")
+	logger.Warn("piko agent v2 is still in development")
 
 	connectCtx, connectCancel := context.WithTimeout(
 		context.Background(),
