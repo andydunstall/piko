@@ -1,7 +1,7 @@
 version: "3.4"
 services:
   piko-1:
-    image: piko:latest
+    image: ghcr.io/andydunstall/piko:latest
     command:
       - server
       - --config.path
@@ -13,7 +13,7 @@ services:
       - ./config/piko.yaml:/etc/piko.yaml
 
   piko-2:
-    image: piko:latest
+    image: ghcr.io/andydunstall/piko:latest
     command:
       - server
       - --config.path
@@ -25,7 +25,7 @@ services:
       - ./config/piko.yaml:/etc/piko.yaml
 
   piko-3:
-    image: piko:latest
+    image: ghcr.io/andydunstall/piko:latest
     command:
       - server
       - --config.path

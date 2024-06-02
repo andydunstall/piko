@@ -6,17 +6,19 @@ register upstream services to handle incoming requests proxied by Piko.
 
 ## Cluster
 
-Start by cloning Piko then building the Piko binary and Docker image. You can
-also download the Piko binary from the [releases](https://github.com/andydunstall/piko/releases)
-page:
+Start by cloning Piko and downloading the Piko binary from the
+[releases](https://github.com/andydunstall/piko/releases) page:
 ```shell
 git clone git@github.com:andydunstall/piko.git
 cd piko
+```
+
+You can also build Piko yourself with:
+```shell
 make piko
 make image
 ```
-
-This will build the Piko binary at `bin/piko` and Docker image `piko:latest`.
+Which will build the Piko binary at `bin/piko` and Docker image `piko:latest`.
 
 Next start the Piko cluster:
 ```shell
