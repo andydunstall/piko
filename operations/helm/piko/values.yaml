@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: piko
+  repository: ghcr.io/andydunstall/piko
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
