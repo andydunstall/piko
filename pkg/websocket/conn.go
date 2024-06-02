@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/conn"
 	"github.com/gorilla/websocket"
 )
 
@@ -42,22 +41,11 @@ func (e *RetryableError) Error() string {
 }
 
 type dialOptions struct {
-	token     string
 	tlsConfig *tls.Config
 }
 
 type DialOption interface {
 	apply(*dialOptions)
-}
-
-type tokenOption string
-
-func (o tokenOption) apply(opts *dialOptions) {
-	opts.token = string(o)
-}
-
-func WithToken(token string) DialOption {
-	return tokenOption(token)
 }
 
 type tlsConfigOption struct {
@@ -99,26 +87,21 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 		HandshakeTimeout: 60 * time.Second,
 	}
 
-	header := make(http.Header)
-	if options.token != "" {
-		header.Set("Authorization", "Bearer "+options.token)
-	}
-
 	if options.tlsConfig != nil {
 		dialer.TLSClientConfig = options.tlsConfig
 	}
 
 	wsConn, resp, err := dialer.DialContext(
-		ctx, url, header,
+		ctx, url, nil,
 	)
 	if err != nil {
 		if resp != nil {
 			if _, ok := retryableStatusCodes[resp.StatusCode]; ok {
-				return nil, conn.NewRetryableError(err)
+				return nil, NewRetryableError(err)
 			}
 			return nil, fmt.Errorf("%d: %w", resp.StatusCode, err)
 		}
-		return nil, conn.NewRetryableError(err)
+		return nil, NewRetryableError(err)
 	}
 	return New(wsConn), nil
 }

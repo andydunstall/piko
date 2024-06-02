@@ -1,9 +1,10 @@
 package piko
 
 import (
+	"fmt"
 	"net"
 
-	"golang.ngrok.com/muxado/v2"
+	"go.uber.org/atomic"
 )
 
 // Listener is a [net.Listener] that accepts incoming connections for endpoints
@@ -19,18 +20,36 @@ type Listener interface {
 }
 
 type listener struct {
-	sess *muxado.Heartbeat
+	endpointID string
+
+	acceptCh chan net.Conn
+
+	closed *atomic.Bool
+}
+
+func newListener(endpointID string) *listener {
+	return &listener{
+		endpointID: endpointID,
+		acceptCh:   make(chan net.Conn),
+		closed:     atomic.NewBool(false),
+	}
 }
 
 func (l *listener) Accept() (net.Conn, error) {
-	stream, err := l.sess.AcceptTypedStream()
-	if err != nil {
-		return nil, err
+	conn, ok := <-l.acceptCh
+	if !ok {
+		return nil, fmt.Errorf("closed")
 	}
-	return stream, nil
+
+	return conn, nil
 }
 
 func (l *listener) Close() error {
+	if !l.closed.CompareAndSwap(false, true) {
+		return nil
+	}
+	close(l.acceptCh)
+	// TODO(andydunstall): Tell server.
 	return nil
 }
 
@@ -39,7 +58,7 @@ func (l *listener) Addr() net.Addr {
 }
 
 func (l *listener) EndpointID() string {
-	return ""
+	return l.endpointID
 }
 
 var _ Listener = &listener{}

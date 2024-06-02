@@ -31,9 +31,6 @@ Examples:
 
   # Start all configured endpoints.
   piko agent start --config.file ./agent.yaml
-
-  # Ping the server.
-  piko agent ping
 `,
 		// TODO(andydunstall): Hide while in development.
 		Hidden: true,
@@ -68,7 +65,6 @@ default value can be given using form ${VAR:default}.`,
 
 	cmd.AddCommand(newStartCommand(conf))
 	cmd.AddCommand(newHTTPCommand(conf))
-	cmd.AddCommand(newPingCommand(conf))
 
 	// Load the configuration but don't yet validate.
 	cmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
