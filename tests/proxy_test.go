@@ -5,10 +5,8 @@ package tests
 import (
 	"context"
 	"crypto/rand"
-	"errors"
-	"fmt"
-	"net"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 	"time"
@@ -23,40 +21,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type upstreamServer struct {
-	ln     net.Listener
-	server *http.Server
-}
-
-func newUpstreamServer(handler func(http.ResponseWriter, *http.Request)) (*upstreamServer, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, fmt.Errorf("listen: %w", err)
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler)
-	return &upstreamServer{
-		server: &http.Server{
-			Addr:    ln.Addr().String(),
-			Handler: mux,
-		},
-		ln: ln,
-	}, nil
-}
-
-func (s *upstreamServer) Addr() string {
-	return s.ln.Addr().String()
-}
-
-func (s *upstreamServer) Serve() error {
-	return s.server.Serve(s.ln)
-}
-
-func (s *upstreamServer) Close() error {
-	return s.server.Close()
-}
-
 func TestProxy(t *testing.T) {
 	serverConf := defaultServerConfig()
 	server, err := server.NewServer(serverConf, log.NewNopLogger())
@@ -68,19 +32,19 @@ func TestProxy(t *testing.T) {
 		require.NoError(t, server.Run(ctx))
 	}()
 
-	upstream, err := newUpstreamServer(func(http.ResponseWriter, *http.Request) {
-	})
-	require.NoError(t, err)
-	go func() {
-		if err := upstream.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			require.NoError(t, err)
-		}
-	}()
+	upstream := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {},
+	))
 	defer upstream.Close()
 
 	agentConf := defaultAgentConfig(serverConf.Upstream.AdvertiseAddr)
 	endpoint := agent.NewEndpoint(
-		"my-endpoint", upstream.Addr(), agentConf, nil, agent.NewMetrics(), log.NewNopLogger(),
+		"my-endpoint",
+		upstream.Listener.Addr().String(),
+		agentConf,
+		nil,
+		agent.NewMetrics(),
+		log.NewNopLogger(),
 	)
 	go func() {
 		assert.NoError(t, endpoint.Run(ctx))
@@ -130,14 +94,9 @@ func TestProxy_Authenticated(t *testing.T) {
 		require.NoError(t, server.Run(ctx))
 	}()
 
-	upstream, err := newUpstreamServer(func(http.ResponseWriter, *http.Request) {
-	})
-	require.NoError(t, err)
-	go func() {
-		if err := upstream.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			require.NoError(t, err)
-		}
-	}()
+	upstream := httptest.NewServer(http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {},
+	))
 	defer upstream.Close()
 
 	endpointClaims := jwt.RegisteredClaims{
@@ -151,7 +110,12 @@ func TestProxy_Authenticated(t *testing.T) {
 	agentConf := defaultAgentConfig(serverConf.Upstream.AdvertiseAddr)
 	agentConf.Auth.APIKey = apiKey
 	endpoint := agent.NewEndpoint(
-		"my-endpoint", upstream.Addr(), agentConf, nil, agent.NewMetrics(), log.NewNopLogger(),
+		"my-endpoint",
+		upstream.Listener.Addr().String(),
+		agentConf,
+		nil,
+		agent.NewMetrics(),
+		log.NewNopLogger(),
 	)
 	go func() {
 		assert.NoError(t, endpoint.Run(ctx))
