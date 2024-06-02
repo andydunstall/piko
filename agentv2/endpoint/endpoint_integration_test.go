@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/andydunstall/piko/agentv2/config"
@@ -26,55 +27,16 @@ func (l *fakeListener) EndpointID() string {
 	return l.endpointID
 }
 
-type upstreamServer struct {
-	ln     net.Listener
-	server *http.Server
-}
-
-func newUpstreamServer(handler func(http.ResponseWriter, *http.Request)) (*upstreamServer, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, fmt.Errorf("listen: %w", err)
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handler)
-	return &upstreamServer{
-		server: &http.Server{
-			Addr:    ln.Addr().String(),
-			Handler: mux,
-		},
-		ln: ln,
-	}, nil
-}
-
-func (s *upstreamServer) Addr() string {
-	return s.ln.Addr().String()
-}
-
-func (s *upstreamServer) Serve() error {
-	return s.server.Serve(s.ln)
-}
-
-func (s *upstreamServer) Close() error {
-	return s.server.Close()
-}
-
 func TestEndpoint_Forward(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
-		upstream, err := newUpstreamServer(func(w http.ResponseWriter, r *http.Request) {
-		})
-		require.NoError(t, err)
-		go func() {
-			if err := upstream.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-				require.NoError(t, err)
-			}
-		}()
+		upstream := httptest.NewServer(http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {},
+		))
 		defer upstream.Close()
 
 		endpoint := NewEndpoint(config.EndpointConfig{
 			ID:   "my-endpoint",
-			Addr: upstream.Addr(),
+			Addr: upstream.URL,
 		}, log.NewNopLogger())
 
 		tcpLn, err := net.Listen("tcp", "127.0.0.1:0")
