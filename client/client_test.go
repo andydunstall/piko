@@ -23,7 +23,7 @@ func Example() {
 	}
 
 	// Listen on endpoint 'my-endpoint'.
-	ln, err := piko.Listen(context.Background(), "my-endpoint")
+	ln, err := piko.Listen("my-endpoint")
 	if err != nil {
 		panic("listen: " + err.Error())
 	}

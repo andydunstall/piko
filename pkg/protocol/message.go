@@ -16,3 +16,7 @@ type ListenRequest struct {
 type ListenResponse struct {
 	EndpointID string `json:"endpoint_id"`
 }
+
+type ProxyHeader struct {
+	EndpointID string `json:"endpoint_id"`
+}

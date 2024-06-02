@@ -98,11 +98,11 @@ func (s *Server) wsRoute(c *gin.Context) {
 	defer conn.Close()
 
 	s.logger.Debug(
-		"listener connected",
+		"upstream connected",
 		zap.String("client-ip", c.ClientIP()),
 	)
 	defer s.logger.Debug(
-		"listener disconnected",
+		"upstream disconnected",
 		zap.String("client-ip", c.ClientIP()),
 	)
 
@@ -113,12 +113,6 @@ func (s *Server) wsRoute(c *gin.Context) {
 		muxado.NewHeartbeatConfig(),
 	)
 
-	upstream := &upstream.Upstream{
-		Sess: sess,
-	}
-	s.manager.Add(upstream)
-	defer s.manager.Remove(upstream)
-
 	for {
 		stream, err := heartbeat.AcceptTypedStream()
 		if err != nil {
@@ -126,7 +120,7 @@ func (s *Server) wsRoute(c *gin.Context) {
 			return
 		}
 		go func() {
-			if err := s.handleStream(stream); err != nil {
+			if err := s.handleStream(heartbeat, stream); err != nil {
 				s.logger.Warn("handle stream", zap.Error(err))
 			}
 		}()
@@ -142,10 +136,10 @@ func (s *Server) panicRoute(c *gin.Context, err any) {
 	c.AbortWithStatus(http.StatusInternalServerError)
 }
 
-func (s *Server) handleStream(stream muxado.TypedStream) error {
+func (s *Server) handleStream(sess *muxado.Heartbeat, stream muxado.TypedStream) error {
 	switch protocol.RPCType(stream.StreamType()) {
 	case protocol.RPCTypeListen:
-		if err := s.handleListenRequest(stream); err != nil {
+		if err := s.handleListenRequest(sess, stream); err != nil {
 			return fmt.Errorf("listen request: %w", err)
 		}
 		return nil
@@ -154,7 +148,7 @@ func (s *Server) handleStream(stream muxado.TypedStream) error {
 	}
 }
 
-func (s *Server) handleListenRequest(stream muxado.TypedStream) error {
+func (s *Server) handleListenRequest(sess *muxado.Heartbeat, stream muxado.TypedStream) error {
 	var req protocol.ListenRequest
 	if err := json.NewDecoder(stream).Decode(&req); err != nil {
 		return fmt.Errorf("decode request: %w", err)
@@ -170,7 +164,13 @@ func (s *Server) handleListenRequest(stream muxado.TypedStream) error {
 		zap.String("endpoint-id", req.EndpointID),
 	)
 
-	// TODO(andydunstall): Register.
+	// TODO(andydunstall): Handle unregistering.
+
+	upstream := &upstream.Upstream{
+		EndpointID: req.EndpointID,
+		Sess:       sess,
+	}
+	s.manager.Add(upstream)
 
 	return nil
 }

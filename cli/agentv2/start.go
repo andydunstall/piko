@@ -94,7 +94,7 @@ func runStart(endpoints []string, conf *config.Config, logger log.Logger) error 
 			continue
 		}
 
-		ln, err := client.Listen(context.Background(), endpointConfig.ID)
+		ln, err := client.Listen(endpointConfig.ID)
 		if err != nil {
 			return fmt.Errorf("listen: %s: %w", endpointConfig.ID, err)
 		}

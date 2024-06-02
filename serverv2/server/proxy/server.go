@@ -23,9 +23,8 @@ type Server struct {
 func NewServer(manager *upstream.Manager, logger log.Logger) *Server {
 	transport := &http.Transport{
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			// TODO(andydunstall): Currently connecting to any available
-			// upstream.
-			return manager.Dial()
+			endpointID, _, _ := net.SplitHostPort(addr)
+			return manager.Dial(endpointID)
 		},
 		ForceAttemptHTTP2:     true,
 		MaxIdleConns:          100,
@@ -38,7 +37,9 @@ func NewServer(manager *upstream.Manager, logger log.Logger) *Server {
 	proxy := &httputil.ReverseProxy{
 		Transport: transport,
 		Rewrite: func(r *httputil.ProxyRequest) {
-			u, _ := url.Parse("http://localhost:9999")
+			// TODO(andydunstall): For now hacky approach assuming
+			// x-piko-endpoint is set.
+			u, _ := url.Parse("http://" + r.In.Header.Get("x-piko-endpoint"))
 			r.SetURL(u)
 		},
 		ErrorLog: logger.StdLogger(zapcore.WarnLevel),
