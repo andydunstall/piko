@@ -10,8 +10,7 @@ import (
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
-	proxyserver "github.com/andydunstall/piko/serverv2/server/proxy"
-	upstreamserver "github.com/andydunstall/piko/serverv2/server/upstream"
+	"github.com/andydunstall/piko/serverv2/reverseproxy"
 	"github.com/andydunstall/piko/serverv2/upstream"
 	rungroup "github.com/oklog/run"
 	"github.com/spf13/cobra"
@@ -61,8 +60,8 @@ func run(logger log.Logger) error {
 	}
 
 	upstreamManager := upstream.NewManager()
-	proxyServer := proxyserver.NewServer(upstreamManager, logger)
-	upstreamServer := upstreamserver.NewServer(upstreamManager, nil, logger)
+	proxyServer := reverseproxy.NewServer(upstreamManager, logger)
+	upstreamServer := upstream.NewServer(upstreamManager, nil, logger)
 
 	var group rungroup.Group
 

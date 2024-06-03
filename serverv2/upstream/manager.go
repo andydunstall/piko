@@ -1,6 +1,7 @@
 package upstream
 
 import (
+	"encoding/binary"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -51,7 +52,14 @@ func (m *Manager) Dial(endpointID string) (net.Conn, error) {
 	header := protocol.ProxyHeader{
 		EndpointID: endpointID,
 	}
-	if err := json.NewEncoder(stream).Encode(header); err != nil {
+	b, err := json.Marshal(header)
+	if err != nil {
+		return nil, fmt.Errorf("encode proxy header: %w", err)
+	}
+	if err := binary.Write(stream, binary.BigEndian, int64(len(b))); err != nil {
+		return nil, fmt.Errorf("write proxy header: %w", err)
+	}
+	if _, err := stream.Write(b); err != nil {
 		return nil, fmt.Errorf("write proxy header: %w", err)
 	}
 

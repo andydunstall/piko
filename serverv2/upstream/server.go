@@ -1,4 +1,4 @@
-package server
+package upstream
 
 import (
 	"context"
@@ -12,7 +12,6 @@ import (
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/protocol"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
-	"github.com/andydunstall/piko/serverv2/upstream"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"go.uber.org/zap"
@@ -22,7 +21,7 @@ import (
 
 // Server accepts connections from upstream services.
 type Server struct {
-	manager *upstream.Manager
+	manager *Manager
 
 	router *gin.Engine
 
@@ -34,7 +33,7 @@ type Server struct {
 }
 
 func NewServer(
-	manager *upstream.Manager,
+	manager *Manager,
 	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {
@@ -166,7 +165,7 @@ func (s *Server) handleListenRequest(sess *muxado.Heartbeat, stream muxado.Typed
 
 	// TODO(andydunstall): Handle unregistering.
 
-	upstream := &upstream.Upstream{
+	upstream := &Upstream{
 		EndpointID: req.EndpointID,
 		Sess:       sess,
 	}
