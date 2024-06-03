@@ -2,9 +2,11 @@ package piko
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"sync"
 	"time"
@@ -169,8 +171,14 @@ func (p *Piko) receive() {
 			return
 		}
 
+		var sz int64
+		if err := binary.Read(stream, binary.BigEndian, &sz); err != nil {
+			p.logger.Warn("failed to read proxy header", zap.Error(err))
+			continue
+		}
+
 		var header protocol.ProxyHeader
-		if err := json.NewDecoder(stream).Decode(&header); err != nil {
+		if err := json.NewDecoder(io.LimitReader(stream, sz)).Decode(&header); err != nil {
 			p.logger.Warn("failed to read proxy header", zap.Error(err))
 			continue
 		}
