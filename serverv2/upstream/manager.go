@@ -1,14 +1,9 @@
 package upstream
 
 import (
-	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"net"
 	"sync"
-
-	"github.com/andydunstall/piko/pkg/protocol"
-	"golang.ngrok.com/muxado/v2"
 )
 
 // Manager manages the set of local upsteam services.
@@ -33,6 +28,20 @@ func (m *Manager) Add(upstream *Upstream) {
 	)
 }
 
+func (m *Manager) Remove(upstream *Upstream) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	var upstreams []*Upstream
+	for _, u := range m.upstreams[upstream.EndpointID] {
+		if u != upstream {
+			upstreams = append(upstreams, u)
+		}
+	}
+
+	m.upstreams[upstream.EndpointID] = upstreams
+}
+
 func (m *Manager) Dial(endpointID string) (net.Conn, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -42,26 +51,9 @@ func (m *Manager) Dial(endpointID string) (net.Conn, error) {
 		return nil, fmt.Errorf("not found")
 	}
 
-	stream, err := upstreams[0].Sess.OpenTypedStream(
-		muxado.StreamType(protocol.RPCTypeProxy),
-	)
+	stream, err := upstreams[0].Sess.OpenTypedStream(0)
 	if err != nil {
 		return nil, err
 	}
-
-	header := protocol.ProxyHeader{
-		EndpointID: endpointID,
-	}
-	b, err := json.Marshal(header)
-	if err != nil {
-		return nil, fmt.Errorf("encode proxy header: %w", err)
-	}
-	if err := binary.Write(stream, binary.BigEndian, int64(len(b))); err != nil {
-		return nil, fmt.Errorf("write proxy header: %w", err)
-	}
-	if _, err := stream.Write(b); err != nil {
-		return nil, fmt.Errorf("write proxy header: %w", err)
-	}
-
 	return stream, nil
 }

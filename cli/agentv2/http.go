@@ -86,26 +86,22 @@ func runHTTP(conf *config.Config, logger log.Logger) error {
 	endpointConfig := conf.Endpoints[0]
 	endpoint := endpoint.NewEndpoint(endpointConfig, logger)
 
+	client := piko.New(
+		piko.WithToken(conf.Token),
+		piko.WithLogger(logger.WithSubsystem("client")),
+	)
+
 	connectCtx, connectCancel := context.WithTimeout(
 		context.Background(),
 		conf.Connect.Timeout,
 	)
 	defer connectCancel()
 
-	client, err := piko.Connect(
-		connectCtx,
-		piko.WithToken(conf.Token),
-		piko.WithLogger(logger.WithSubsystem("client")),
-	)
-	if err != nil {
-		return fmt.Errorf("connect: %w", err)
-	}
-	defer client.Close()
-
-	ln, err := client.Listen(endpointConfig.ID)
+	ln, err := client.Listen(connectCtx, endpointConfig.ID)
 	if err != nil {
 		return fmt.Errorf("listen: %s: %w", endpointConfig.ID, err)
 	}
+	defer ln.Close()
 
 	var group rungroup.Group
 
