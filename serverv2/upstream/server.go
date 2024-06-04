@@ -3,14 +3,12 @@ package upstream
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/protocol"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -82,7 +80,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 
 func (s *Server) registerRoutes() {
 	piko := s.router.Group("/piko/v1")
-	piko.GET("/upstream/ws", s.wsRoute)
+	piko.GET("/upstream/:endpointID", s.wsRoute)
 }
 
 // listenerRoute handles WebSocket connections from upstream services.
@@ -96,12 +94,16 @@ func (s *Server) wsRoute(c *gin.Context) {
 	conn := pikowebsocket.New(wsConn)
 	defer conn.Close()
 
+	endpointID := c.Param("endpointID")
+
 	s.logger.Debug(
 		"upstream connected",
+		zap.String("endpoint-id", endpointID),
 		zap.String("client-ip", c.ClientIP()),
 	)
 	defer s.logger.Debug(
 		"upstream disconnected",
+		zap.String("endpoint-id", endpointID),
 		zap.String("client-ip", c.ClientIP()),
 	)
 
@@ -112,17 +114,21 @@ func (s *Server) wsRoute(c *gin.Context) {
 		muxado.NewHeartbeatConfig(),
 	)
 
+	upstream := &Upstream{
+		EndpointID: endpointID,
+		Sess:       sess,
+	}
+	s.manager.Add(upstream)
+	defer s.manager.Remove(upstream)
+
 	for {
-		stream, err := heartbeat.AcceptTypedStream()
+		// The server doesn't yet accept streams, though need to keep accepting
+		// to respond to heartbeats and detect close.
+		_, err := heartbeat.AcceptStream()
 		if err != nil {
 			s.logger.Warn("accept stream", zap.Error(err))
 			return
 		}
-		go func() {
-			if err := s.handleStream(heartbeat, stream); err != nil {
-				s.logger.Warn("handle stream", zap.Error(err))
-			}
-		}()
 	}
 }
 
@@ -133,45 +139,6 @@ func (s *Server) panicRoute(c *gin.Context, err any) {
 		zap.Any("err", err),
 	)
 	c.AbortWithStatus(http.StatusInternalServerError)
-}
-
-func (s *Server) handleStream(sess *muxado.Heartbeat, stream muxado.TypedStream) error {
-	switch protocol.RPCType(stream.StreamType()) {
-	case protocol.RPCTypeListen:
-		if err := s.handleListenRequest(sess, stream); err != nil {
-			return fmt.Errorf("listen request: %w", err)
-		}
-		return nil
-	default:
-		return fmt.Errorf("unsupported rpc type: %d", stream.StreamType())
-	}
-}
-
-func (s *Server) handleListenRequest(sess *muxado.Heartbeat, stream muxado.TypedStream) error {
-	var req protocol.ListenRequest
-	if err := json.NewDecoder(stream).Decode(&req); err != nil {
-		return fmt.Errorf("decode request: %w", err)
-	}
-
-	resp := protocol.ListenResponse(req)
-	if err := json.NewEncoder(stream).Encode(resp); err != nil {
-		return fmt.Errorf("decode response: %w", err)
-	}
-
-	s.logger.Info(
-		"registered listener",
-		zap.String("endpoint-id", req.EndpointID),
-	)
-
-	// TODO(andydunstall): Handle unregistering.
-
-	upstream := &Upstream{
-		EndpointID: req.EndpointID,
-		Sess:       sess,
-	}
-	s.manager.Add(upstream)
-
-	return nil
 }
 
 func init() {

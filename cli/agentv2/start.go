@@ -76,16 +76,10 @@ func runStart(endpoints []string, conf *config.Config, logger log.Logger) error 
 	logger.Info("starting piko agent")
 	logger.Warn("piko agent v2 is still in development")
 
-	connectCtx, connectCancel := context.WithTimeout(
-		context.Background(),
-		conf.Connect.Timeout,
+	client := piko.New(
+		piko.WithToken(conf.Token),
+		piko.WithLogger(logger.WithSubsystem("client")),
 	)
-	defer connectCancel()
-
-	client, err := piko.Connect(connectCtx, piko.WithToken(conf.Token))
-	if err != nil {
-		return fmt.Errorf("connect: %w", err)
-	}
 
 	var group rungroup.Group
 
@@ -94,10 +88,17 @@ func runStart(endpoints []string, conf *config.Config, logger log.Logger) error 
 			continue
 		}
 
-		ln, err := client.Listen(endpointConfig.ID)
+		connectCtx, connectCancel := context.WithTimeout(
+			context.Background(),
+			conf.Connect.Timeout,
+		)
+		defer connectCancel()
+
+		ln, err := client.Listen(connectCtx, endpointConfig.ID)
 		if err != nil {
 			return fmt.Errorf("listen: %s: %w", endpointConfig.ID, err)
 		}
+		defer ln.Close()
 
 		endpoint := endpoint.NewEndpoint(endpointConfig, logger)
 
