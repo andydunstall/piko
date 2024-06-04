@@ -7,9 +7,9 @@ import (
 	"os/signal"
 	"syscall"
 
+	piko "github.com/andydunstall/piko/agentv2/client"
 	"github.com/andydunstall/piko/agentv2/config"
 	"github.com/andydunstall/piko/agentv2/endpoint"
-	piko "github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pkg/log"
 	rungroup "github.com/oklog/run"
 	"github.com/spf13/cobra"

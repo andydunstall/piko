@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -41,11 +42,22 @@ func (e *RetryableError) Error() string {
 }
 
 type dialOptions struct {
+	token     string
 	tlsConfig *tls.Config
 }
 
 type DialOption interface {
 	apply(*dialOptions)
+}
+
+type tokenOption string
+
+func (o tokenOption) apply(opts *dialOptions) {
+	opts.token = string(o)
+}
+
+func WithToken(token string) DialOption {
+	return tokenOption(token)
 }
 
 type tlsConfigOption struct {
@@ -91,8 +103,13 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 		dialer.TLSClientConfig = options.tlsConfig
 	}
 
+	header := make(http.Header)
+	if options.token != "" {
+		header.Set("Authorization", "Bearer "+options.token)
+	}
+
 	wsConn, resp, err := dialer.DialContext(
-		ctx, url, nil,
+		ctx, url, header,
 	)
 	if err != nil {
 		if resp != nil {
@@ -111,6 +128,10 @@ func (c *Conn) Read(b []byte) (int, error) {
 		if c.reader == nil {
 			mt, r, err := c.wsConn.NextReader()
 			if err != nil {
+				var closeErr *websocket.CloseError
+				if errors.As(err, &closeErr) {
+					return 0, net.ErrClosed
+				}
 				return 0, err
 			}
 			if mt != websocket.BinaryMessage {
@@ -130,6 +151,10 @@ func (c *Conn) Read(b []byte) (int, error) {
 			return n, err
 		}
 		if err != io.EOF {
+			var closeErr *websocket.CloseError
+			if errors.As(err, &closeErr) {
+				return 0, net.ErrClosed
+			}
 			return 0, err
 		}
 
@@ -140,6 +165,10 @@ func (c *Conn) Read(b []byte) (int, error) {
 
 func (c *Conn) Write(b []byte) (int, error) {
 	if err := c.wsConn.WriteMessage(websocket.BinaryMessage, b); err != nil {
+		var closeErr *websocket.CloseError
+		if errors.As(err, &closeErr) {
+			return 0, net.ErrClosed
+		}
 		return 0, err
 	}
 	return len(b), nil

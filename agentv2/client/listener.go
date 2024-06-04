@@ -45,20 +45,27 @@ func (l *listener) Accept() (net.Conn, error) {
 }
 
 func (l *listener) Close() error {
+	// TODO(andydunstall): Doesn't yet notify the server that the listener is
+	// closed. This is ok for now as the client is only used in agent.
+
 	if !l.closed.CompareAndSwap(false, true) {
 		return nil
 	}
 	close(l.acceptCh)
-	// TODO(andydunstall): Tell server.
 	return nil
 }
 
 func (l *listener) Addr() net.Addr {
+	// TODO(andydunstall)
 	return nil
 }
 
 func (l *listener) EndpointID() string {
 	return l.endpointID
+}
+
+func (l *listener) OnConn(conn net.Conn) {
+	l.acceptCh <- conn
 }
 
 var _ Listener = &listener{}

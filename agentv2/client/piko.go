@@ -13,11 +13,11 @@ import (
 
 	"github.com/andydunstall/piko/pkg/backoff"
 	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/mux"
 	"github.com/andydunstall/piko/pkg/protocol"
 	"github.com/andydunstall/piko/pkg/websocket"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
-	"golang.ngrok.com/muxado/v2"
 )
 
 const (
@@ -42,7 +42,7 @@ const (
 //
 // NOTE the client is still in development...
 type Piko struct {
-	sess *muxado.Heartbeat
+	mux *mux.Session
 
 	listeners   map[string]*listener
 	listenersMu sync.Mutex
@@ -72,15 +72,12 @@ func Connect(ctx context.Context, opts ...ConnectOption) (*Piko, error) {
 		closed:    atomic.NewBool(false),
 		logger:    options.logger,
 	}
-	sess, err := client.connect(ctx, options)
+	mux, err := client.connect(ctx, options)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}
+	client.mux = mux
 
-	typed := muxado.NewTypedStreamSession(sess)
-	heart := muxado.NewHeartbeat(typed, client.onHeartbeat, muxado.NewHeartbeatConfig())
-	client.sess = heart
-	client.sess.Start()
 	go client.receive()
 
 	return client, nil
@@ -99,7 +96,7 @@ func (p *Piko) Listen(endpointID string) (Listener, error) {
 		EndpointID: endpointID,
 	}
 	var resp protocol.ListenResponse
-	if err := p.rpc(protocol.RPCTypeListen, req, &resp); err != nil {
+	if err := p.mux.RPC(protocol.RPCTypeListen, req, &resp); err != nil {
 		p.removeListener(endpointID)
 		return nil, fmt.Errorf("rpc: %w", err)
 	}
@@ -117,10 +114,10 @@ func (p *Piko) Close() error {
 		ln.Close()
 	}
 	p.listenersMu.Unlock()
-	return p.sess.Close()
+	return p.mux.Close()
 }
 
-func (p *Piko) connect(ctx context.Context, options connectOptions) (muxado.Session, error) {
+func (p *Piko) connect(ctx context.Context, options connectOptions) (*mux.Session, error) {
 	backoff := backoff.New(
 		0,
 		minReconnectBackoff,
@@ -130,6 +127,7 @@ func (p *Piko) connect(ctx context.Context, options connectOptions) (muxado.Sess
 		conn, err := websocket.Dial(
 			ctx,
 			serverURL(options.url),
+			websocket.WithToken(options.token),
 			websocket.WithTLSConfig(options.tlsConfig),
 		)
 		if err == nil {
@@ -138,7 +136,7 @@ func (p *Piko) connect(ctx context.Context, options connectOptions) (muxado.Sess
 				zap.String("url", serverURL(options.url)),
 			)
 
-			return muxado.Client(conn, &muxado.Config{}), nil
+			return mux.OpenClient(conn), nil
 		}
 
 		var retryableError *websocket.RetryableError
@@ -165,20 +163,30 @@ func (p *Piko) connect(ctx context.Context, options connectOptions) (muxado.Sess
 
 func (p *Piko) receive() {
 	for {
-		stream, err := p.sess.AcceptTypedStream()
+		conn, err := p.mux.Accept()
 		if err != nil {
-			p.logger.Warn("failed to accept stream", zap.Error(err))
+			if errors.Is(err, mux.ErrSessionClosed) {
+				return
+			}
+
+			// TODO(andydunstall): Reconnect.
+
+			p.logger.Warn("failed to accept conn", zap.Error(err))
 			return
 		}
 
+		// Read the proxy header. To avoid the JSON decoder reading the
+		// HTTP request itself, the header is prefixed with a size then only
+		// that number of bytes may be read.
+
 		var sz int64
-		if err := binary.Read(stream, binary.BigEndian, &sz); err != nil {
+		if err := binary.Read(conn, binary.BigEndian, &sz); err != nil {
 			p.logger.Warn("failed to read proxy header", zap.Error(err))
 			continue
 		}
 
 		var header protocol.ProxyHeader
-		if err := json.NewDecoder(io.LimitReader(stream, sz)).Decode(&header); err != nil {
+		if err := json.NewDecoder(io.LimitReader(conn, sz)).Decode(&header); err != nil {
 			p.logger.Warn("failed to read proxy header", zap.Error(err))
 			continue
 		}
@@ -189,39 +197,13 @@ func (p *Piko) receive() {
 			continue
 		}
 
-		ln.acceptCh <- stream
+		ln.OnConn(conn)
 
 		p.logger.Debug(
 			"accepted conn",
 			zap.String("endpoint-id", header.EndpointID),
 		)
 	}
-}
-
-func (p *Piko) rpc(rpcType protocol.RPCType, req any, resp any) error {
-	stream, err := p.sess.OpenTypedStream(muxado.StreamType(rpcType))
-	if err != nil {
-		return fmt.Errorf("open stream: %w", err)
-	}
-	defer stream.Close()
-
-	if err := json.NewEncoder(stream).Encode(req); err != nil {
-		return fmt.Errorf("encode req: %w", err)
-	}
-
-	if err := json.NewDecoder(stream).Decode(&resp); err != nil {
-		return fmt.Errorf("decode resp: %w", err)
-	}
-
-	return nil
-}
-
-func (p *Piko) onHeartbeat(latency time.Duration, timeout bool) {
-	p.logger.Debug(
-		"heartbeat",
-		zap.String("latency", latency.String()),
-		zap.Bool("timeout", timeout),
-	)
 }
 
 func (p *Piko) getListener(endpointID string) (*listener, bool) {
