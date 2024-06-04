@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"net/http/httputil"
 
+	piko "github.com/andydunstall/piko/agentv2/client"
 	"github.com/andydunstall/piko/agentv2/config"
-	piko "github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pkg/log"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
