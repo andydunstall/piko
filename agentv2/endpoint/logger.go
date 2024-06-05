@@ -1,4 +1,4 @@
-package reverseproxy
+package endpoint
 
 import (
 	"net/http"
@@ -22,7 +22,7 @@ type loggedRequest struct {
 
 // NewLoggerMiddleware creates logging middleware that logs every request.
 func NewLoggerMiddleware(accessLog bool, logger log.Logger) gin.HandlerFunc {
-	logger = logger.WithSubsystem("reverseproxy.access")
+	logger = logger.WithSubsystem("endpoint.access")
 	return func(c *gin.Context) {
 		s := time.Now()
 

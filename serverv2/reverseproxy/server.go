@@ -9,6 +9,7 @@ import (
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 type Server struct {
@@ -32,7 +33,8 @@ func NewServer(
 		handler: NewHandler(upstreams, logger),
 		router:  router,
 		httpServer: &http.Server{
-			Handler: router,
+			Handler:  router,
+			ErrorLog: logger.StdLogger(zapcore.WarnLevel),
 		},
 		logger: logger,
 	}

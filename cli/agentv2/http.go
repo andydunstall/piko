@@ -86,8 +86,14 @@ func runHTTP(conf *config.Config, logger log.Logger) error {
 	endpointConfig := conf.Endpoints[0]
 	endpoint := endpoint.NewEndpoint(endpointConfig, logger)
 
+	connTLSConfig, err := conf.Connect.TLS.Load()
+	if err != nil {
+		return fmt.Errorf("tls: %w", err)
+	}
+
 	client := piko.New(
 		piko.WithToken(conf.Token),
+		piko.WithTLSConfig(connTLSConfig),
 		piko.WithLogger(logger.WithSubsystem("client")),
 	)
 
