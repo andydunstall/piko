@@ -114,10 +114,7 @@ func (s *Server) wsRoute(c *gin.Context) {
 		muxado.NewHeartbeatConfig(),
 	)
 
-	upstream := &Upstream{
-		EndpointID: endpointID,
-		Sess:       sess,
-	}
+	upstream := NewMuxUpstream(endpointID, sess)
 	s.manager.Add(upstream)
 	defer s.manager.Remove(upstream)
 

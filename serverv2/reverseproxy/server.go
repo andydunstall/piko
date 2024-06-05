@@ -13,7 +13,7 @@ import (
 )
 
 type Server struct {
-	handler *Handler
+	handler *ReverseProxy
 
 	router *gin.Engine
 
@@ -23,14 +23,14 @@ type Server struct {
 }
 
 func NewServer(
-	upstreams UpstreamPool,
+	upstreams UpstreamManager,
 	logger log.Logger,
 ) *Server {
 	logger = logger.WithSubsystem("reverseproxy")
 
 	router := gin.New()
 	server := &Server{
-		handler: NewHandler(upstreams, logger),
+		handler: NewReverseProxy(upstreams, logger),
 		router:  router,
 		httpServer: &http.Server{
 			Handler:  router,
