@@ -53,6 +53,8 @@ func (s *Session) Close() error {
 	return s.mux.Close()
 }
 
-func (s *Session) onHeartbeat(_ time.Duration, _ bool) {
-	// TODO(andydunstall)
+func (s *Session) onHeartbeat(_ time.Duration, timeout bool) {
+	if timeout {
+		s.mux.Close()
+	}
 }

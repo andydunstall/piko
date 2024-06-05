@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/andydunstall/piko/pkg/log"
+	"go.uber.org/zap/zapcore"
 )
 
 // Handler implements a reverse proxy HTTP handler that accepts requests from
@@ -45,6 +46,7 @@ func NewHandler(upstreams UpstreamPool, logger log.Logger) *Handler {
 				RawQuery: r.In.URL.RawQuery,
 			})
 		},
+		ErrorLog: logger.StdLogger(zapcore.WarnLevel),
 	}
 	handler.proxy = proxy
 	return handler

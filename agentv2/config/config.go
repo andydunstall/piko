@@ -1,9 +1,12 @@
 package config
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"net/url"
+	"os"
 	"strconv"
 	"time"
 
@@ -68,8 +71,51 @@ func (c *EndpointConfig) Validate() error {
 	return nil
 }
 
+type TLSConfig struct {
+	// RootCAs contains a path to root certificate authorities to validate
+	// the TLS connection to the Piko server.
+	//
+	// Defaults to using the host root CAs.
+	RootCAs string `json:"root_cas" yaml:"root_cas"`
+}
+
+func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.StringVar(
+		&c.RootCAs,
+		"tls.root-cas",
+		"",
+		`
+A path to a certificate PEM file containing root certificiate authorities to
+validate the TLS connection to the Piko server.
+
+Defaults to using the host root CAs.`,
+	)
+}
+
+func (c *TLSConfig) Load() (*tls.Config, error) {
+	if c.RootCAs == "" {
+		return nil, nil
+	}
+
+	tlsConfig := &tls.Config{}
+
+	caCert, err := os.ReadFile(c.RootCAs)
+	if err != nil {
+		return nil, fmt.Errorf("open root cas: %s: %w", c.RootCAs, err)
+	}
+	caCertPool := x509.NewCertPool()
+	ok := caCertPool.AppendCertsFromPEM(caCert)
+	if !ok {
+		return nil, fmt.Errorf("parse root cas: %s: %w", c.RootCAs, err)
+	}
+	tlsConfig.RootCAs = caCertPool
+
+	return tlsConfig, nil
+}
+
 type ConnectConfig struct {
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
+	TLS     TLSConfig     `json:"tls" yaml:"tls"`
 }
 
 func (c *ConnectConfig) Validate() error {
@@ -89,6 +135,7 @@ Timeout attempting to connect to the Piko server on boot. Note if the agent
 is disconnected after the initial connection succeeds it will keep trying to
 reconnect.`,
 	)
+	c.TLS.RegisterFlags(fs)
 }
 
 type Config struct {
