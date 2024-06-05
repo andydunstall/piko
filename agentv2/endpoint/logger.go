@@ -31,7 +31,7 @@ func NewLoggerMiddleware(accessLog bool, logger log.Logger) gin.HandlerFunc {
 		req := &loggedRequest{
 			Proto:           c.Request.Proto,
 			Method:          c.Request.Method,
-			Host:            c.Request.Method,
+			Host:            c.Request.Host,
 			Path:            c.Request.URL.Path,
 			RequestHeaders:  c.Request.Header,
 			ResponseHeaders: c.Writer.Header(),
