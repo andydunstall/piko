@@ -38,9 +38,14 @@ func NewServer(
 	s := &Server{
 		proxy: NewReverseProxy(upstreams, proxyConfig.Timeout, logger),
 		httpServer: &http.Server{
-			Handler:   router,
-			TLSConfig: tlsConfig,
-			ErrorLog:  logger.StdLogger(zapcore.WarnLevel),
+			Handler:           router,
+			TLSConfig:         tlsConfig,
+			ReadTimeout:       proxyConfig.HTTP.ReadTimeout,
+			ReadHeaderTimeout: proxyConfig.HTTP.ReadHeaderTimeout,
+			WriteTimeout:      proxyConfig.HTTP.WriteTimeout,
+			IdleTimeout:       proxyConfig.HTTP.IdleTimeout,
+			MaxHeaderBytes:    proxyConfig.HTTP.MaxHeaderBytes,
+			ErrorLog:          logger.StdLogger(zapcore.WarnLevel),
 		},
 		logger: logger,
 	}

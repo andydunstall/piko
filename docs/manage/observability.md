@@ -36,11 +36,11 @@ Piko also includes a number of Grafana dashboards at
 
 ## Status
 Piko includes a status CLI to inspect a Piko server. Servers register endpoints
-at `/status` on the admin port that `piko status` then queries.
+at `/status` on the admin port that `piko server status` then queries.
 
 Such as to view the endpoints registers on a server use
-`piko status proxy endpoints`. Or to inspect the set of known nodes in the
-cluster use `piko status cluster nodes`.
+`piko server status proxy endpoints`. Or to inspect the set of known nodes in the
+cluster use `piko server status cluster nodes`.
 
 Configure the server URL with `--server.url`. You can also forward the request
  to a particular node ID using `--forward` (which can be useful when all nodes

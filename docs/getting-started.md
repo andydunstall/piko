@@ -34,10 +34,10 @@ The following ports are exposed:
 and health checks
 
 You can verify Piko has started and discovered the other nodes in the cluster
-by running `piko status cluster nodes`, which will request the set of known
-nodes from the Piko admin API (routed to a random node), such as:
+by running `piko server status cluster nodes`, which will request the set of
+known nodes from the Piko admin API (routed to a random node), such as:
 ```
-$ piko status cluster nodes
+$ piko server status cluster nodes
 nodes:
 - id: piko-1-fuvaflv
   status: active
@@ -60,7 +60,7 @@ nodes:
 ```
 
 You can also use the `--forward` flag to forward the request to a particular
-node, such as `piko status cluster nodes --forward piko-3-p3wnt2z`.
+node, such as `piko server status cluster nodes --forward piko-3-p3wnt2z`.
 
 The cluster also includes Prometheus and Grafana to inspect the cluster
 metrics. You can open Grafana at `http://localhost:3000`.
@@ -77,7 +77,7 @@ First create a local HTTP server to forward requests to, such as
 
 Then run the Piko agent and register endpoint `my-endpoint` using:
 ```shell
-piko agent my-endpoint/localhost:4000
+piko agent http my-endpoint 4000
 ```
 
 This will connect to the cluster load balancer, which routes the request to
@@ -88,10 +88,10 @@ request to your service.
 See `piko agent -h` for the available options.
 
 You can verify the upstream has connected and registered the endpoint by
-running `piko status cluster nodes` again, which will now show one of the nodes
-has a connected stream and registered endpoint:
+running `piko server status cluster nodes` again, which will now show one of
+the nodes has a connected stream and registered endpoint:
 ```
-$ piko status cluster nodes
+$ piko server status cluster nodes
 nodes:
 - id: piko-1-fuvaflv
   status: active
@@ -103,10 +103,10 @@ nodes:
 ```
 
 You can also inspect the upstreams connected for that registered endpoint with
-`piko status proxy endpoints --forward <node ID>`. Such as in the above example
-the upstream is connected to node `piko-1-fuvaflv`:
+`piko server status proxy endpoints --forward <node ID>`. Such as in the above
+example the upstream is connected to node `piko-1-fuvaflv`:
 ```
-$ piko status proxy endpoints --forward piko-1-fuvaflv
+$ piko server status proxy endpoints --forward piko-1-fuvaflv
 endpoints:
   my-endpoint:
   - 172.18.0.7:39084

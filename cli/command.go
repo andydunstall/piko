@@ -38,7 +38,7 @@ registers the configured endpoints, then forwards incoming requests to your
 services.
 
 Such as to register endpoint 'my-endpoint' to forward connections to your
-service at 'localhost:3000'.
+service at 'localhost:3000':
 
   $ piko agent http my-endpoint 3000
 `,

@@ -26,7 +26,7 @@ See 'status --help' for the availale commands.
 
 Examples:
   # Inspect the known nodes in the cluster.
-  piko status cluster nodes
+  piko server status cluster nodes
 `,
 	}
 
