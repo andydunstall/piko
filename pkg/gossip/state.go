@@ -53,7 +53,7 @@ type NodeMetadata struct {
 
 	// Expiry contains the time the node state will expire. This is only set
 	// if the node is considered left or unreachable until the expiry.
-	Expiry time.Time
+	Expiry time.Time `json:"expiry"`
 }
 
 // NodeState contains the known state for the node.

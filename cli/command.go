@@ -2,10 +2,7 @@ package cli
 
 import (
 	"github.com/andydunstall/piko/cli/agent"
-	agentv2 "github.com/andydunstall/piko/cli/agentv2"
 	"github.com/andydunstall/piko/cli/server"
-	serverv2 "github.com/andydunstall/piko/cli/serverv2"
-	"github.com/andydunstall/piko/cli/status"
 	"github.com/andydunstall/piko/cli/workload"
 	"github.com/spf13/cobra"
 )
@@ -33,25 +30,22 @@ Start a server node with:
 
 You can also inspect the status of the server using:
 
-  $ piko status
+  $ piko server status
 
 To register an upstream service, use the Piko agent. The agent is a lightweight
 proxy that runs alongside your services. It connects to the Piko server,
 registers the configured endpoints, then forwards incoming requests to your
 services.
 
-Such as to register endpoint 'my-endpoint' that forwards incoming requests to
-'localhost:4000', use:
+Such as to register endpoint 'my-endpoint' to forward connections to your
+service at 'localhost:3000'.
 
-  $ piko agent my-endpoint/localhost:4000
+  $ piko agent http my-endpoint 3000
 `,
 	}
 
-	cmd.AddCommand(agent.NewCommand())
-	cmd.AddCommand(agentv2.NewCommand())
 	cmd.AddCommand(server.NewCommand())
-	cmd.AddCommand(serverv2.NewCommand())
-	cmd.AddCommand(status.NewCommand())
+	cmd.AddCommand(agent.NewCommand())
 	cmd.AddCommand(workload.NewCommand())
 
 	return cmd

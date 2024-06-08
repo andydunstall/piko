@@ -4,110 +4,77 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"net/url"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
 )
 
-type EndpointConfig struct {
-	ID   string `json:"id" yaml:"id"`
+type ListenerConfig struct {
+	// EndpointID is the endpoint ID to register.
+	EndpointID string `json:"endpoint_id" yaml:"endpoint_id"`
+
+	// Addr is the address of the upstream service to forward to.
 	Addr string `json:"addr" yaml:"addr"`
+
+	// AccessLog indicates whether to log all incoming connections and requests
+	// for the endpoint.
+	AccessLog bool `json:"access_log" yaml:"access_log"`
+
+	// Timeout is the timeout to forward incoming requests to the upstream.
+	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 }
 
-type ServerConfig struct {
-	// URL is the server URL.
-	URL                 string        `json:"url" yaml:"url"`
-	HeartbeatInterval   time.Duration `json:"heartbeat_interval" yaml:"heartbeat_interval"`
-	HeartbeatTimeout    time.Duration `json:"heartbeat_timeout" yaml:"heartbeat_timeout"`
-	ReconnectMinBackoff time.Duration `json:"reconnect_min_backoff" yaml:"reconnect_min_backoff"`
-	ReconnectMaxBackoff time.Duration `json:"reconnect_max_backoff" yaml:"reconnect_max_backoff"`
+// URL parses the given upstream address into a URL. Return false if the
+// address is invalid.
+//
+// The addr may be either a full URL, a host and port or just a port.
+func (c *ListenerConfig) URL() (*url.URL, bool) {
+	// Port only.
+	port, err := strconv.Atoi(c.Addr)
+	if err == nil && port >= 0 && port < 0xffff {
+		return &url.URL{
+			Scheme: "http",
+			Host:   "localhost:" + c.Addr,
+		}, true
+	}
+
+	// Host and port.
+	host, portStr, err := net.SplitHostPort(c.Addr)
+	if err == nil {
+		return &url.URL{
+			Scheme: "http",
+			Host:   net.JoinHostPort(host, portStr),
+		}, true
+	}
+
+	// URL.
+	u, err := url.Parse(c.Addr)
+	if err == nil && u.Scheme != "" && u.Host != "" {
+		return u, true
+	}
+
+	return nil, false
 }
 
-func (c *ServerConfig) Validate() error {
-	if c.URL == "" {
-		return fmt.Errorf("missing url")
+func (c *ListenerConfig) Validate() error {
+	if c.EndpointID == "" {
+		return fmt.Errorf("missing endpoint id")
 	}
-	if _, err := url.Parse(c.URL); err != nil {
-		return fmt.Errorf("invalid url: %w", err)
+	if c.Addr == "" {
+		return fmt.Errorf("missing addr")
 	}
-	if c.HeartbeatInterval == 0 {
-		return fmt.Errorf("missing heartbeat interval")
+	if _, ok := c.URL(); !ok {
+		return fmt.Errorf("invalid addr")
 	}
-	if c.HeartbeatTimeout == 0 {
-		return fmt.Errorf("missing heartbeat timeout")
-	}
-	if c.ReconnectMinBackoff == 0 {
-		return fmt.Errorf("missing reconnect min backoff")
-	}
-	if c.ReconnectMaxBackoff == 0 {
-		return fmt.Errorf("missing reconnect max backoff")
+	if c.Timeout == 0 {
+		return fmt.Errorf("missing timeout")
 	}
 	return nil
-}
-
-func (c *ServerConfig) RegisterFlags(fs *pflag.FlagSet) {
-	fs.StringVar(
-		&c.URL,
-		"server.url",
-		"http://localhost:8001",
-		`
-Piko server URL.
-
-The listener will add path /piko/v1/listener/:endpoint_id to the given URL,
-so if you include a path it will be used as a prefix.
-
-Note Piko connects to the server with WebSockets, so will replace http/https
-with ws/wss (you can configure either).`,
-	)
-	fs.DurationVar(
-		&c.HeartbeatInterval,
-		"server.heartbeat-interval",
-		time.Second*10,
-		`
-Heartbeat interval.
-
-To verify the connection to the server is ok, the listener sends a
-heartbeat to the upstream at the '--server.heartbeat-interval'
-interval, with a timeout of '--server.heartbeat-timeout'.`,
-	)
-	fs.DurationVar(
-		&c.HeartbeatTimeout,
-		"server.heartbeat-timeout",
-		time.Second*10,
-		`
-Heartbeat timeout.
-
-To verify the connection to the server is ok, the listener sends a
-heartbeat to the upstream at the '--server.heartbeat-interval'
-interval, with a timeout of '--server.heartbeat-timeout'.`,
-	)
-	fs.DurationVar(
-		&c.ReconnectMinBackoff,
-		"server.reconnect-min-backoff",
-		time.Millisecond*500,
-		`
-Minimum backoff when reconnecting to the server.`,
-	)
-	fs.DurationVar(
-		&c.ReconnectMaxBackoff,
-		"server.reconnect-max-backoff",
-		time.Second*15,
-		`
-Maximum backoff when reconnecting to the server.`,
-	)
-}
-
-type AuthConfig struct {
-	APIKey string `json:"api_key" yaml:"api_key"`
-}
-
-// ForwarderConfig contains the configuration for how to forward requests
-// from Piko.
-type ForwarderConfig struct {
-	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 }
 
 type TLSConfig struct {
@@ -118,10 +85,11 @@ type TLSConfig struct {
 	RootCAs string `json:"root_cas" yaml:"root_cas"`
 }
 
-func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet) {
+func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	prefix = prefix + ".tls."
 	fs.StringVar(
 		&c.RootCAs,
-		"tls.root-cas",
+		prefix+"root-cas",
 		"",
 		`
 A path to a certificate PEM file containing root certificiate authorities to
@@ -152,82 +120,148 @@ func (c *TLSConfig) Load() (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
-type AdminConfig struct {
+type ConnectConfig struct {
+	// URL is the Piko server URL to connect to.
+	URL string
+
+	// Token is a token to authenticate with the Piko server.
+	Token string
+
+	// Timeout is the timeout attempting to connect to the Piko server on
+	// boot.
+	Timeout time.Duration `json:"timeout" yaml:"timeout"`
+
+	TLS TLSConfig `json:"tls" yaml:"tls"`
+}
+
+func (c *ConnectConfig) Validate() error {
+	if c.URL == "" {
+		return fmt.Errorf("missing url")
+	}
+	if _, err := url.Parse(c.URL); err != nil {
+		return fmt.Errorf("invalid url: %w", err)
+	}
+	if c.Timeout == 0 {
+		return fmt.Errorf("missing timeout")
+	}
+	return nil
+}
+
+func (c *ConnectConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.StringVar(
+		&c.URL,
+		"connect.url",
+		"http://localhost:8001",
+		`
+The Piko server URL to connect to. Note this must be configured to use the
+Piko server 'upstream' port.`,
+	)
+
+	fs.StringVar(
+		&c.Token,
+		"connect.token",
+		"",
+		`
+Token is a token to authenticate with the Piko server.`,
+	)
+
+	fs.DurationVar(
+		&c.Timeout,
+		"connect.timeout",
+		time.Second*30,
+		`
+Timeout attempting to connect to the Piko server on boot. Note if the agent
+is disconnected after the initial connection succeeds it will keep trying to
+reconnect.`,
+	)
+
+	c.TLS.RegisterFlags(fs, "connect")
+}
+
+type ServerConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
 }
 
-func (c *AdminConfig) Validate() error {
+func (c *ServerConfig) Validate() error {
 	if c.BindAddr == "" {
 		return fmt.Errorf("missing bind addr")
 	}
 	return nil
 }
 
+func (c *ServerConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.StringVar(
+		&c.BindAddr,
+		"server.bind-addr",
+		":5000",
+		`
+The host/port to bind the server to.
+
+If the host is unspecified it defaults to all listeners, such as
+'--server.bind-addr :5000' will listen on '0.0.0.0:5000'.`,
+	)
+}
+
 type Config struct {
-	Endpoints []EndpointConfig `json:"endpoints" yaml:"endpoints"`
-	Server    ServerConfig     `json:"server" yaml:"server"`
-	Auth      AuthConfig       `json:"auth" yaml:"auth"`
-	Forwarder ForwarderConfig  `json:"forwarder" yaml:"forwarder"`
-	TLS       TLSConfig        `json:"tls" yaml:"tls"`
-	Admin     AdminConfig      `json:"admin" yaml:"admin"`
-	Log       log.Config       `json:"log" yaml:"log"`
+	Listeners []ListenerConfig `json:"listeners" yaml:"listeners"`
+
+	Connect ConnectConfig `json:"connect" yaml:"connect"`
+
+	Server ServerConfig `json:"server" yaml:"server"`
+
+	Log log.Config `json:"log" yaml:"log"`
+
+	// GracePeriod is the duration to gracefully shutdown the agent. During
+	// the grace period, listeners and idle connections are closed, then waits
+	// for active requests to complete and closes their connections.
+	GracePeriod time.Duration `json:"grace_period" yaml:"grace_period"`
 }
 
 func (c *Config) Validate() error {
-	if len(c.Endpoints) == 0 {
-		return fmt.Errorf("must have at least one endpoint")
+	// Note don't validate the number of listeners, as some commands don't
+	// require any.
+	for _, e := range c.Listeners {
+		if err := e.Validate(); err != nil {
+			if e.EndpointID != "" {
+				return fmt.Errorf("listener: %s: %w", e.EndpointID, err)
+			}
+			return fmt.Errorf("listener: %w", err)
+		}
+	}
+
+	if err := c.Connect.Validate(); err != nil {
+		return fmt.Errorf("connect: %w", err)
 	}
 
 	if err := c.Server.Validate(); err != nil {
 		return fmt.Errorf("server: %w", err)
 	}
-	if err := c.Admin.Validate(); err != nil {
-		return fmt.Errorf("admin: %w", err)
-	}
+
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)
 	}
+
+	if c.GracePeriod == 0 {
+		return fmt.Errorf("missing grace period")
+	}
+
 	return nil
 }
 
 func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
+	c.Connect.RegisterFlags(fs)
 	c.Server.RegisterFlags(fs)
-
-	fs.StringVar(
-		&c.Auth.APIKey,
-		"auth.api-key",
-		"",
-		`
-An API key to authenticate the connection to Piko.`,
-	)
+	c.Log.RegisterFlags(fs)
 
 	fs.DurationVar(
-		&c.Forwarder.Timeout,
-		"forwarder.timeout",
-		time.Second*10,
+		&c.GracePeriod,
+		"grace-period",
+		time.Minute,
 		`
-Forwarder timeout.
-
-This is the timeout between a listener receiving a request from Piko then
-forwarding it to the configured forward address, and receiving a response.
-
-If the upstream does not respond within the given timeout a
-'504 Gateway Timeout' is returned to the client.`,
+Maximum duration after a shutdown signal is received (SIGTERM or
+SIGINT) to gracefully shutdown each listener.
+`,
 	)
 
-	c.TLS.RegisterFlags(fs)
-
-	fs.StringVar(
-		&c.Admin.BindAddr,
-		"admin.bind-addr",
-		":9000",
-		`
-The host/port to listen for incoming admin connections.
-
-If the host is unspecified it defaults to all listeners, such as
-'--admin.bind-addr :9000' will listen on '0.0.0.0:9000'`,
-	)
-
-	c.Log.RegisterFlags(fs)
 }

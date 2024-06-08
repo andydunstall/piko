@@ -3,33 +3,50 @@ package server
 import (
 	"context"
 	"fmt"
+	"net"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
+	"github.com/andydunstall/piko/cli/server/status"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server"
+	"github.com/andydunstall/piko/server/admin"
+	"github.com/andydunstall/piko/server/auth"
+	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/config"
+	"github.com/andydunstall/piko/server/gossip"
+	"github.com/andydunstall/piko/server/proxy"
+	"github.com/andydunstall/piko/server/upstream"
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/hashicorp/go-sockaddr"
 	rungroup "github.com/oklog/run"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "server",
+		Use:   "server [flags]",
 		Short: "start a server node",
-		Long: `Start a server node.
+		Long: `The Piko server is responsible for routing incoming proxy
+requests and connections to upstream services. Upstream services listen for
+traffic on a particular endpoint by opening an outbound-only connection to the
+server. Piko then routes traffic for each endpoint to an appropriate upstream
+connection.
 
-The Piko server is responsible for routing incoming proxy requests to upstream
-services. Upstream services open outbound-connections to the server and
-register endpoints. Piko will then route incoming requests to the appropriate
-upstream service via the upstreams outbound-only connection.
+Use '--cluster.join' to run the server as a cluster of nodes, where you can
+specify either a list of addresses of existing members, or a domain that
+resolves to the addresses of existing members.
 
-Piko may run as a cluster of nodes for fault tolerance and scalability. Use
-'--cluster.join' to configure addresses of existing members in the cluster
-to join.
+The server exposes 4 ports:
+- Proxy port: Receives HTTP(S) requests from proxy clients which are routed
+to an upstream service
+- Upstream port: Accepts connections from upstream services
+- Admin port: Exposes metrics and a status API to inspect the server state
+- Gossip port: Used for inter-node gossip traffic
 
 The server supports both YAML configuration and command line flags. Configure
 a YAML file using '--config.path'. When enabling '--config.expand-env', Piko
@@ -53,69 +70,313 @@ Examples:
 	}
 
 	var conf config.Config
-
-	var configPath string
-	cmd.Flags().StringVar(
-		&configPath,
-		"config.path",
-		"",
-		`
-YAML config file path.`,
-	)
-
-	var configExpandEnv bool
-	cmd.Flags().BoolVar(
-		&configExpandEnv,
-		"config.expand-env",
-		false,
-		`
-Whether to expand environment variables in the config file.
-
-This will replaces references to ${VAR} or $VAR with the corresponding
-environment variable. The replacement is case-sensitive.
-
-References to undefined variables will be replaced with an empty string. A
-default value can be given using form ${VAR:default}.`,
-	)
+	var loadConf pikoconfig.Config
 
 	// Register flags and set default values.
 	conf.RegisterFlags(cmd.Flags())
+	loadConf.RegisterFlags(cmd.Flags())
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
-		if configPath != "" {
-			if err := pikoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
-				fmt.Printf("load config: %s: %s\n", configPath, err.Error())
-				os.Exit(1)
-			}
-		}
+	var logger log.Logger
 
-		if err := conf.Validate(); err != nil {
-			fmt.Printf("invalid config: %s\n", err.Error())
+	cmd.PreRun = func(cmd *cobra.Command, args []string) {
+		if err := loadConf.Load(&conf); err != nil {
+			fmt.Println(err.Error())
 			os.Exit(1)
 		}
 
-		logger, err := log.NewLogger(conf.Log.Level, conf.Log.Subsystems)
+		if conf.Cluster.NodeID == "" {
+			nodeID := cluster.GenerateNodeID()
+			if conf.Cluster.NodeIDPrefix != "" {
+				nodeID = conf.Cluster.NodeIDPrefix + nodeID
+			}
+			conf.Cluster.NodeID = nodeID
+		}
+
+		if err := conf.Validate(); err != nil {
+			fmt.Printf("config: %s\n", err.Error())
+			os.Exit(1)
+		}
+
+		var err error
+		logger, err = log.NewLogger(conf.Log.Level, conf.Log.Subsystems)
 		if err != nil {
 			fmt.Printf("failed to setup logger: %s\n", err.Error())
 			os.Exit(1)
 		}
 
-		if err := run(&conf, logger); err != nil {
-			logger.Error("failed to run server", zap.Error(err))
+		if conf.Proxy.AdvertiseAddr == "" {
+			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Proxy.BindAddr)
+			if err != nil {
+				logger.Error("invalid configuration", zap.Error(err))
+				os.Exit(1)
+			}
+			conf.Proxy.AdvertiseAddr = advertiseAddr
+		}
+
+		if conf.Admin.AdvertiseAddr == "" {
+			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Admin.BindAddr)
+			if err != nil {
+				logger.Error("invalid configuration", zap.Error(err))
+				os.Exit(1)
+			}
+			conf.Admin.AdvertiseAddr = advertiseAddr
+		}
+
+		if conf.Gossip.AdvertiseAddr == "" {
+			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Gossip.BindAddr)
+			if err != nil {
+				logger.Error("invalid configuration", zap.Error(err))
+				os.Exit(1)
+			}
+			conf.Gossip.AdvertiseAddr = advertiseAddr
+		}
+	}
+
+	cmd.Run = func(cmd *cobra.Command, args []string) {
+		if err := runServer(&conf, logger); err != nil {
+			logger.Error("failed to run agent", zap.Error(err))
 			os.Exit(1)
 		}
 	}
 
+	cmd.AddCommand(status.NewCommand())
+
 	return cmd
 }
 
-func run(conf *config.Config, logger log.Logger) error {
-	server, err := server.NewServer(conf, logger)
-	if err != nil {
-		return fmt.Errorf("server: %w", err)
+func runServer(conf *config.Config, logger log.Logger) error {
+	var verifier auth.Verifier
+	if conf.Auth.AuthEnabled() {
+		verifierConf := auth.JWTVerifierConfig{
+			HMACSecretKey: []byte(conf.Auth.TokenHMACSecretKey),
+			Audience:      conf.Auth.TokenAudience,
+			Issuer:        conf.Auth.TokenIssuer,
+		}
+
+		if conf.Auth.TokenRSAPublicKey != "" {
+			rsaPublicKey, err := jwt.ParseRSAPublicKeyFromPEM(
+				[]byte(conf.Auth.TokenRSAPublicKey),
+			)
+			if err != nil {
+				return fmt.Errorf("parse rsa public key: %w", err)
+			}
+			verifierConf.RSAPublicKey = rsaPublicKey
+		}
+		if conf.Auth.TokenECDSAPublicKey != "" {
+			ecdsaPublicKey, err := jwt.ParseECPublicKeyFromPEM(
+				[]byte(conf.Auth.TokenECDSAPublicKey),
+			)
+			if err != nil {
+				return fmt.Errorf("parse ecdsa public key: %w", err)
+			}
+			verifierConf.ECDSAPublicKey = ecdsaPublicKey
+		}
+		verifier = auth.NewJWTVerifier(verifierConf)
 	}
 
+	logger.Info("starting piko server", zap.String("node-id", conf.Cluster.NodeID))
+	logger.Debug("piko config", zap.Any("config", conf))
+
+	registry := prometheus.NewRegistry()
+
+	clusterState := cluster.NewState(&cluster.Node{
+		ID:        conf.Cluster.NodeID,
+		ProxyAddr: conf.Proxy.AdvertiseAddr,
+		AdminAddr: conf.Admin.AdvertiseAddr,
+	}, logger)
+	clusterState.Metrics().Register(registry)
+
+	upstreams := upstream.NewManager(clusterState)
+
 	var group rungroup.Group
+
+	// Gossip.
+
+	gossipStreamLn, err := net.Listen("tcp", conf.Gossip.BindAddr)
+	if err != nil {
+		return fmt.Errorf("gossip listen: %s: %w", conf.Gossip.BindAddr, err)
+	}
+
+	gossipPacketLn, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   gossipStreamLn.Addr().(*net.TCPAddr).IP,
+		Port: gossipStreamLn.Addr().(*net.TCPAddr).Port,
+	})
+	if err != nil {
+		return fmt.Errorf("gossip listen: %s: %w", conf.Gossip.BindAddr, err)
+	}
+
+	gossiper := gossip.NewGossip(
+		clusterState,
+		gossipStreamLn,
+		gossipPacketLn,
+		&conf.Gossip,
+		logger,
+	)
+	defer gossiper.Close()
+	gossiper.Metrics().Register(registry)
+
+	// Attempt to join an existing cluster.
+	//
+	// Note when running on Kubernetes, if this is the first member, as it is
+	// not yet ready the service DNS record won't resolve so this may fail.
+	// Therefore we attempt to join though continue booting if join fails.
+	// Once booted we then attempt to join again with retries.
+	nodeIDs, err := gossiper.JoinOnBoot(conf.Cluster.Join)
+	if err != nil {
+		logger.Warn("failed to join cluster", zap.Error(err))
+	}
+	if len(nodeIDs) > 0 {
+		logger.Info(
+			"joined cluster",
+			zap.Strings("node-ids", nodeIDs),
+		)
+	}
+
+	gossipCtx, gossipCancel := context.WithCancel(context.Background())
+	group.Add(func() error {
+		if len(nodeIDs) == 0 {
+			nodeIDs, err = gossiper.JoinOnStartup(gossipCtx, conf.Cluster.Join)
+			if err != nil {
+				if conf.Cluster.AbortIfJoinFails {
+					return fmt.Errorf("join on startup: %w", err)
+				}
+				logger.Warn("failed to join cluster", zap.Error(err))
+			}
+			if len(nodeIDs) > 0 {
+				logger.Info(
+					"joined cluster",
+					zap.Strings("node-ids", nodeIDs),
+				)
+			}
+		}
+
+		<-gossipCtx.Done()
+
+		leaveCtx, cancel := context.WithTimeout(
+			context.Background(),
+			conf.GracePeriod,
+		)
+		defer cancel()
+
+		// Leave as soon as we receive the shutdown signal to avoid receiving
+		// forward proxy requests.
+		if err := gossiper.Leave(leaveCtx); err != nil {
+			logger.Warn("failed to gracefully leave cluster", zap.Error(err))
+		} else {
+			logger.Info("left cluster")
+		}
+
+		return nil
+	}, func(error) {
+		gossipCancel()
+	})
+
+	// Proxy server.
+	proxyLn, err := net.Listen("tcp", conf.Proxy.BindAddr)
+	if err != nil {
+		return fmt.Errorf("proxy listen: %s: %w", conf.Proxy.BindAddr, err)
+	}
+	proxyTLSConfig, err := conf.Proxy.TLS.Load()
+	if err != nil {
+		return fmt.Errorf("proxy tls: %w", err)
+	}
+	proxyServer := proxy.NewServer(
+		upstreams,
+		conf.Proxy,
+		registry,
+		proxyTLSConfig,
+		logger,
+	)
+
+	group.Add(func() error {
+		if err := proxyServer.Serve(proxyLn); err != nil {
+			return fmt.Errorf("proxy server serve: %w", err)
+		}
+		return nil
+	}, func(error) {
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			conf.GracePeriod,
+		)
+		defer cancel()
+
+		if err := proxyServer.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
+		}
+
+		logger.Info("proxy server shut down")
+	})
+
+	// Upstream server.
+	upstreamLn, err := net.Listen("tcp", conf.Upstream.BindAddr)
+	if err != nil {
+		return fmt.Errorf("upstream listen: %s: %w", conf.Upstream.BindAddr, err)
+	}
+	upstreamTLSConfig, err := conf.Upstream.TLS.Load()
+	if err != nil {
+		return fmt.Errorf("upstream tls: %w", err)
+	}
+	upstreamServer := upstream.NewServer(
+		upstreams,
+		verifier,
+		upstreamTLSConfig,
+		logger,
+	)
+
+	group.Add(func() error {
+		if err := upstreamServer.Serve(upstreamLn); err != nil {
+			return fmt.Errorf("upstream server serve: %w", err)
+		}
+		return nil
+	}, func(error) {
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			conf.GracePeriod,
+		)
+		defer cancel()
+
+		if err := upstreamServer.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
+		}
+
+		logger.Info("upstream server shut down")
+	})
+
+	// Admin Server.
+	adminLn, err := net.Listen("tcp", conf.Admin.BindAddr)
+	if err != nil {
+		return fmt.Errorf("admin listen: %s: %w", conf.Admin.BindAddr, err)
+	}
+	adminTLSConfig, err := conf.Admin.TLS.Load()
+	if err != nil {
+		return fmt.Errorf("admin tls: %w", err)
+	}
+	adminServer := admin.NewServer(
+		registry,
+		adminTLSConfig,
+		logger,
+	)
+	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
+	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
+
+	group.Add(func() error {
+		if err := adminServer.Serve(adminLn); err != nil {
+			return fmt.Errorf("admin server serve: %w", err)
+		}
+		return nil
+	}, func(error) {
+		shutdownCtx, cancel := context.WithTimeout(
+			context.Background(),
+			conf.GracePeriod,
+		)
+		defer cancel()
+
+		if err := adminServer.Shutdown(shutdownCtx); err != nil {
+			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
+		}
+
+		logger.Info("admin server shut down")
+	})
 
 	// Termination handler.
 	signalCtx, signalCancel := context.WithCancel(context.Background())
@@ -136,12 +397,34 @@ func run(conf *config.Config, logger log.Logger) error {
 		signalCancel()
 	})
 
-	runCtx, runCancel := context.WithCancel(context.Background())
-	group.Add(func() error {
-		return server.Run(runCtx)
-	}, func(error) {
-		runCancel()
-	})
+	if err := group.Run(); err != nil {
+		return err
+	}
 
-	return group.Run()
+	logger.Info("shutdown complete")
+
+	return nil
+}
+
+func advertiseAddrFromBindAddr(bindAddr string) (string, error) {
+	if strings.HasPrefix(bindAddr, ":") {
+		bindAddr = "0.0.0.0" + bindAddr
+	}
+
+	host, port, err := net.SplitHostPort(bindAddr)
+	if err != nil {
+		return "", fmt.Errorf("invalid bind addr: %s: %w", bindAddr, err)
+	}
+
+	if host == "0.0.0.0" || host == "::" {
+		ip, err := sockaddr.GetPrivateIP()
+		if err != nil {
+			return "", fmt.Errorf("get interface addr: %w", err)
+		}
+		if ip == "" {
+			return "", fmt.Errorf("no private ip found")
+		}
+		return ip + ":" + port, nil
+	}
+	return bindAddr, nil
 }

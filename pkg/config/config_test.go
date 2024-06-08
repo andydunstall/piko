@@ -29,7 +29,12 @@ sub:
 		assert.NoError(t, err)
 
 		var conf fakeConfig
-		assert.NoError(t, Load(f.Name(), &conf, false))
+
+		loadConfig := &Config{
+			Path:      f.Name(),
+			ExpandEnv: false,
+		}
+		assert.NoError(t, loadConfig.Load(&conf))
 
 		assert.Equal(t, "val1", conf.Foo)
 		assert.Equal(t, "val2", conf.Bar)
@@ -50,7 +55,12 @@ sub:
 		assert.NoError(t, err)
 
 		var conf fakeConfig
-		assert.NoError(t, Load(f.Name(), &conf, true))
+
+		loadConfig := &Config{
+			Path:      f.Name(),
+			ExpandEnv: true,
+		}
+		assert.NoError(t, loadConfig.Load(&conf))
 
 		assert.Equal(t, "val1", conf.Foo)
 		assert.Equal(t, "val2", conf.Bar)
@@ -65,11 +75,20 @@ sub:
 		assert.NoError(t, err)
 
 		var conf fakeConfig
-		assert.Error(t, Load(f.Name(), &conf, false))
+
+		loadConfig := &Config{
+			Path:      f.Name(),
+			ExpandEnv: false,
+		}
+		assert.Error(t, loadConfig.Load(&conf))
 	})
 
 	t.Run("not found", func(t *testing.T) {
 		var conf fakeConfig
-		assert.Error(t, Load("notfound", &conf, false))
+		loadConfig := &Config{
+			Path:      "/a/b/c/notfound",
+			ExpandEnv: false,
+		}
+		assert.Error(t, loadConfig.Load(&conf))
 	})
 }
