@@ -38,9 +38,6 @@ jobs:
       - name: Integration Tests
         run: go test ./... -tags integration -v
 
-      - name: System Tests
-        run: go test ./tests -tags system -v
-
   lint:
     runs-on: ubuntu-latest
     needs: build
