@@ -4,6 +4,7 @@ import (
 	"sync"
 
 	"github.com/andydunstall/piko/server/cluster"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 // Manager manages the upstream routes for each endpoint.
@@ -65,27 +66,31 @@ func (lb *loadBalancer) Next() Upstream {
 	return u
 }
 
-type manager struct {
+type LoadBalancedManager struct {
 	localUpstreams map[string]*loadBalancer
+
+	mu sync.Mutex
 
 	cluster *cluster.State
 
-	mu sync.Mutex
+	metrics *Metrics
 }
 
-func NewManager(cluster *cluster.State) Manager {
-	return &manager{
+func NewLoadBalancedManager(cluster *cluster.State) *LoadBalancedManager {
+	return &LoadBalancedManager{
 		localUpstreams: make(map[string]*loadBalancer),
 		cluster:        cluster,
+		metrics:        NewMetrics(),
 	}
 }
 
-func (m *manager) Select(endpointID string, allowRemote bool) (Upstream, bool) {
+func (m *LoadBalancedManager) Select(endpointID string, allowRemote bool) (Upstream, bool) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	lb, ok := m.localUpstreams[endpointID]
 	if ok {
+		m.metrics.UpstreamRequestsTotal.Inc()
 		return lb.Next(), true
 	}
 	if !allowRemote {
@@ -96,25 +101,32 @@ func (m *manager) Select(endpointID string, allowRemote bool) (Upstream, bool) {
 	if !ok {
 		return nil, false
 	}
+	m.metrics.RemoteRequestsTotal.With(prometheus.Labels{
+		"node_id": node.ID,
+	}).Inc()
 	return NewNodeUpstream(endpointID, node), true
 }
 
-func (m *manager) AddConn(u Upstream) {
+func (m *LoadBalancedManager) AddConn(u Upstream) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
 	lb, ok := m.localUpstreams[u.EndpointID()]
 	if !ok {
 		lb = &loadBalancer{}
+
+		m.metrics.RegisteredEndpoints.Inc()
 	}
 
 	lb.Add(u)
 	m.localUpstreams[u.EndpointID()] = lb
 
 	m.cluster.AddLocalEndpoint(u.EndpointID())
+
+	m.metrics.ConnectedUpstreams.Inc()
 }
 
-func (m *manager) RemoveConn(u Upstream) {
+func (m *LoadBalancedManager) RemoveConn(u Upstream) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -124,7 +136,15 @@ func (m *manager) RemoveConn(u Upstream) {
 	}
 	if lb.Remove(u) {
 		delete(m.localUpstreams, u.EndpointID())
+
+		m.metrics.RegisteredEndpoints.Dec()
 	}
 
 	m.cluster.RemoveLocalEndpoint(u.EndpointID())
+
+	m.metrics.ConnectedUpstreams.Dec()
+}
+
+func (m *LoadBalancedManager) Metrics() *Metrics {
+	return m.metrics
 }

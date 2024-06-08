@@ -186,7 +186,8 @@ func runServer(conf *config.Config, logger log.Logger) error {
 	}, logger)
 	clusterState.Metrics().Register(registry)
 
-	upstreams := upstream.NewManager(clusterState)
+	upstreams := upstream.NewLoadBalancedManager(clusterState)
+	upstreams.Metrics().Register(registry)
 
 	var group rungroup.Group
 
