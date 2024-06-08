@@ -15,7 +15,7 @@
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
-      "version": "10.4.3"
+      "version": "11.0.0"
     },
     {
       "type": "datasource",
@@ -152,6 +152,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -247,6 +248,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -342,6 +344,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -463,6 +466,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -584,6 +588,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -718,6 +723,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -729,7 +735,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "rate(piko_proxy_forwarded_local_total[$__rate_interval])",
+          "expr": "rate(piko_upstreams_upstream_requests_total[$__rate_interval])",
           "hide": false,
           "instant": false,
           "legendFormat": "{{instance}}",
@@ -737,7 +743,7 @@
           "refId": "B"
         }
       ],
-      "title": "Forwarded Local By Instance",
+      "title": "Upstream Requests By Instance",
       "type": "timeseries"
     },
     {
@@ -814,6 +820,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -825,7 +832,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (instance) (rate(piko_proxy_forwarded_remote_total[$__rate_interval]))",
+          "expr": "sum by (instance) (rate(piko_upstreams_remote_requests_total[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{instance}}",
@@ -833,7 +840,7 @@
           "refId": "B"
         }
       ],
-      "title": "Forwarded Remote By Source",
+      "title": "Remote Requests By Source",
       "type": "timeseries"
     },
     {
@@ -910,6 +917,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -921,7 +929,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "sum by (node_id) (rate(piko_proxy_forwarded_remote_total[$__rate_interval]))",
+          "expr": "sum by (node_id) (rate(piko_upstreams_remote_requests_total[$__rate_interval]))",
           "hide": false,
           "instant": false,
           "legendFormat": "{{instance}}",
@@ -929,7 +937,7 @@
           "refId": "B"
         }
       ],
-      "title": "Forwarded Remote By Target",
+      "title": "Remote Requests By Target",
       "type": "timeseries"
     },
     {
@@ -1019,6 +1027,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -1030,7 +1039,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "piko_proxy_connected_upstreams",
+          "expr": "piko_upstreams_connected_upstreams",
           "hide": false,
           "instant": false,
           "legendFormat": "{{instance}}",
@@ -1115,6 +1124,7 @@
           "showLegend": true
         },
         "tooltip": {
+          "maxHeight": 600,
           "mode": "single",
           "sort": "none"
         }
@@ -1126,7 +1136,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "editorMode": "code",
-          "expr": "piko_proxy_connected_upstreams",
+          "expr": "piko_upstreams_registered_endpoints",
           "hide": false,
           "instant": false,
           "legendFormat": "{{instance}}",
@@ -1134,7 +1144,7 @@
           "refId": "B"
         }
       ],
-      "title": "Connected Upstreams By Instance",
+      "title": "Registered Endpoints By Instance",
       "type": "timeseries"
     }
   ],
@@ -1150,6 +1160,7 @@
     "from": "now-1h",
     "to": "now"
   },
+  "timeRangeUpdatedDuringEditOrView": false,
   "timepicker": {},
   "timezone": "browser",
   "title": "Piko Proxy",
