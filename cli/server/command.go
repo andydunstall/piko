@@ -358,6 +358,7 @@ func runServer(conf *config.Config, logger log.Logger) error {
 		adminTLSConfig,
 		logger,
 	)
+	adminServer.AddStatus("/upstream", upstream.NewStatus(upstreams))
 	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
 	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
 
