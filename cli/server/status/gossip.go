@@ -33,7 +33,7 @@ Queries the server for the metadata for each known gossip node in the
 cluster.
 
 Examples:
-  piko status gossip nodes
+  piko server status gossip nodes
 `,
 	}
 
@@ -79,7 +79,7 @@ func newGossipNodeCommand(c *client.Client) *cobra.Command {
 Queries the server for the known state of the gossip node with the given ID.
 
 Examples:
-  piko status gossip node bbc69214
+  piko server status gossip node bbc69214
 `,
 	}
 

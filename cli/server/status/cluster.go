@@ -33,7 +33,7 @@ Queries the server for the set of nodes the cluster that this node knows about.
 The output contains the state of each known node.
 
 Examples:
-  piko status cluster nodes
+  piko server status cluster nodes
 `,
 	}
 
@@ -81,10 +81,10 @@ a node ID of 'local' to query the local node.
 
 Examples:
   # Inspect node bbc69214.
-  piko status cluster node bbc69214
+  piko server status cluster node bbc69214
 
   # Inspect local node.
-  piko status cluster node local
+  piko server status cluster node local
 `,
 	}
 

@@ -22,7 +22,8 @@ import (
 
 func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
-		Use: "agent [command] [flags]",
+		Use:   "agent [command] [flags]",
+		Short: "register endpoints and forward requests to your upstream services",
 		Long: `The Piko agent registers endpoints with Piko, then listens
 for connections on those endpoints and forwards them to your upstream services.
 

@@ -86,6 +86,79 @@ node to join (excluding itself) but fails to join any members.`,
 	)
 }
 
+// HTTPConfig contains generic configuration for the HTTP servers.
+type HTTPConfig struct {
+	// ReadTimeout is the maximum duration for reading the entire
+	// request, including the body. A zero or negative value means
+	// there will be no timeout.
+	ReadTimeout time.Duration `json:"read_timeout" yaml:"read_timeout"`
+
+	// ReadHeaderTimeout is the amount of time allowed to read
+	// request headers.
+	ReadHeaderTimeout time.Duration `json:"read_header_timeout" yaml:"read_header_timeout"`
+
+	// WriteTimeout is the maximum duration before timing out
+	// writes of the response.
+	WriteTimeout time.Duration `json:"write_timeout" yaml:"write_timeout"`
+
+	// IdleTimeout is the maximum amount of time to wait for the
+	// next request when keep-alives are enabled.
+	IdleTimeout time.Duration `json:"idle_timeout" yaml:"idle_timeout"`
+
+	// MaxHeaderBytes controls the maximum number of bytes the
+	// server will read parsing the request header's keys and
+	// values, including the request line.
+	MaxHeaderBytes int `json:"max_header_bytes" yaml:"max_header_bytes"`
+}
+
+func (c *HTTPConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	if prefix == "" {
+		prefix = "http."
+	} else {
+		prefix = prefix + ".http."
+	}
+
+	fs.DurationVar(
+		&c.ReadTimeout,
+		prefix+"read-timeout",
+		time.Second*10,
+		`
+The maximum duration for reading the entire request, including the body. A
+zero or negative value means there will be no timeout.`,
+	)
+	fs.DurationVar(
+		&c.ReadHeaderTimeout,
+		prefix+"read-header-timeout",
+		time.Second*10,
+		`
+The maximum duration for reading the request headers. If zero,
+http.read-timeout is used.`,
+	)
+	fs.DurationVar(
+		&c.WriteTimeout,
+		prefix+"write-timeout",
+		time.Second*10,
+		`
+The maximum duration before timing out writes of the response.`,
+	)
+	fs.DurationVar(
+		&c.IdleTimeout,
+		prefix+"idle-timeout",
+		time.Minute*5,
+		`
+The maximum amount of time to wait for the next request when keep-alives are
+enabled.`,
+	)
+	fs.IntVar(
+		&c.MaxHeaderBytes,
+		prefix+"max-header-bytes",
+		1<<20,
+		`
+The maximum number of bytes the server will read parsing the request header's
+keys and values, including the request line.`,
+	)
+}
+
 type ProxyConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
@@ -99,6 +172,8 @@ type ProxyConfig struct {
 	// AccessLog indicates whether to log all incoming connections and
 	// requests.
 	AccessLog bool `json:"access_log" yaml:"access_log"`
+
+	HTTP HTTPConfig `json:"http" yaml:"http"`
 
 	TLS TLSConfig `json:"tls" yaml:"tls"`
 }
@@ -160,6 +235,8 @@ Timeout when forwarding incoming requests to the upstream.`,
 		`
 Whether to log all incoming connections and requests.`,
 	)
+
+	c.HTTP.RegisterFlags(fs, "proxy")
 
 	c.TLS.RegisterFlags(fs, "proxy")
 }

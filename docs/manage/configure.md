@@ -23,176 +23,175 @@ string. You can also define a default value using form `${VAR:default}`.
 The Piko server node is run using `piko server`. It has the following
 configuration:
 ```
+cluster:
+  # A unique identifier for the node in the cluster.
+  #
+  # By default a random ID will be generated for the node.
+  node_id: ""
+
+  # A prefix for the node ID.
+  #
+  # Piko will generate a unique random identifier for the node and append it to
+  # the given prefix.
+  #
+  # Such as you could use the node or pod  name as a prefix, then add a unique
+  # identifier to ensure the node ID is unique across restarts.
+  node_id_prefix: ""
+
+  # A list of addresses of members in the cluster to join.
+  #
+  # This may be either addresses of specific nodes, such as
+  # '--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
+  # the addresses of the nodes in the cluster (e.g. a Kubernetes headless
+  # service), such as '--cluster.join piko.prod-piko-ns'.
+  #
+  # Each address must include the host, and may optionally include a port. If no
+  # port is given, the gossip port of this node is used.
+  #
+  # Note each node propagates membership information to the other known nodes,
+  # so the initial set of configured members only needs to be a subset of nodes.
+  join: []
+
+  # Whether the server node should abort if it is configured with more than one
+  # node to join (excluding itself) but fails to join any members.
+  abort_if_join_fails: true
+
 proxy:
-    # The host/port to listen for incoming proxy HTTP requests.
+  # The host/port to listen for incoming proxy connections.
+  #
+  # If the host is unspecified it defaults to all listeners, such as
+  # '--proxy.bind-addr :8000' will listen on '0.0.0.0:8000'.
+  bind_addr: ":8000"
+
+  # Proxy to advertise to other nodes in the cluster. This is the
+  # address other nodes will used to forward proxy connections.
+  #
+  # Such as if the listen address is ':8000', the advertised address may be
+  # '10.26.104.45:8000' or 'node1.cluster:8000'.
+  #
+  # By default, if the bind address includes an IP to bind to that will be used.
+  # If the bind address does not include an IP (such as ':8000') the nodes
+  # private IP will be used, such as a bind address of ':8000' may have an
+  # advertise address of '10.26.104.14:8000'.
+  advertise_addr: ""
+
+  # Timeout when forwarding incoming requests to the upstream.
+  timeout: 30s
+
+  # Whether to log all incoming connections and requests.
+  access_log: true
+
+  http:
+    # The maximum duration for reading the entire request, including the body. A
+    # zero or negative value means there will be no timeout.
+    read_timeout: 10s
+
+    # The maximum duration for reading the request headers. If zero,
+    # http.read-timeout is used.
+    read_header_timeout: 10s
+
+    # The maximum duration before timing out writes of the response.
+    write_timeout: 10s
+
+    # The maximum amount of time to wait for the next request when keep-alives are
+    # enabled.
+    idle_timeout: 5m0s
+
+    # The maximum number of bytes the server will read parsing the request header's
+    # keys and values, including the request line.
+    max_header_bytes: 1048576
+
+  tls:
+    # Whether to enable TLS on the listener.
     #
-    # If the host is unspecified it defaults to all listeners, such as
-    # '--proxy.bind-addr :8000' will listen on '0.0.0.0:8000'.
-    bind_addr: :8000
+    # If enabled must configure the cert and key.
+    enabled: false
 
-    # Proxy listen address to advertise to other nodes in the cluster. This is the
-    # address other nodes will used to forward proxy requests.
-    #
-    # Such as if the listen address is ':8000', the advertised address may be
-    # '10.26.104.45:8000' or 'node1.cluster:8000'.
-    #
-    # By default, if the bind address includes an IP to bind to that will be used.
-    # If the bind address does not include an IP (such as ':8000') the nodes
-    # private IP will be used, such as a bind address of ':8000' may have an
-    # advertise address of '10.26.104.14:8000'.
-    advertise_addr: ""
+    # Path to the PEM encoded certificate file.
+    cert: ""
 
-    # The timeout when sending proxied requests to upstream listeners for forwarding
-    # to other nodes in the cluster.
-    #
-    # If the upstream does not respond within the given timeout a
-    # '504 Gateway Timeout' is returned to the client.
-    gateway_timeout: 15s
-
-    tls:
-        # Whether to enable TLS on the listener.
-        #
-        # If enabled must configure the cert and key.
-        enabled: false
-
-        # Path to the PEM encoded certificate file.
-        cert: ""
-
-        # Path to the PEM encoded key file.
-        key: ""
-
-    http:
-        # The maximum duration for reading the entire request, including the
-        # body. A zero or negative value means there will be no timeout.
-        read_timeout: 10s
-
-        # The maximum duration for reading the request headers. If zero,
-        # http.read-timeout is used.
-        read_header_timeout: 10s
-
-        # The maximum duration before timing out writes of the response.`,
-        write_timeout: 10s
-
-        # The maximum amount of time to wait for the next request when
-        # keep-alives are enabled.
-        idle_timeout: 5m0s
-
-        # The maximum number of bytes the server will read parsing the request
-        # header's keys and values, including the request line.
-        max_header_bytes: 1048576
+    # Path to the PEM encoded key file.
+    key: ""
 
 upstream:
-    # The host/port to listen for connections from upstream listeners.
+  # The host/port to listen for incoming upstream connections.
+  #
+  # If the host is unspecified it defaults to all listeners, such as
+  # '--upstream.bind-addr :8001' will listen on '0.0.0.0:8001'.
+  bind_addr: ":8001"
+
+  tls:
+    # Whether to enable TLS on the listener.
     #
-    # If the host is unspecified it defaults to all listeners, such as
-    # '--upstream.bind-addr :8001' will listen on '0.0.0.0:8001'.
-    bind_addr: :8001
+    # If enabled must configure the cert and key.
+    enabled: false
 
-    # Upstream listen address to advertise to other nodes in the cluster.
-    #
-    # Such as if the listen address is ':8001', the advertised address may be
-    # '10.26.104.45:8001' or 'node1.cluster:8001'.
-    #
-    # By default, if the bind address includes an IP to bind to that will be used.
-    # If the bind address does not include an IP (such as ':8001') the nodes
-    # private IP will be used, such as a bind address of ':8001' may have an
-    # advertise address of '10.16.104.14:8001'.
-    advertise_addr: ""
+    # Path to the PEM encoded certificate file.
+    cert: ""
 
-    tls:
-        # Whether to enable TLS on the listener.
-        #
-        # If enabled must configure the cert and key.
-        enabled: false
-
-        # Path to the PEM encoded certificate file.
-        cert: ""
-
-        # Path to the PEM encoded key file.
-        key: ""
-
-admin:
-    # The host/port to listen for incoming admin connections.
-    #
-    # If the host is unspecified it defaults to all listeners, such as
-    # '--admin.bind-addr :8002' will listen on '0.0.0.0:8002'.
-    bind_addr: :8002
-
-    # Admin listen address to advertise to other nodes in the cluster. This is the
-    # address other nodes will used to forward admin requests.
-    #
-    # Such as if the listen address is ':8002', the advertised address may be
-    # '10.26.104.45:8002' or 'node1.cluster:8002'.
-    #
-    # By default, if the bind address includes an IP to bind to that will be used.
-    # If the bind address does not include an IP (such as ':8002') the nodes
-    # private IP will be used, such as a bind address of ':8002' may have an
-    # advertise address of '10.26.104.14:8002'.
-    advertise_addr: ""
-
-    tls:
-        # Whether to enable TLS on the listener.
-        #
-        # If enabled must configure the cert and key.
-        enabled: false
-
-        # Path to the PEM encoded certificate file.
-        cert: ""
-
-        # Path to the PEM encoded key file.
-        key: ""
+    # Path to the PEM encoded key file.
+    key: ""
 
 gossip:
-    # The host/port to listen for inter-node gossip traffic.
-    #
-    # If the host is unspecified it defaults to all listeners, such as
-    # '--gossip.bind-addr :8003' will listen on '0.0.0.0:8003'.
-    bind_addr: :8003
+  # The host/port to listen for inter-node gossip traffic.
+  #
+  # If the host is unspecified it defaults to all listeners, such as
+  # '--gossip.bind-addr :8003' will listen on '0.0.0.0:8003'.
+  bind_addr: ":8003"
 
-    # Gossip listen address to advertise to other nodes in the cluster. This is the
-    # address other nodes will used to gossip with the node.
-    #
-    # Such as if the listen address is ':8003', the advertised address may be
-    # '10.26.104.45:8003' or 'node1.cluster:8003'.
-    #
-    # By default, if the bind address includes an IP to bind to that will be used.
-    # If the bind address does not include an IP (such as ':8003') the nodes
-    # private IP will be used, such as a bind address of ':8003' may have an
-    # advertise address of '10.26.104.14:8003'.
-    advertise_addr: ""
+  # Gossip listen address to advertise to other nodes in the cluster. This is the
+  # address other nodes will used to gossip with the node.
+  #
+  # Such as if the listen address is ':8003', the advertised address may be
+  # '10.26.104.45:8003' or 'node1.cluster:8003'.
+  #
+  # By default, if the bind address includes an IP to bind to that will be used.
+  # If the bind address does not include an IP (such as ':8003') the nodes
+  # private IP will be used, such as a bind address of ':8003' may have an
+  # advertise address of '10.26.104.14:8003'.
+  advertise_addr: ""
 
-cluster:
-    # A unique identifier for the node in the cluster.
-    #
-    # By default a random ID will be generated for the node.
-    node_id: ""
+  # The interval to initiate rounds of gossip.
+  #
+  # Each gossip round selects another known node to synchronize with.`,
+  interval: 500ms
 
-    # A prefix for the node ID.
-    #
-    # Piko will generate a unique random identifier for the node and append it to
-    # the given prefix.
-    #
-    # Such as you could use the node or pod  name as a prefix, then add a unique
-    # identifier to ensure the node ID is unique across restarts.
-    node_id_prefix: ""
+  # The maximum size of any packet sent.
+  #
+  # Depending on your networks MTU you may be able to increase to include more data
+  # in each packet.
+  max_packet_size: 1400
 
-    # A list of addresses of members in the cluster to join.
-    #
-    # This may be either addresses of specific nodes, such as
-    # '--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
-    # the addresses of the nodes in the cluster (e.g. a Kubernetes headless
-    # service), such as '--cluster.join piko.prod-piko-ns'.
-    #
-    # Each address must include the host, and may optionally include a port. If no
-    # port is given, the gossip port of this node is used.
-    #
-    # Note each node propagates membership information to the other known nodes,
-    # so the initial set of configured members only needs to be a subset of nodes.
-    join: []
+admin:
+  # The host/port to listen for incoming admin connections.
+  #
+  # If the host is unspecified it defaults to all listeners, such as
+  # '--admin.bind-addr :8002' will listen on '0.0.0.0:8002'.
+  bind_addr: ":8002"
 
-    # Whether the server node should abort if it is configured with more than one
-    # node to join (excluding itself) but fails to join any members.
-    abort_if_join_fails: true
+  # Admin listen address to advertise to other nodes in the cluster. This is the
+  # address other nodes will used to forward admin requests.
+  #
+  # Such as if the listen address is ':8002', the advertised address may be
+  # '10.26.104.45:8002' or 'node1.cluster:8002'.
+  #
+  # By default, if the bind address includes an IP to bind to that will be used.
+  # If the bind address does not include an IP (such as ':8002') the nodes
+  # private IP will be used, such as a bind address of ':8002' may have an
+  # advertise address of '10.26.104.14:8002'.
+  advertise_addr: ""
+
+  tls:
+    # Whether to enable TLS on the listener.
+    #
+    # If enabled must configure the cert and key.
+    enabled: false
+
+    # Path to the PEM encoded certificate file.
+    cert: ""
+
+    # Path to the PEM encoded key file.
+    key: ""
 
 auth:
     # Secret key to authenticate HMAC endpoint connection JWTs.
@@ -234,8 +233,8 @@ log:
 # Maximum duration after a shutdown signal is received (SIGTERM or
 # SIGINT) to gracefully shutdown the server node before terminating.
 # This includes handling in-progress HTTP requests, gracefully closing
-# connections to upstream listeners, announcing to the cluster the node is
-# leaving...
+# connections to upstream listeners and announcing to the cluster the node is
+# leaving.
 grace_period: 1m0s
 ```
 
@@ -296,67 +295,41 @@ forwarded by Piko.
 
 The Piko agent is run using `piko agent`. It has the following configuration:
 ```
-# The endpoints to register with the Piko server.
-#
-# Each endpoint has an ID and forwarding address.
-#
-# At least one endpoint must be configured.
-endpoints:
-    - id: endpoint-1
-      addr: localhost:4000
-    - id: endpoint-2
-      addr: localhost:5000
+# Listeners contains the set of listeners to register. Each listener has an
+# endpoint ID, address to forward connections to, whether to log each request
+# and a timeout to forward requests to the upstreams.
+listeners:
+  - endpoint_id: my-endpoint
+    addr: localhost:3000
+    access_log: true
+    timeout: 15s
 
-server:
-    # Piko server URL.
-    #
-    # The listener will add path /piko/v1/listener/:endpoint_id to the given URL,
-    # so if you include a path it will be used as a prefix.
-    #
-    # Note Piko connects to the server with WebSockets, so will replace http/https
-    # with ws/wss (you can configure either).
-    url: http://localhost:8001
+connect:
+  # The Piko server URL to connect to. Note this must be configured to use the
+  # Piko server 'upstream' port.
+  url: http://localhost:8001
 
-    # Heartbeat interval.
-    #
-    # To verify the connection to the server is ok, the listener sends a
-    # heartbeat to the upstream at the '--server.heartbeat-interval'
-    # interval, with a timeout of '--server.heartbeat-timeout'.`,
-    heartbeat_interval: 10s
+  # Token is a token to authenticate with the Piko server.
+  token: ""
 
-    # Heartbeat timeout.
-    #
-    # To verify the connection to the server is ok, the listener sends a
-    # heartbeat to the upstream at the '--server.heartbeat-interval'
-    heartbeat_timeout: 10s
+  # Timeout attempting to connect to the Piko server on boot. Note if the agent
+  # is disconnected after the initial connection succeeds it will keep trying to
+  # reconnect.
+  timeout: 30s
 
-auth:
-    # An API key to authenticate the connection to Piko.
-    api_key: ""
-
-forwarder:
-    # Forwarder timeout.
+  tls:
+    # A path to a certificate PEM file containing root certificiate authorities to
+    # validate the TLS connection to the Piko server.
     #
-    # This is the timeout between a listener receiving a request from Piko then
-    # forwarding it to the configured forward address, and receiving a response.
-    #
-    # If the upstream does not respond within the given timeout a
-    # '504 Gateway Timeout' is returned to the client.
-    timeout: 10s
-
-tls:
-    # A path to a certificate PEM file containing root certificiate authorities
-    # to validate the TLS connection to the Piko server.
-    #
-    # Defaults to using the host root CAs.`,
+    # Defaults to using the host root CAs.
     root_cas: ""
 
-admin:
-    # The host/port to listen for incoming admin connections.
-    #
-    # If the host is unspecified it defaults to all listeners, such as
-    # '--admin.bind-addr :9000' will listen on '0.0.0.0:9000'
-    bind_addr: :9000
+server:
+  The host/port to bind the server to.
+
+  If the host is unspecified it defaults to all listeners, such as
+  '--server.bind-addr :5000' will listen on '0.0.0.0:5000'.
+  bind_addr: ":5000"
 
 log:
     # Minimum log level to output.
@@ -372,9 +345,13 @@ log:
     #
     # Such as you can enable 'gossip' logs with '--log.subsystems gossip'.
     subsystems: []
+
+# Maximum duration after a shutdown signal is received (SIGTERM or
+# SIGINT) to gracefully shutdown each listener.
+grace_period: 1m0s
 ```
 
 ### Authentication
 
-To authenticate the agent, include a JWT in `auth.api_key`. The supported JWT
+To authenticate the agent, include a JWT in `connect.token`. The supported JWT
 formats are described above in the server configuration.

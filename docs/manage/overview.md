@@ -56,7 +56,7 @@ See [Configure](./configure.md) for details.
 Each server node has an admin port (`8003` by default) which includes
 Prometheus metrics at `/metrics`, a health endpoint at `/health`, and a status
 API at `/status`. The status API exposes endpoints for inspecting the status of
-a server node, which is used by the `piko status` CLI.
+a server node, which is used by the `piko server status` CLI.
 
 See [Observability](./observability.md) for details.
 
@@ -73,7 +73,7 @@ service.
 
 Such as you may configure the agent to register the endpoint `my-endpoint` then
 forward requests to `localhost:4000` using
-`piko agent my-endpoint/localhost:4000`.
+`piko agent http my-endpoint 4000`.
 
 See [Configure](./configure.md) for details.
 
