@@ -12,7 +12,6 @@ import (
 	"syscall"
 	"time"
 
-	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/workload/config"
 	"github.com/spf13/cobra"
@@ -52,41 +51,10 @@ Examples:
 
 	var conf config.RequestsConfig
 
-	var configPath string
-	cmd.Flags().StringVar(
-		&configPath,
-		"config.path",
-		"",
-		`
-YAML config file path.`,
-	)
-
-	var configExpandEnv bool
-	cmd.Flags().BoolVar(
-		&configExpandEnv,
-		"config.expand-env",
-		false,
-		`
-Whether to expand environment variables in the config file.
-
-This will replaces references to ${VAR} or $VAR with the corresponding
-environment variable. The replacement is case-sensitive.
-
-References to undefined variables will be replaced with an empty string. A
-default value can be given using form ${VAR:default}.`,
-	)
-
 	// Register flags and set default values.
 	conf.RegisterFlags(cmd.Flags())
 
 	cmd.Run = func(cmd *cobra.Command, args []string) {
-		if configPath != "" {
-			if err := pikoconfig.Load(configPath, &conf, configExpandEnv); err != nil {
-				fmt.Printf("load config: %s\n", err.Error())
-				os.Exit(1)
-			}
-		}
-
 		if err := conf.Validate(); err != nil {
 			fmt.Printf("invalid config: %s\n", err.Error())
 			os.Exit(1)

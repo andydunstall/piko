@@ -3,7 +3,6 @@ package mux
 import (
 	"io"
 	"net"
-	"time"
 
 	"golang.ngrok.com/muxado/v2"
 )
@@ -11,34 +10,30 @@ import (
 // Session is a connection between two nodes that multiplexes multiple
 // connections on the underlying connection.
 //
-// The session also has heartbeats to verify the underlying connection is
-// healthy.
-//
 // Session is a wrapper for the 'muxado' library.
 type Session struct {
-	mux *muxado.Heartbeat
+	mux muxado.Session
 }
 
 func OpenClient(conn io.ReadWriteCloser) *Session {
-	sess := &Session{}
+	return &Session{
+		mux: muxado.Client(conn, &muxado.Config{}),
+	}
+}
 
-	mux := muxado.NewHeartbeat(
-		muxado.NewTypedStreamSession(
-			muxado.Client(conn, &muxado.Config{}),
-		),
-		sess.onHeartbeat,
-		muxado.NewHeartbeatConfig(),
-	)
-	mux.Start()
+func OpenServer(conn io.ReadWriteCloser) *Session {
+	return &Session{
+		mux: muxado.Server(conn, &muxado.Config{}),
+	}
+}
 
-	sess.mux = mux
-
-	return sess
+func (s *Session) Dial() (net.Conn, error) {
+	return s.mux.OpenStream()
 }
 
 // Accept accepts a multiplexed connection.
 func (s *Session) Accept() (net.Conn, error) {
-	conn, err := s.mux.AcceptTypedStream()
+	conn, err := s.mux.AcceptStream()
 	if err != nil {
 		muxadoErr, _ := muxado.GetError(err)
 		if muxadoErr == muxado.SessionClosed {
@@ -49,12 +44,11 @@ func (s *Session) Accept() (net.Conn, error) {
 	return conn, nil
 }
 
-func (s *Session) Close() error {
-	return s.mux.Close()
+func (s *Session) Wait() error {
+	err, _, _ := s.mux.Wait()
+	return err
 }
 
-func (s *Session) onHeartbeat(_ time.Duration, timeout bool) {
-	if timeout {
-		s.mux.Close()
-	}
+func (s *Session) Close() error {
+	return s.mux.Close()
 }

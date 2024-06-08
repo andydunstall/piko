@@ -2,56 +2,16 @@ package upstream
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
-	"sync"
-	"time"
+	"net/http/httptest"
 
-	"github.com/andydunstall/piko/agent"
-	agentconfig "github.com/andydunstall/piko/agent/config"
+	"github.com/andydunstall/piko/agent/client"
+	"github.com/andydunstall/piko/agent/config"
+	"github.com/andydunstall/piko/agent/reverseproxy"
 	"github.com/andydunstall/piko/pkg/log"
-	"go.uber.org/zap"
 )
-
-type server struct {
-	ln     net.Listener
-	server *http.Server
-}
-
-func newServer() (*server, error) {
-	ln, err := net.Listen("tcp", "127.0.0.1:0")
-	if err != nil {
-		return nil, fmt.Errorf("listen: %w", err)
-	}
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		//nolint
-		io.Copy(w, r.Body)
-	})
-	return &server{
-		server: &http.Server{
-			Addr:    ln.Addr().String(),
-			Handler: mux,
-		},
-		ln: ln,
-	}, nil
-}
-
-func (s *server) Addr() string {
-	return s.ln.Addr().String()
-}
-
-func (s *server) Serve() error {
-	return s.server.Serve(s.ln)
-}
-
-func (s *server) Close() error {
-	return s.server.Close()
-}
 
 type Upstream struct {
 	endpointID string
@@ -68,44 +28,29 @@ func NewUpstream(endpointID string, serverURL string, logger log.Logger) *Upstre
 }
 
 func (u *Upstream) Run(ctx context.Context) error {
-	server, err := newServer()
-	if err != nil {
-		return err
-	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		//nolint
+		io.Copy(w, r.Body)
+	}))
 	defer server.Close()
 
-	var wg sync.WaitGroup
+	client := client.New(client.WithURL(u.serverURL))
 
-	wg.Add(1)
+	ln, err := client.Listen(context.Background(), u.endpointID)
+	if err != nil {
+		return fmt.Errorf("listen: %s: %w", ln.EndpointID(), err)
+	}
+	defer ln.Close()
+
+	proxy := reverseproxy.NewServer(config.ListenerConfig{
+		EndpointID: u.endpointID,
+		Addr:       server.Listener.Addr().String(),
+	}, nil, log.NewNopLogger())
 	go func() {
-		defer wg.Done()
-		if err := server.Serve(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			u.logger.Error("failed to serve upstream", zap.Error(err))
-		}
+		_ = proxy.Serve(ln)
 	}()
 
-	agentConf := agentConfig(u.serverURL)
-	endpoint := agent.NewEndpoint(
-		u.endpointID, server.Addr(), agentConf, nil, agent.NewMetrics(), log.NewNopLogger(),
-	)
-	if err = endpoint.Run(ctx); err != nil {
-		return fmt.Errorf("endpoint: %w", err)
-	}
+	<-ctx.Done()
+	proxy.Shutdown(context.Background())
 	return nil
-}
-
-func agentConfig(serverURL string) *agentconfig.Config {
-	return &agentconfig.Config{
-		Server: agentconfig.ServerConfig{
-			URL:               serverURL,
-			HeartbeatInterval: time.Second,
-			HeartbeatTimeout:  time.Second,
-		},
-		Forwarder: agentconfig.ForwarderConfig{
-			Timeout: time.Second,
-		},
-		Admin: agentconfig.AdminConfig{
-			BindAddr: "127.0.0.1:0",
-		},
-	}
 }
