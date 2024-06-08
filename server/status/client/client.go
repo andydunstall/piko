@@ -13,6 +13,8 @@ type Client struct {
 	httpClient *http.Client
 
 	url *url.URL
+
+	forward string
 }
 
 func NewClient(url *url.URL) *Client {
@@ -28,9 +30,17 @@ func (c *Client) SetURL(url *url.URL) {
 	c.url = url
 }
 
+func (c *Client) SetForward(forward string) {
+	c.forward = forward
+}
+
 func (c *Client) Request(path string) (io.ReadCloser, error) {
 	url := new(url.URL)
 	*url = *c.url
+
+	if c.forward != "" {
+		url.RawQuery = "forward=" + c.forward
+	}
 
 	url.Path = fspath.Join(url.Path, path)
 

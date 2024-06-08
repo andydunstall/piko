@@ -22,11 +22,14 @@ can be used to answer questions such as:
 * What cluster state does this node know?
 * What is the gossip state of each known node?
 
-See 'status --help' for the availale commands.
+See 'piko server status --help' for the available commands.
 
 Examples:
   # Inspect the known nodes in the cluster.
   piko server status cluster nodes
+
+  # Inspect the known nodes by node cv6cdyo.
+  piko server status cluster nodes --forward cv6cdyo
 `,
 	}
 
@@ -43,6 +46,7 @@ Examples:
 
 		url, _ := url.Parse(conf.Server.URL)
 		c.SetURL(url)
+		c.SetForward(conf.Forward)
 	}
 
 	cmd.AddCommand(newClusterCommand(c))

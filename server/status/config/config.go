@@ -24,6 +24,8 @@ func (c *ServerConfig) Validate() error {
 
 type Config struct {
 	Server ServerConfig `json:"server"`
+
+	Forward string `json:"forward"`
 }
 
 func (c *Config) Validate() error {
@@ -40,6 +42,16 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 		"http://localhost:8002",
 		`
 Piko server URL. This URL should point to the server admin port.
+`,
+	)
+
+	fs.StringVar(
+		&c.Forward,
+		"forward",
+		"",
+		`
+Node ID to forward the request to. This can be useful when all nodes are behind
+a load balancer and you want to inspect the status of a particular node.
 `,
 	)
 }
