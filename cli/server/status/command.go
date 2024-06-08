@@ -49,6 +49,7 @@ Examples:
 		c.SetForward(conf.Forward)
 	}
 
+	cmd.AddCommand(newUpstreamCommand(c))
 	cmd.AddCommand(newClusterCommand(c))
 	cmd.AddCommand(newGossipCommand(c))
 

@@ -145,6 +145,17 @@ func (m *LoadBalancedManager) RemoveConn(u Upstream) {
 	m.metrics.ConnectedUpstreams.Dec()
 }
 
+func (m *LoadBalancedManager) Endpoints() map[string]int {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	endpoints := make(map[string]int)
+	for endpointID, lb := range m.localUpstreams {
+		endpoints[endpointID] = len(lb.upstreams)
+	}
+	return endpoints
+}
+
 func (m *LoadBalancedManager) Metrics() *Metrics {
 	return m.metrics
 }
