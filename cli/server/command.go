@@ -353,6 +353,7 @@ func runServer(conf *config.Config, logger log.Logger) error {
 		return fmt.Errorf("admin tls: %w", err)
 	}
 	adminServer := admin.NewServer(
+		clusterState,
 		registry,
 		adminTLSConfig,
 		logger,
