@@ -9,6 +9,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/andydunstall/piko/pkg/build"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/upstream"
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ type Report struct {
 	ID        string `json:"id"`
 	OS        string `json:"os"`
 	Arch      string `json:"arch"`
+	Version   string `json:"version"`
 	Uptime    int64  `json:"uptime"`
 	Requests  uint64 `json:"requests"`
 	Upstreams uint64 `json:"upstreams"`
@@ -70,6 +72,7 @@ func (r *Reporter) report() {
 		ID:        r.id,
 		OS:        runtime.GOOS,
 		Arch:      runtime.GOARCH,
+		Version:   build.Version,
 		Uptime:    int64(time.Since(r.start).Seconds()),
 		Requests:  r.usage.Requests.Load(),
 		Upstreams: r.usage.Upstreams.Load(),

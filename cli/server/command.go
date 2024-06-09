@@ -10,6 +10,7 @@ import (
 	"syscall"
 
 	"github.com/andydunstall/piko/cli/server/status"
+	"github.com/andydunstall/piko/pkg/build"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/admin"
@@ -175,7 +176,11 @@ func runServer(conf *config.Config, logger log.Logger) error {
 		verifier = auth.NewJWTVerifier(verifierConf)
 	}
 
-	logger.Info("starting piko server", zap.String("node-id", conf.Cluster.NodeID))
+	logger.Info(
+		"starting piko server",
+		zap.String("node-id", conf.Cluster.NodeID),
+		zap.String("version", build.Version),
+	)
 	logger.Debug("piko config", zap.Any("config", conf))
 
 	registry := prometheus.NewRegistry()

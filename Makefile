@@ -1,4 +1,5 @@
 IMAGE_TAG ?= $(shell git rev-parse HEAD)
+VERSION ?= $(shell git describe)
 
 .PHONY: all
 all: piko
@@ -6,7 +7,7 @@ all: piko
 .PHONY: piko
 piko:
 	mkdir -p bin
-	go build -o bin/piko main.go
+	go build -ldflags="-X github.com/andydunstall/piko/pkg/build.Version=$(VERSION)" -o bin/piko main.go
 
 .PHONY: unit-test
 unit-test:
@@ -42,5 +43,5 @@ coverage:
 
 .PHONY: image
 image:
-	docker build . -f build/Dockerfile -t piko:$(IMAGE_TAG)
+	docker build --build-arg version=$(VERSION) . -f build/Dockerfile -t piko:$(IMAGE_TAG)
 	docker tag piko:$(IMAGE_TAG) piko:latest
