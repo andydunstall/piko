@@ -324,6 +324,25 @@ advertise address of '10.26.104.14:8002'.`,
 	c.TLS.RegisterFlags(fs, "admin")
 }
 
+type UsageConfig struct {
+	// Disable indicates whether to disable anonymous usage collection.
+	Disable bool `json:"disable" yaml:"disable"`
+}
+
+func (c *UsageConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(
+		&c.Disable,
+		"usage.disable",
+		false,
+		`
+Whether to disable anonymous usage tracking.
+
+The Piko server periodically sends an anonymous report to help understand how
+Piko is being used. This report includes the Piko version, host OS, host
+architecture, requests processed and upstreams registered.`,
+	)
+}
+
 type Config struct {
 	Cluster ClusterConfig `json:"cluster" yaml:"cluster"`
 
@@ -336,6 +355,8 @@ type Config struct {
 	Admin AdminConfig `json:"admin" yaml:"admin"`
 
 	Auth auth.Config `json:"auth" yaml:"auth"`
+
+	Usage UsageConfig `json:"usage" yaml:"usage"`
 
 	Log log.Config `json:"log" yaml:"log"`
 
@@ -389,6 +410,8 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	c.Admin.RegisterFlags(fs)
 
 	c.Auth.RegisterFlags(fs)
+
+	c.Usage.RegisterFlags(fs)
 
 	c.Log.RegisterFlags(fs)
 

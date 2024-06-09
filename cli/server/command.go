@@ -19,6 +19,7 @@ import (
 	"github.com/andydunstall/piko/server/gossip"
 	"github.com/andydunstall/piko/server/proxy"
 	"github.com/andydunstall/piko/server/upstream"
+	"github.com/andydunstall/piko/server/usage"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-sockaddr"
 	rungroup "github.com/oklog/run"
@@ -380,6 +381,18 @@ func runServer(conf *config.Config, logger log.Logger) error {
 
 		logger.Info("admin server shut down")
 	})
+
+	// Usage.
+	reporter := usage.NewReporter(upstreams.Usage(), logger)
+	if !conf.Usage.Disable {
+		usageCtx, usageCancel := context.WithCancel(context.Background())
+		group.Add(func() error {
+			reporter.Run(usageCtx)
+			return nil
+		}, func(error) {
+			usageCancel()
+		})
+	}
 
 	// Termination handler.
 	signalCtx, signalCancel := context.WithCancel(context.Background())
