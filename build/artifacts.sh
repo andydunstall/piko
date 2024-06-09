@@ -11,11 +11,12 @@ mkdir -p bin/artifacts
 
 for i in "${arr[@]}"
 do
+	VERSION=$(git describe)
 	GOOSARCH=$i
 	GOOS=${GOOSARCH%/*}
 	GOARCH=${GOOSARCH#*/}
 	BINARY_NAME=piko-$GOOS-$GOARCH
 
-	echo "Building $BINARY_NAME..."
-	GOOS=$GOOS GOARCH=$GOARCH go build -o bin/artifacts/$BINARY_NAME main.go
+	echo "Building $BINARY_NAME $VERSION..."
+	GOOS=$GOOS GOARCH=$GOARCH go build -ldflags="-X github.com/andydunstall/piko/pkg/build.Version=$VERSION" -o bin/artifacts/$BINARY_NAME main.go
 done
