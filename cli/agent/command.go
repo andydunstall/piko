@@ -12,6 +12,7 @@ import (
 	"github.com/andydunstall/piko/agent/config"
 	"github.com/andydunstall/piko/agent/reverseproxy"
 	"github.com/andydunstall/piko/agent/server"
+	"github.com/andydunstall/piko/pkg/build"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
 	rungroup "github.com/oklog/run"
@@ -77,7 +78,10 @@ Examples:
 }
 
 func runAgent(conf *config.Config, logger log.Logger) error {
-	logger.Info("starting piko agent")
+	logger.Info(
+		"starting piko agent",
+		zap.String("version", build.Version),
+	)
 	logger.Debug("piko config", zap.Any("config", conf))
 
 	connectTLSConfig, err := conf.Connect.TLS.Load()

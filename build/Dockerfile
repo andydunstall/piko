@@ -6,7 +6,7 @@ WORKDIR /app
 
 COPY . .
 
-RUN CGO_ENABLED=0 go build -o ./piko main.go
+RUN CGO_ENABLED=0 go build -ldflags="-X github.com/andydunstall/piko/pkg/build.Version=$version" -o ./piko main.go
 
 
 FROM alpine:latest
