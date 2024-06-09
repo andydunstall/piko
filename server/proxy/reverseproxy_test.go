@@ -16,21 +16,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// import (
-// 	"bytes"
-// 	"encoding/json"
-// 	"io"
-// 	"net/http"
-// 	"net/http/httptest"
-// 	"strings"
-// 	"testing"
-// 	"time"
-//
-// 	"github.com/andydunstall/piko/agent/config"
-// 	"github.com/andydunstall/piko/pkg/log"
-// 	"github.com/stretchr/testify/assert"
-// )
-
 type fakeManager struct {
 	handler func(endpointID string, allowForward bool) (upstream.Upstream, bool)
 }
