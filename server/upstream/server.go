@@ -3,16 +3,17 @@ package upstream
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
 
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/mux"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
 	"github.com/andydunstall/piko/server/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/hashicorp/yamux"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -139,24 +140,35 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 		}
 	}
 
-	sess := mux.OpenServer(conn)
+	muxConfig := yamux.DefaultConfig()
+	muxConfig.Logger = s.logger.StdLogger(zap.WarnLevel)
+	muxConfig.LogOutput = nil
+	sess, err := yamux.Server(conn, muxConfig)
+	if err != nil {
+		// Will not happen.
+		panic("yamux server: " + err.Error())
+	}
+	defer sess.Close()
+
 	upstream := NewConnUpstream(endpointID, sess)
 
 	s.upstreams.AddConn(upstream)
 	defer s.upstreams.RemoveConn(upstream)
 
-	closedCh := make(chan struct{})
-	go func() {
-		if err := sess.Wait(); err != nil {
-			s.logger.Warn("session closed", zap.Error(err))
+	for {
+		// The client will never open streams but block on accept to wait for
+		// close or an error.
+		if _, err := sess.AcceptStreamWithContext(ctx); err != nil {
+			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			if errors.Is(err, context.DeadlineExceeded) {
+				s.logger.Info("upstream token expired")
+				return
+			}
+			s.logger.Warn("session closed unexpectedly", zap.Error(err))
+			return
 		}
-		close(closedCh)
-	}()
-
-	select {
-	case <-ctx.Done():
-		s.logger.Warn("token expired")
-	case <-closedCh:
 	}
 }
 

@@ -3,8 +3,8 @@ package upstream
 import (
 	"net"
 
-	"github.com/andydunstall/piko/pkg/mux"
 	"github.com/andydunstall/piko/server/cluster"
+	"github.com/hashicorp/yamux"
 )
 
 // Upstream represents an upstream for a given endpoint.
@@ -20,10 +20,10 @@ type Upstream interface {
 // to the local node.
 type ConnUpstream struct {
 	endpointID string
-	sess       *mux.Session
+	sess       *yamux.Session
 }
 
-func NewConnUpstream(endpointID string, sess *mux.Session) *ConnUpstream {
+func NewConnUpstream(endpointID string, sess *yamux.Session) *ConnUpstream {
 	return &ConnUpstream{
 		endpointID: endpointID,
 		sess:       sess,
@@ -35,7 +35,7 @@ func (u *ConnUpstream) EndpointID() string {
 }
 
 func (u *ConnUpstream) Dial() (net.Conn, error) {
-	return u.sess.Dial()
+	return u.sess.OpenStream()
 }
 
 // NodeUpstream represents a remote Piko server node.

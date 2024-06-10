@@ -10,8 +10,8 @@ import (
 
 	"github.com/andydunstall/piko/pkg/backoff"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/mux"
 	"github.com/andydunstall/piko/pkg/websocket"
+	"github.com/hashicorp/yamux"
 	"go.uber.org/zap"
 )
 
@@ -47,7 +47,7 @@ type Listener interface {
 type listener struct {
 	endpointID string
 
-	mux *mux.Session
+	sess *yamux.Session
 
 	options options
 
@@ -71,11 +71,11 @@ func listen(
 		closeCancel: closeCancel,
 		logger:      logger,
 	}
-	mux, err := ln.connect(ctx)
+	sess, err := ln.connect(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
 	}
-	ln.mux = mux
+	ln.sess = sess
 
 	return ln, nil
 }
@@ -83,7 +83,7 @@ func listen(
 // Accept accepts a proxied connection for the endpoint.
 func (l *listener) Accept() (net.Conn, error) {
 	for {
-		conn, err := l.mux.Accept()
+		conn, err := l.sess.Accept()
 		if err == nil {
 			return conn, nil
 		}
@@ -94,12 +94,12 @@ func (l *listener) Accept() (net.Conn, error) {
 
 		l.logger.Warn("failed to accept conn", zap.Error(err))
 
-		mux, err := l.connect(l.closeCtx)
+		sess, err := l.connect(l.closeCtx)
 		if err != nil {
 			return nil, err
 		}
 
-		l.mux = mux
+		l.sess = sess
 	}
 }
 
@@ -110,14 +110,14 @@ func (l *listener) Addr() net.Addr {
 func (l *listener) Close() error {
 	l.closeCancel()
 
-	return l.mux.Close()
+	return l.sess.Close()
 }
 
 func (l *listener) EndpointID() string {
 	return l.endpointID
 }
 
-func (l *listener) connect(ctx context.Context) (*mux.Session, error) {
+func (l *listener) connect(ctx context.Context) (*yamux.Session, error) {
 	backoff := backoff.New(0, minReconnectBackoff, maxReconnectBackoff)
 	for {
 		conn, err := websocket.Dial(
@@ -132,7 +132,15 @@ func (l *listener) connect(ctx context.Context) (*mux.Session, error) {
 				zap.String("url", serverURL(l.options.url, l.endpointID)),
 			)
 
-			return mux.OpenClient(conn), nil
+			muxConfig := yamux.DefaultConfig()
+			muxConfig.Logger = l.logger.StdLogger(zap.WarnLevel)
+			muxConfig.LogOutput = nil
+			sess, err := yamux.Client(conn, muxConfig)
+			if err != nil {
+				// Will not happen.
+				panic("yamux client: " + err.Error())
+			}
+			return sess, nil
 		}
 
 		var retryableError *websocket.RetryableError
