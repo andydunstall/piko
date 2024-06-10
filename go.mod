@@ -9,6 +9,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.2
 	github.com/hashicorp/go-sockaddr v1.0.6
+	github.com/hashicorp/yamux v0.1.2-0.20240510232814-6034404dc2ab
 	github.com/oklog/run v1.1.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/spf13/cobra v1.8.0
@@ -17,7 +18,6 @@ require (
 	github.com/ugorji/go/codec v1.2.12
 	go.uber.org/atomic v1.11.0
 	go.uber.org/zap v1.27.0
-	golang.ngrok.com/muxado/v2 v2.0.0
 	golang.org/x/sync v0.7.0
 	gopkg.in/yaml.v3 v3.0.1
 )
