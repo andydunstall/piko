@@ -122,7 +122,9 @@ ask questions, get help, or suggest ideas.
 
 ## Docs
 
-- [Getting Started](./docs/getting-started.md)
+- Tutorials
+  - [Getting Started](./docs/getting-started.md)
+  - [Install](./docs/tutorials/install.md)
 - Architecture
   - [Overview](./docs/architecture/overview.md)
 - Manage
