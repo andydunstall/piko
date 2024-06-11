@@ -4,43 +4,80 @@
 
 ---
 
-Piko is a reverse proxy for accessing environments that aren’t publicly
-routable, designed to be an open-source alternative to
-[Ngrok](https://ngrok.com/).
-
-Piko is built to serve production traffic and be simple to self-host on
-Kubernetes. Such as you may use Piko to expose services in a customer network,
-a bring your own cloud (BYOC) service or to connect to user devices.
-
-Upstream services open an outbound connection to a Piko server and listen for
-traffic on a particular endpoint. Piko then manages routing incoming
-connections and requests to an upstream service listening on the target
-endpoint. All traffic forwarded to the upstream is sent via its outbound-only
-connection to Piko, so you never have to expose a port on the upstream.
-
-Incoming HTTP(s) requests identify the target endpoint to connect to using
-either the `Host` header or `x-piko-endpoint` header. Such as if an upstream is
-listening on endpoint ‘my-service’, you can send requests to
-‘my-service.piko.example.com’ or add a ‘x-endpoint-id: my-service’ header. If
-multiple upstreams are listening on the same endpoint, Piko load balances
-requests among those upstreams.
-
-Since Piko is designed to serve production traffic, the server may be hosted as
-a cluster of nodes, meaning it is fault tolerant, scales horizontally and
-supports gradual rollouts.
-
-<p align="center">
-  <img src="assets/images/overview.png" alt="overview" width="80%"/>
-</p>
-
-## Contents
-
+- [What Is Piko?](#what-is-piko)
 - [Design Goals](#design-goals)
 - [Getting Started](#getting-started)
 - [Support](#support)
 - [Docs](#docs)
 - [Contributing](#contributing)
 - [License](#license)
+
+## What Is Piko?
+
+Piko is a reverse proxy that provides a secure way to connect to services that
+aren’t publicly routable, known as tunneling. Instead of sending traffic
+directly to your services, your upstream services open outbound-only
+connections (tunnels) to Piko, then Piko forwards traffic to your services via
+their outbound connections.
+
+Piko has two key design goals:
+* Serve production traffic: To serve production traffic Piko may run as a
+cluster of nodes for fault tolerance, horizontal scaling and zero-downtime
+deployments
+* Simple to host: Piko is designed to be simple to self-host, particularly on
+Kubernetes
+
+Such as you may use Piko to expose services in a customer network, a bring your
+own cloud (BYOC) service, or to connect to user devices.
+
+Therefore Piko can be used as an open-source alternative to
+[Ngrok](https://ngrok.com/).
+
+### Reverse Proxy
+
+In a traditional reverse proxy, you configure routing rules describing how to
+route incoming traffic to upstream services. The proxy will then open
+connections to your services and forward incoming traffic. This means your
+upstream services must be discoverable and have an exposed port that's
+accessible from the proxy.
+
+With Piko, rather than configuring routing rules in the proxy, instead your
+upstreams configure their own routing rules and open a secure outbound-only
+connection to Piko. Piko then forwards incoming traffic to the correct upstream
+via its outbound connection.
+
+Therefore your services may run anywhere without requiring a public route, as
+long as they can open a connection to Piko. This enables accessing services in
+private environments, such as an external customer network or your local
+network It can also be used to simplify your infrastructure as you don’t need
+to set up firewall rules, DNS, certificates, load balancers…
+
+### Endpoints
+
+Upstream services listen for traffic on a particular endpoint. Piko then
+manages routing incoming connections and requests to an upstream service
+listening on the target endpoint. If multiple upstreams are listening on the
+same endpoint, requests are load balanced among the available upstreams.
+
+No static configuration is required to configure endpoints, upstreams can
+listen on any endpoint they choose.
+
+Incoming HTTP(S) requests identify the target endpoint to connect to using
+either the `Host` header or `x-piko-endpoint` header.
+
+When using the `Host` header, Piko uses the first segment as the endpoint ID.
+Such as if your hosting Piko with a wildcard domain at `*.piko.example.com`,
+sending a request to `foo.piko.example.com` will be routed to an upstream
+listening on endpoint `foo`.
+
+To avoid having to set up a wildcard domain you can instead use
+`x-piko-endpoint`, such as if Piko is hosted at `piko.example.com`, you can
+send requests to endpoint `foo` using header `x-piko-endpoint: foo`.
+
+<p align="center">
+  <img src="assets/images/overview.png" alt="overview" width="80%"/>
+</p>
+
 
 ## Design Goals
 
@@ -73,33 +110,6 @@ via the load balancer, then the cluster manages routing traffic to the
 appropriate upstream.
 
 See [Kubernetes](./docs/manage/kubernetes.md) for details.
-
-### Dynamic Endpoints
-Endpoints in Piko are the equivalent of a domain name in DNS.
-
-Upstreams may listen to any endpoint and Piko load balances traffic for each
-endpoint among the upstreams listening for that endpoint.
-
-There is no static configuration required to configure endpoints, nor are
-upstreams assigned random endpoint IDs. Instead upstreams can select their own
-endpoint at runtime.
-
-You may have multiple upstreams listening on the same endpoint, such as nodes
-nodes in a payments service listening on the ‘payments’ endpoint, or each
-upstream may have a unique endpoint identifying the node.
-
-### Secure
-
-Upstream services connect to the Piko server via an outbound-only connection.
-Piko will then route traffic to the upstream via that connection. Therefore the
-upstream never has to expose a port to listen for traffic.
-
-The server has separate ports for traffic from downstream clients (the ‘proxy
-port’) and connections from upstreams (the ‘upstream port’). In a typical
-deployment you may expose the upstream port to the Internet for upstreams in
-different networks to connect (using TLS and authentication), though only allow
-proxy port access from within the same network as the server. Therefore you
-never have to accept requests from external networks.
 
 ## Getting Started
 
