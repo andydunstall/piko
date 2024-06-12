@@ -117,12 +117,12 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 	conn := pikowebsocket.New(wsConn)
 	defer conn.Close()
 
-	s.logger.Debug(
+	s.logger.Info(
 		"upstream connected",
 		zap.String("endpoint-id", endpointID),
 		zap.String("client-ip", c.ClientIP()),
 	)
-	defer s.logger.Debug(
+	defer s.logger.Info(
 		"upstream disconnected",
 		zap.String("endpoint-id", endpointID),
 		zap.String("client-ip", c.ClientIP()),
