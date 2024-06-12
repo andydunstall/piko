@@ -47,6 +47,24 @@ func TestServer_AdminRoutes(t *testing.T) {
 	}()
 	defer s.Shutdown(context.TODO())
 
+	t.Run("health", func(t *testing.T) {
+		url := fmt.Sprintf("http://%s/health", ln.Addr().String())
+		resp, err := http.Get(url)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("ready", func(t *testing.T) {
+		url := fmt.Sprintf("http://%s/ready", ln.Addr().String())
+		resp, err := http.Get(url)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
 	t.Run("metrics", func(t *testing.T) {
 		url := fmt.Sprintf("http://%s/metrics", ln.Addr().String())
 		resp, err := http.Get(url)
