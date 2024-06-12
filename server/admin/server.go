@@ -99,6 +99,7 @@ func (s *Server) AddStatus(route string, handler status.Handler) {
 
 func (s *Server) registerRoutes(router *gin.Engine) {
 	router.GET("/health", s.healthRoute)
+	router.GET("/ready", s.readyRoute)
 
 	if s.registry != nil {
 		router.GET("/metrics", s.metricsHandler())
@@ -106,6 +107,10 @@ func (s *Server) registerRoutes(router *gin.Engine) {
 }
 
 func (s *Server) healthRoute(c *gin.Context) {
+	c.Status(http.StatusOK)
+}
+
+func (s *Server) readyRoute(c *gin.Context) {
 	c.Status(http.StatusOK)
 }
 
