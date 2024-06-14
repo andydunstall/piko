@@ -1,7 +1,7 @@
 # Observability
 
 ## Logging
-This section describes logging in the Piko server and agent.
+This section describes logging in the Piko server.
 
 ### Output
 Piko uses structured logs, where logs are written to `stderr` formatted as
@@ -23,10 +23,10 @@ log occured.
 
 All logs can be enabled for a subsystem using `--log.subsystems`, which
 overrides `--log.level` for the configured subsystems. Such as
-`--log.subsystems server.http,metrics,proxy.forwarder`.
+`--log.subsystems proxy,proxy.access,gossip`.
 
 `--log.subsystems` enables any subsystem that are an exact match of the given
-list. Such as `rpc` will match `rpc` but not `rpc.stream`.
+list. Such as `proxy` will match `proxy` but not `proxy.access`.
 
 ## Metrics
 The Piko server exposes Prometheus on the admin port at `/metrics`.

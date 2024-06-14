@@ -67,9 +67,9 @@ metrics. You can open Grafana at `http://localhost:3000`.
 
 ## Agent
 
-The Piko agent is a lightweight proxy that runs alongside your upstream
-services. It connects to the Piko server and registers endpoints, then forwards
-incoming requests to your services.
+The [Piko agent](./agent/agent.md) is a lightweight proxy that runs alongside
+your upstream services. It connects to the Piko server and registers endpoints,
+then forwards incoming requests to your services.
 
 First create a local HTTP server to forward requests to, such as
 `python3 -m http.server 4000` so serve the files in the local directory on port
