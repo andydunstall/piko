@@ -2,17 +2,17 @@
 
 This document provides an overview of how Piko works.
 
-The Piko server is a HTTP(S) reverse proxy that forwards requests to upstream
-listeners. Unlike a traditional reverse proxy, Piko never opens a connection
-directly to your upstream. Instead upstreams listeners open outbound-only
-connections to the server and listen on a particular endpoint. The server then
-forwards requests to a listening upstream via its outbound connection to the
-server.
+The [Piko server](./server/server.md) is a HTTP(S) reverse proxy that forwards
+requests to upstream listeners. Unlike a traditional reverse proxy, Piko never
+opens a connection directly to your upstream. Instead upstreams listeners open
+outbound-only connections to the server and listen on a particular endpoint.
+The server then forwards requests to a listening upstream via its outbound
+connection to the server.
 
 This means upstreams can run anywhere without requiring a public route, as long
 as they can open a connection to the Piko server.
 
-You can create an upstream listener using the Piko agent.
+You can create an upstream listener using the [Piko agent](./agent/agent.md).
 
 ## Upstream
 
