@@ -131,11 +131,10 @@ ask questions, get help, or suggest ideas.
 - Tutorials
   - [Getting Started](./docs/getting-started.md)
   - [Install](./docs/tutorials/install.md)
-- Manage
-  - [Overview](./docs/manage/overview.md)
-  - [Configure](./docs/manage/configure.md)
-  - [Kubernetes](./docs/manage/kubernetes.md)
-  - [Observability](./docs/manage/observability.md)
+- [Server](./docs/server/server.md)
+  - [Observability](./docs/server/observability.md)
+  - [Kubernetes](./docs/server/kubernetes.md)
+- [Agent](./docs/agent/agent.md)
 
 ## Contributing
 

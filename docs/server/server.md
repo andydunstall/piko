@@ -1,13 +1,39 @@
-# Configure
+# Server
 
-## Sources
+The Piko server is responsible for forwarding requests from downstream clients
+to upstream listeners. See [How Piko Works](../how-piko-works.md) for details.
 
-Piko server and agent support both YAML configuration and command-line flags.
+The server is designed to be hosted as a cluster of nodes behind a HTTP load
+balancer.
+
+Run a server node with `piko server`.
+
+## Ports
+
+The Piko server exposes 4 ports:
+* Proxy port: Receives HTTP(S) requests from proxy clients which are routed to
+an upstream service
+* Upstream port: Accepts connections from upstream services
+* Admin port: Exposes metrics and a status API to inspect the server state
+* Gossip port: Used for inter-node gossip traffic
+
+The proxy port and upstream port are kept separate to support different access
+to each port. Such as if you're using Piko to access external customer
+networks, the upstream port may be exposed to the Internet for upstreams to
+connect, but you may only allow proxy requests from clients in the same network
+as Piko. Similarly the admin port should not be exposed to the Internet.
+
+The proxy, upstream and admin ports are all designed to be hosted behind a HTTP
+load balancer. The upstream port uses WebSockets so you must ensure your load
+balancer is configured correctly.
+
+## Configuration
+
+Piko server supports both YAML configuration and command-line flags.
 
 The YAML file path can be set using `--config.path`.
 
-See `piko server -h` and `piko agent -h` for the available configuration
-options.
+See `piko server -h` for the available configuration options.
 
 ### Variable Substitution
 
@@ -18,10 +44,11 @@ and `$VAR` with the corresponding environment variable.
 If the environment variable is not defined, it will be replaced with an empty
 string. You can also define a default value using form `${VAR:default}`.
 
-## Server
+### YAML Configuration
 
-The Piko server node is run using `piko server`. It has the following
-configuration:
+The server supports the following YAML configuration (where most parameters
+have corresponding command line flags):
+
 ```
 cluster:
   # A unique identifier for the node in the cluster.
@@ -238,7 +265,7 @@ log:
 grace_period: 1m0s
 ```
 
-### Cluster
+## Cluster
 
 To deploy Piko as a cluster, configure `--cluster.join` to a list of cluster
 members in the cluster to join.
@@ -250,9 +277,10 @@ in the cluster.
 To deploy Piko to Kubernetes, you can create a headless service whose domain
 resolves to the IP addresses of the pods in the service, such as
 `piko.prod-piko-ns.svc.cluster.local`. When Piko starts, it will then attempt
-to join the other pods.
+to join the other pods in the cluster. See [Kubernetes](./kubernetes.md) for
+details on hosting Piko on Kubernetes.
 
-### Authentication
+## Authentication
 
 To authenticate upstream endpoint connections, Piko can use a
 [JSON Web Token (JWT)](https://jwt.io/) provided by your application.
@@ -291,67 +319,11 @@ typically be deployed to the same network as the Pcio server. Your upstream
 services may then authenticate incoming requests if needed after they've been
 forwarded by Piko.
 
-## Agent
+## Observability
 
-The Piko agent is run using `piko agent`. It has the following configuration:
-```
-# Listeners contains the set of listeners to register. Each listener has an
-# endpoint ID, address to forward connections to, whether to log each request
-# and a timeout to forward requests to the upstreams.
-listeners:
-  - endpoint_id: my-endpoint
-    addr: localhost:3000
-    access_log: true
-    timeout: 15s
+Each server node has an admin port (`8003` by default) which includes
+Prometheus metrics at `/metrics`, a health endpoint at `/health`, and a status
+API at `/status`. The status API exposes endpoints for inspecting the status of
+a server node, which is used by the `piko server status` CLI.
 
-connect:
-  # The Piko server URL to connect to. Note this must be configured to use the
-  # Piko server 'upstream' port.
-  url: http://localhost:8001
-
-  # Token is a token to authenticate with the Piko server.
-  token: ""
-
-  # Timeout attempting to connect to the Piko server on boot. Note if the agent
-  # is disconnected after the initial connection succeeds it will keep trying to
-  # reconnect.
-  timeout: 30s
-
-  tls:
-    # A path to a certificate PEM file containing root certificiate authorities to
-    # validate the TLS connection to the Piko server.
-    #
-    # Defaults to using the host root CAs.
-    root_cas: ""
-
-server:
-  The host/port to bind the server to.
-
-  If the host is unspecified it defaults to all listeners, such as
-  '--server.bind-addr :5000' will listen on '0.0.0.0:5000'.
-  bind_addr: ":5000"
-
-log:
-    # Minimum log level to output.
-    #
-    # The available levels are 'debug', 'info', 'warn' and 'error'.
-    level: info
-
-    # Each log has a 'subsystem' field where the log occured.
-    #
-    # '--log.subsystems' enables all log levels for those given subsystems. This
-    # can be useful to debug a particular subsystem without having to enable all
-    # debug logs.
-    #
-    # Such as you can enable 'gossip' logs with '--log.subsystems gossip'.
-    subsystems: []
-
-# Maximum duration after a shutdown signal is received (SIGTERM or
-# SIGINT) to gracefully shutdown each listener.
-grace_period: 1m0s
-```
-
-### Authentication
-
-To authenticate the agent, include a JWT in `connect.token`. The supported JWT
-formats are described above in the server configuration.
+See [Observability](./observability.md) for details.
