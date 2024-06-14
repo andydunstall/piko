@@ -7,6 +7,7 @@
 - [What Is Piko?](#what-is-piko)
 - [Design Goals](#design-goals)
 - [Getting Started](#getting-started)
+- [How Piko Works](#how-piko-works)
 - [Support](#support)
 - [Docs](#docs)
 - [Contributing](#contributing)
@@ -115,6 +116,10 @@ See [Kubernetes](./docs/manage/kubernetes.md) for details.
 
 See [Getting Started](./docs/getting-started.md).
 
+## How Piko Works
+
+See [How Piko Works](./docs/how-piko-works.md).
+
 ## Support
 
 Use [GitHub Discussions](https://github.com/andydunstall/piko/discussions) to
@@ -122,11 +127,10 @@ ask questions, get help, or suggest ideas.
 
 ## Docs
 
+- [How Piko Works](./docs/how-piko-works.md)
 - Tutorials
   - [Getting Started](./docs/getting-started.md)
   - [Install](./docs/tutorials/install.md)
-- Architecture
-  - [Overview](./docs/architecture/overview.md)
 - Manage
   - [Overview](./docs/manage/overview.md)
   - [Configure](./docs/manage/configure.md)
