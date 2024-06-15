@@ -12,7 +12,8 @@ connection to the server.
 This means upstreams can run anywhere without requiring a public route, as long
 as they can open a connection to the Piko server.
 
-You can create an upstream listener using the [Piko agent](./agent/agent.md).
+You can create an upstream listener using the [Piko agent](./agent/agent.md)
+or the [Go SDK](./sdk/go-sdk.md).
 
 ## Upstream
 
