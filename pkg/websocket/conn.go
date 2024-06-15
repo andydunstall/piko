@@ -113,10 +113,11 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 	)
 	if err != nil {
 		if resp != nil {
+			err = fmt.Errorf("%d: %w", resp.StatusCode, err)
 			if _, ok := retryableStatusCodes[resp.StatusCode]; ok {
 				return nil, NewRetryableError(err)
 			}
-			return nil, fmt.Errorf("%d: %w", resp.StatusCode, err)
+			return nil, err
 		}
 		return nil, NewRetryableError(err)
 	}
