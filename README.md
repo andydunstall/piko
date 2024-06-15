@@ -135,6 +135,7 @@ ask questions, get help, or suggest ideas.
   - [Observability](./docs/server/observability.md)
   - [Kubernetes](./docs/server/kubernetes.md)
 - [Agent](./docs/agent/agent.md)
+- [Go SDK](./docs/sdk/go-sdk.md)
 
 ## Contributing
 
