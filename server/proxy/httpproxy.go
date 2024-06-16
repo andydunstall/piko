@@ -23,7 +23,8 @@ const (
 	upstreamContextKey
 )
 
-type ReverseProxy struct {
+// HTTPProxy proxies HTTP traffic to upsteam listeners.
+type HTTPProxy struct {
 	upstreams upstream.Manager
 
 	proxy *httputil.ReverseProxy
@@ -33,15 +34,15 @@ type ReverseProxy struct {
 	logger log.Logger
 }
 
-func NewReverseProxy(
+func NewHTTPProxy(
 	upstreams upstream.Manager,
 	timeout time.Duration,
 	logger log.Logger,
-) *ReverseProxy {
-	rp := &ReverseProxy{
+) *HTTPProxy {
+	rp := &HTTPProxy{
 		upstreams: upstreams,
 		timeout:   timeout,
-		logger:    logger,
+		logger:    logger.WithSubsystem("proxy.http"),
 	}
 
 	rp.proxy = &httputil.ReverseProxy{
@@ -65,7 +66,7 @@ func NewReverseProxy(
 	return rp
 }
 
-func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (p *HTTPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if p.timeout != 0 {
 		ctx, cancel := context.WithTimeout(r.Context(), p.timeout)
 		defer cancel()
@@ -104,14 +105,14 @@ func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	p.proxy.ServeHTTP(w, r)
 }
 
-func (p *ReverseProxy) dialUpstream(ctx context.Context, _, _ string) (net.Conn, error) {
+func (p *HTTPProxy) dialUpstream(ctx context.Context, _, _ string) (net.Conn, error) {
 	// As a bit of a hack to work with http.Transport, we add the upstream
 	// to the dial context.
 	upstream := ctx.Value(upstreamContextKey).(upstream.Upstream)
 	return upstream.Dial()
 }
 
-func (p *ReverseProxy) errorHandler(w http.ResponseWriter, _ *http.Request, err error) {
+func (p *HTTPProxy) errorHandler(w http.ResponseWriter, _ *http.Request, err error) {
 	p.logger.Warn("proxy request", zap.Error(err))
 
 	if errors.Is(err, context.DeadlineExceeded) {

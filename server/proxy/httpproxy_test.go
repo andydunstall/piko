@@ -45,7 +45,7 @@ func (u *tcpUpstream) EndpointID() string {
 	return "my-endpoint"
 }
 
-func TestReverseProxy_Forward(t *testing.T) {
+func TestHTTPProxy_Forward(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
@@ -63,7 +63,7 @@ func TestReverseProxy_Forward(t *testing.T) {
 		))
 		defer server.Close()
 
-		proxy := NewReverseProxy(
+		proxy := NewHTTPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
 					return &tcpUpstream{
@@ -103,7 +103,7 @@ func TestReverseProxy_Forward(t *testing.T) {
 		defer server.Close()
 		defer close(blockCh)
 
-		proxy := NewReverseProxy(
+		proxy := NewHTTPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
 					return &tcpUpstream{
@@ -131,7 +131,7 @@ func TestReverseProxy_Forward(t *testing.T) {
 	})
 
 	t.Run("upstream unreachable", func(t *testing.T) {
-		proxy := NewReverseProxy(
+		proxy := NewHTTPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
 					return &tcpUpstream{
@@ -160,7 +160,7 @@ func TestReverseProxy_Forward(t *testing.T) {
 	})
 
 	t.Run("no available upstreams", func(t *testing.T) {
-		proxy := NewReverseProxy(
+		proxy := NewHTTPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
 					assert.Equal(t, "my-endpoint", endpointID)
@@ -189,7 +189,7 @@ func TestReverseProxy_Forward(t *testing.T) {
 	})
 
 	t.Run("no available upstreams forwarded", func(t *testing.T) {
-		proxy := NewReverseProxy(
+		proxy := NewHTTPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
 					assert.Equal(t, "my-endpoint", endpointID)
@@ -219,7 +219,7 @@ func TestReverseProxy_Forward(t *testing.T) {
 	})
 
 	t.Run("missing endpoint id", func(t *testing.T) {
-		proxy := NewReverseProxy(nil, time.Second, log.NewNopLogger())
+		proxy := NewHTTPProxy(nil, time.Second, log.NewNopLogger())
 
 		r := httptest.NewRequest(http.MethodGet, "/", nil)
 		// The host must have a '.' separator to be parsed as an endpoint ID.
