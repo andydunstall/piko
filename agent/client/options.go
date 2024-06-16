@@ -8,6 +8,7 @@ import (
 
 type options struct {
 	token       string
+	proxyURL    string
 	upstreamURL string
 	tlsConfig   *tls.Config
 	logger      log.Logger
@@ -38,6 +39,18 @@ func (o upstreamURLOption) apply(opts *options) {
 // 'https://piko.example.com:8001'.
 func WithUpstreamURL(url string) Option {
 	return upstreamURLOption(url)
+}
+
+type proxyURLOption string
+
+func (o proxyURLOption) apply(opts *options) {
+	opts.proxyURL = string(o)
+}
+
+// WithProxyURL configures the Piko server proxy port URL. Such as
+// 'https://piko.example.com:8000'.
+func WithProxyURL(url string) Option {
+	return proxyURLOption(url)
 }
 
 type tlsConfigOption struct {
