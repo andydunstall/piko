@@ -14,6 +14,13 @@ import (
 	"github.com/spf13/pflag"
 )
 
+type ListenerProtocol string
+
+const (
+	ListenerProtocolHTTP ListenerProtocol = "http"
+	ListenerProtocolTCP  ListenerProtocol = "tcp"
+)
+
 type ListenerConfig struct {
 	// EndpointID is the endpoint ID to register.
 	EndpointID string `json:"endpoint_id" yaml:"endpoint_id"`
@@ -21,12 +28,36 @@ type ListenerConfig struct {
 	// Addr is the address of the upstream service to forward to.
 	Addr string `json:"addr" yaml:"addr"`
 
+	// Protocol is the protocol to listen on. Supports "http" and "tcp".
+	// Defaults to "http".
+	Protocol ListenerProtocol `json:"protocol" yaml:"protocol"`
+
 	// AccessLog indicates whether to log all incoming connections and requests
 	// for the endpoint.
 	AccessLog bool `json:"access_log" yaml:"access_log"`
 
 	// Timeout is the timeout to forward incoming requests to the upstream.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
+}
+
+// Host parses the given upstream address into a host and port. Return false if
+// the address is invalid.
+//
+// The addr may be either a a host and port or just a port.
+func (c *ListenerConfig) Host() (string, bool) {
+	// Port only.
+	port, err := strconv.Atoi(c.Addr)
+	if err == nil && port >= 0 && port < 0xffff {
+		return "localhost:" + c.Addr, true
+	}
+
+	// Host and port.
+	_, _, err = net.SplitHostPort(c.Addr)
+	if err == nil {
+		return c.Addr, true
+	}
+
+	return "", false
 }
 
 // URL parses the given upstream address into a URL. Return false if the
@@ -68,8 +99,16 @@ func (c *ListenerConfig) Validate() error {
 	if c.Addr == "" {
 		return fmt.Errorf("missing addr")
 	}
-	if _, ok := c.URL(); !ok {
-		return fmt.Errorf("invalid addr")
+	if c.Protocol == "" || c.Protocol == ListenerProtocolHTTP {
+		if _, ok := c.URL(); !ok {
+			return fmt.Errorf("invalid addr")
+		}
+	} else if c.Protocol != ListenerProtocolTCP {
+		if _, ok := c.Host(); !ok {
+			return fmt.Errorf("invalid addr")
+		}
+	} else {
+		return fmt.Errorf("unsupported protocol")
 	}
 	if c.Timeout == 0 {
 		return fmt.Errorf("missing timeout")

@@ -12,6 +12,7 @@ import (
 	"github.com/andydunstall/piko/agent/config"
 	"github.com/andydunstall/piko/agent/reverseproxy"
 	"github.com/andydunstall/piko/agent/server"
+	"github.com/andydunstall/piko/agent/tcpproxy"
 	"github.com/andydunstall/piko/pkg/build"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
@@ -38,14 +39,22 @@ connection. Therefore the agent never exposes a port.
 If there are multiple listeners for the same endpoint, Piko load balances
 requests the registered listeners.
 
+Piko supports HTTP and TCP listeners. HTTP listeners parse and log each request
+before forwarding it to the upstream, whereas TCP listeners forward raw
+connections.
+
 The agent supports both YAML configuration and command line flags. Configure
 a YAML file using '--config.path'. When enabling '--config.expand-env', Piko
 will expand environment variables in the loaded YAML configuration.
 
 Examples:
-  # Listen for connections from endpoint 'my-endpoint' and forward connections
-  # to localhost:3000.
+  # Listen for HTTP requests from endpoint 'my-endpoint' and forward to
+  # localhost:3000.
   piko agent http my-endpoint 3000
+
+  # Listen for TCP connections from endpoint 'my-endpoint' and forward to
+  # localhost:3000.
+  piko agent tcp my-endpoint 3000
 
   # Start all listeners configured in agent.yaml.
   piko agent start --config.file ./agent.yaml
@@ -65,6 +74,13 @@ Examples:
 			os.Exit(1)
 		}
 
+		// Listener protocol defaults to HTTP.
+		for _, listener := range conf.Listeners {
+			if listener.Protocol == "" {
+				listener.Protocol = config.ListenerProtocolHTTP
+			}
+		}
+
 		if err := conf.Validate(); err != nil {
 			fmt.Printf("config: %s\n", err.Error())
 			os.Exit(1)
@@ -73,6 +89,7 @@ Examples:
 
 	cmd.AddCommand(newStartCommand(&conf))
 	cmd.AddCommand(newHTTPCommand(&conf))
+	cmd.AddCommand(newTCPCommand(&conf))
 
 	return cmd
 }
@@ -113,24 +130,40 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 		}
 		defer ln.Close()
 
-		server := reverseproxy.NewServer(listenerConfig, registry, logger)
+		if listenerConfig.Protocol == config.ListenerProtocolHTTP {
+			server := reverseproxy.NewServer(listenerConfig, registry, logger)
 
-		// Listener handler.
-		group.Add(func() error {
-			if err := server.Serve(ln); err != nil {
-				return fmt.Errorf("serve: %w", err)
-			}
-			return nil
-		}, func(error) {
-			shutdownCtx, cancel := context.WithTimeout(
-				context.Background(), conf.GracePeriod,
-			)
-			defer cancel()
+			// Listener handler.
+			group.Add(func() error {
+				if err := server.Serve(ln); err != nil {
+					return fmt.Errorf("serve: %w", err)
+				}
+				return nil
+			}, func(error) {
+				shutdownCtx, cancel := context.WithTimeout(
+					context.Background(), conf.GracePeriod,
+				)
+				defer cancel()
 
-			if err := server.Shutdown(shutdownCtx); err != nil {
-				logger.Warn("failed to gracefully shutdown listener", zap.Error(err))
-			}
-		})
+				if err := server.Shutdown(shutdownCtx); err != nil {
+					logger.Warn("failed to gracefully shutdown listener", zap.Error(err))
+				}
+			})
+		} else if listenerConfig.Protocol == config.ListenerProtocolTCP {
+			server := tcpproxy.NewServer(listenerConfig, logger)
+
+			// Listener handler.
+			group.Add(func() error {
+				if err := server.Serve(ln); err != nil {
+					return fmt.Errorf("serve: %w", err)
+				}
+				return nil
+			}, func(error) {
+				if err := server.Close(); err != nil {
+					logger.Warn("failed to close listener", zap.Error(err))
+				}
+			})
+		}
 	}
 
 	// Agent server.

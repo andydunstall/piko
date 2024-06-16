@@ -11,26 +11,23 @@ import (
 	"go.uber.org/zap"
 )
 
-func newHTTPCommand(conf *config.Config) *cobra.Command {
+func newTCPCommand(conf *config.Config) *cobra.Command {
 	cmd := &cobra.Command{
-		Use:   "http [endpoint] [addr] [flags]",
+		Use:   "tcp [endpoint] [addr] [flags]",
 		Args:  cobra.ExactArgs(2),
-		Short: "register a http listener",
-		Long: `Listens for HTTP traffic on the given endpoint and forwards
+		Short: "register a tcp listener",
+		Long: `Listens for TCP traffic on the given endpoint and forwards
 incoming connections to your upstream service.
 
-The configured upstream address be a port, host and port or a full URL.
+The configured upstream address be a port or host and port.
 
 Examples:
-  # Listen for connections from endpoint 'my-endpoint' and forward connections
+  # Listen for connections from endpoint 'my-endpoint' and forward
   # to localhost:3000.
-  piko agent http my-endpoint 3000
+  piko agent tcp my-endpoint 3000
 
   # Listen and forward to 10.26.104.56:3000.
-  piko agent http my-endpoint 10.26.104.56:3000
-
-  # Listen and forward to 10.26.104.56:3000 using HTTPS.
-  piko agent http my-endpoint https://10.26.104.56:3000
+  piko agent tcp my-endpoint 10.26.104.56:3000
 `,
 	}
 
@@ -40,7 +37,7 @@ Examples:
 		"access-log",
 		true,
 		`
-Whether to log all incoming HTTP requests and responses as 'info' logs.`,
+Whether to log all incoming connections as 'info' logs.`,
 	)
 
 	var timeout time.Duration
@@ -49,7 +46,7 @@ Whether to log all incoming HTTP requests and responses as 'info' logs.`,
 		"timeout",
 		time.Second*10,
 		`
-Timeout forwarding incoming HTTP requests to the upstream.`,
+Timeout connecting to the upstream.`,
 	)
 
 	var logger log.Logger
@@ -60,7 +57,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 		conf.Listeners = []config.ListenerConfig{{
 			EndpointID: args[0],
 			Addr:       args[1],
-			Protocol:   config.ListenerProtocolHTTP,
+			Protocol:   config.ListenerProtocolTCP,
 			AccessLog:  accessLog,
 			Timeout:    timeout,
 		}}

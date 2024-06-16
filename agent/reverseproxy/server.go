@@ -30,7 +30,7 @@ func NewServer(
 	registry *prometheus.Registry,
 	logger log.Logger,
 ) *Server {
-	logger = logger.WithSubsystem("reverseproxy")
+	logger = logger.WithSubsystem("proxy.http")
 	logger = logger.With(zap.String("endpoint-id", conf.EndpointID))
 
 	router := gin.New()
