@@ -1,4 +1,4 @@
-package node
+package cluster
 
 import (
 	"context"
@@ -7,56 +7,31 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
+	pikogossip "github.com/andydunstall/piko/pkg/gossip"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/config"
+	"github.com/andydunstall/piko/server/gossip"
 	"github.com/andydunstall/piko/server/proxy"
 	"github.com/andydunstall/piko/server/upstream"
 )
 
-type options struct {
-	tls    bool
-	logger log.Logger
-}
-
-type tlsOption bool
-
-func (o tlsOption) apply(opts *options) {
-	opts.tls = bool(o)
-}
-
-// WithTLS configures the node ports to use TLS.
-func WithTLS(tls bool) Option {
-	return tlsOption(tls)
-}
-
-type loggerOption struct {
-	Logger log.Logger
-}
-
-func (o loggerOption) apply(opts *options) {
-	opts.logger = o.Logger
-}
-
-// WithLogger configures the logger. Defaults to no output.
-func WithLogger(logger log.Logger) Option {
-	return loggerOption{Logger: logger}
-}
-
-type Option interface {
-	apply(*options)
-}
-
 type Node struct {
 	nodeID string
 
-	proxyLn    net.Listener
-	upstreamLn net.Listener
+	proxyLn        net.Listener
+	upstreamLn     net.Listener
+	gossipStreamLn net.Listener
+	gossipPacketLn net.PacketConn
 
 	proxyServer    *proxy.Server
 	upstreamServer *upstream.Server
+	gossiper       *gossip.Gossip
+
+	clusterState *cluster.State
 
 	tlsConfig  *tls.Config
 	rootCAPool *x509.CertPool
@@ -66,7 +41,7 @@ type Node struct {
 	wg sync.WaitGroup
 }
 
-func New(opts ...Option) (*Node, error) {
+func NewNode(nodeID string, opts ...Option) (*Node, error) {
 	options := options{
 		tls:    false,
 		logger: log.NewNopLogger(),
@@ -85,6 +60,19 @@ func New(opts ...Option) (*Node, error) {
 		return nil, fmt.Errorf("upstream listen: %w", err)
 	}
 
+	gossipStreamLn, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		return nil, fmt.Errorf("gossip listen: %w", err)
+	}
+
+	gossipPacketLn, err := net.ListenUDP("udp", &net.UDPAddr{
+		IP:   gossipStreamLn.Addr().(*net.TCPAddr).IP,
+		Port: gossipStreamLn.Addr().(*net.TCPAddr).Port,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("gossip listen: %w", err)
+	}
+
 	var tlsConfig *tls.Config
 	var rootCAPool *x509.CertPool
 	if options.tls {
@@ -98,23 +86,27 @@ func New(opts ...Option) (*Node, error) {
 		rootCAPool = pool
 	}
 
+	clusterState := cluster.NewState(&cluster.Node{
+		ID:        nodeID,
+		ProxyAddr: proxyLn.Addr().String(),
+		AdminAddr: "127.0.0.1:12345",
+	}, options.logger)
+
 	return &Node{
-		nodeID:     "my-node",
-		proxyLn:    proxyLn,
-		upstreamLn: upstreamLn,
-		tlsConfig:  tlsConfig,
-		rootCAPool: rootCAPool,
-		options:    options,
+		nodeID:         nodeID,
+		proxyLn:        proxyLn,
+		upstreamLn:     upstreamLn,
+		gossipStreamLn: gossipStreamLn,
+		gossipPacketLn: gossipPacketLn,
+		clusterState:   clusterState,
+		tlsConfig:      tlsConfig,
+		rootCAPool:     rootCAPool,
+		options:        options,
 	}, nil
 }
 
 func (n *Node) Start() {
-	clusterState := cluster.NewState(&cluster.Node{
-		ID:        n.nodeID,
-		ProxyAddr: n.proxyLn.Addr().String(),
-	}, n.options.logger)
-
-	upstreams := upstream.NewLoadBalancedManager(clusterState)
+	upstreams := upstream.NewLoadBalancedManager(n.clusterState)
 
 	n.proxyServer = proxy.NewServer(
 		upstreams,
@@ -140,9 +132,23 @@ func (n *Node) Start() {
 		defer n.wg.Done()
 		_ = n.upstreamServer.Serve(n.upstreamLn)
 	}()
+
+	n.gossiper = gossip.NewGossip(
+		n.clusterState,
+		n.gossipStreamLn,
+		n.gossipPacketLn,
+		&pikogossip.Config{
+			BindAddr:      n.gossipStreamLn.Addr().String(),
+			AdvertiseAddr: n.gossipStreamLn.Addr().String(),
+			Interval:      time.Millisecond * 10,
+			MaxPacketSize: 1400,
+		},
+		n.options.logger,
+	)
 }
 
 func (n *Node) Stop() {
+	n.gossiper.Close()
 	n.upstreamServer.Shutdown(context.Background())
 	n.proxyServer.Shutdown(context.Background())
 	n.wg.Wait()
@@ -154,6 +160,14 @@ func (n *Node) ProxyAddr() string {
 
 func (n *Node) UpstreamAddr() string {
 	return n.upstreamLn.Addr().String()
+}
+
+func (n *Node) GossipAddr() string {
+	return n.gossipStreamLn.Addr().String()
+}
+
+func (n *Node) ClusterState() *cluster.State {
+	return n.clusterState
 }
 
 func (n *Node) RootCAPool() *x509.CertPool {
