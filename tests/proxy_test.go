@@ -4,6 +4,7 @@ package tests
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -57,7 +58,52 @@ func TestProxy_HTTP(t *testing.T) {
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
 	})
 
-	// TODO(andydunstall): Add HTTPS test.
+	t.Run("https", func(t *testing.T) {
+		node, err := node.New(node.WithTLS(true))
+		require.NoError(t, err)
+		node.Start()
+		defer node.Stop()
+
+		clientTLSConfig := &tls.Config{
+			RootCAs: node.RootCAPool(),
+		}
+
+		// Add upstream listener with a HTTP server returning 200.
+
+		upstreamURL := "https://" + node.UpstreamAddr()
+		pikoClient := client.New(
+			client.WithURL(upstreamURL),
+			client.WithTLSConfig(clientTLSConfig),
+		)
+		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		assert.NoError(t, err)
+
+		server := httptest.NewUnstartedServer(http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {},
+		))
+		server.Listener = ln
+		go server.Start()
+		defer server.Close()
+
+		// Send a request to the upstream via Piko.
+
+		req, _ := http.NewRequest(
+			http.MethodGet,
+			"https://"+node.ProxyAddr(),
+			nil,
+		)
+		req.Header.Add("x-piko-endpoint", "my-endpoint")
+		httpClient := &http.Client{
+			Transport: &http.Transport{
+				TLSClientConfig: clientTLSConfig,
+			},
+		}
+		resp, err := httpClient.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
 
 	t.Run("websocket", func(t *testing.T) {
 		node, err := node.New()

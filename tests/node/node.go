@@ -2,11 +2,14 @@ package node
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"fmt"
 	"net"
 	"sync"
 
 	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/config"
 	"github.com/andydunstall/piko/server/proxy"
@@ -14,7 +17,19 @@ import (
 )
 
 type options struct {
+	tls    bool
 	logger log.Logger
+}
+
+type tlsOption bool
+
+func (o tlsOption) apply(opts *options) {
+	opts.tls = bool(o)
+}
+
+// WithTLS configures the node ports to use TLS.
+func WithTLS(tls bool) Option {
+	return tlsOption(tls)
 }
 
 type loggerOption struct {
@@ -43,6 +58,9 @@ type Node struct {
 	proxyServer    *proxy.Server
 	upstreamServer *upstream.Server
 
+	tlsConfig  *tls.Config
+	rootCAPool *x509.CertPool
+
 	options options
 
 	wg sync.WaitGroup
@@ -50,6 +68,7 @@ type Node struct {
 
 func New(opts ...Option) (*Node, error) {
 	options := options{
+		tls:    false,
 		logger: log.NewNopLogger(),
 	}
 	for _, o := range opts {
@@ -66,10 +85,25 @@ func New(opts ...Option) (*Node, error) {
 		return nil, fmt.Errorf("upstream listen: %w", err)
 	}
 
+	var tlsConfig *tls.Config
+	var rootCAPool *x509.CertPool
+	if options.tls {
+		pool, cert, err := testutil.LocalTLSServerCert()
+		if err != nil {
+			return nil, fmt.Errorf("tls cert: %w", err)
+		}
+
+		tlsConfig = &tls.Config{}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+		rootCAPool = pool
+	}
+
 	return &Node{
 		nodeID:     "my-node",
 		proxyLn:    proxyLn,
 		upstreamLn: upstreamLn,
+		tlsConfig:  tlsConfig,
+		rootCAPool: rootCAPool,
 		options:    options,
 	}, nil
 }
@@ -86,7 +120,7 @@ func (n *Node) Start() {
 		upstreams,
 		config.ProxyConfig{},
 		nil,
-		nil,
+		n.tlsConfig,
 		n.options.logger,
 	)
 	n.wg.Add(1)
@@ -98,7 +132,7 @@ func (n *Node) Start() {
 	n.upstreamServer = upstream.NewServer(
 		upstreams,
 		nil,
-		nil,
+		n.tlsConfig,
 		n.options.logger,
 	)
 	n.wg.Add(1)
@@ -120,4 +154,8 @@ func (n *Node) ProxyAddr() string {
 
 func (n *Node) UpstreamAddr() string {
 	return n.upstreamLn.Addr().String()
+}
+
+func (n *Node) RootCAPool() *x509.CertPool {
+	return n.rootCAPool
 }
