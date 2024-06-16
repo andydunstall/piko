@@ -91,7 +91,7 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 
 	client := client.New(
 		client.WithToken(conf.Connect.Token),
-		client.WithURL(conf.Connect.URL),
+		client.WithUpstreamURL(conf.Connect.URL),
 		client.WithTLSConfig(connectTLSConfig),
 		client.WithLogger(logger.WithSubsystem("client")),
 	)

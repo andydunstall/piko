@@ -32,7 +32,7 @@ func TestProxy_HTTP(t *testing.T) {
 		// Add upstream listener with a HTTP server returning 200.
 
 		upstreamURL := "http://" + node.UpstreamAddr()
-		pikoClient := client.New(client.WithURL(upstreamURL))
+		pikoClient := client.New(client.WithUpstreamURL(upstreamURL))
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
@@ -73,7 +73,7 @@ func TestProxy_HTTP(t *testing.T) {
 
 		upstreamURL := "https://" + node.UpstreamAddr()
 		pikoClient := client.New(
-			client.WithURL(upstreamURL),
+			client.WithUpstreamURL(upstreamURL),
 			client.WithTLSConfig(clientTLSConfig),
 		)
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
@@ -116,7 +116,7 @@ func TestProxy_HTTP(t *testing.T) {
 		// first message.
 
 		upstreamURL := "http://" + node.UpstreamAddr()
-		pikoClient := client.New(client.WithURL(upstreamURL))
+		pikoClient := client.New(client.WithUpstreamURL(upstreamURL))
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
