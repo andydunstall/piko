@@ -7,10 +7,10 @@ import (
 )
 
 type options struct {
-	token     string
-	url       string
-	tlsConfig *tls.Config
-	logger    log.Logger
+	token       string
+	upstreamURL string
+	tlsConfig   *tls.Config
+	logger      log.Logger
 }
 
 type Option interface {
@@ -28,16 +28,16 @@ func WithToken(key string) Option {
 	return tokenOption(key)
 }
 
-type urlOption string
+type upstreamURLOption string
 
-func (o urlOption) apply(opts *options) {
-	opts.url = string(o)
+func (o upstreamURLOption) apply(opts *options) {
+	opts.upstreamURL = string(o)
 }
 
-// WithURL configures the Piko server URL. Such as
+// WithUpstreamURL configures the Piko server upsteam port URL. Such as
 // 'https://piko.example.com:8001'.
-func WithURL(url string) Option {
-	return urlOption(url)
+func WithUpstreamURL(url string) Option {
+	return upstreamURLOption(url)
 }
 
 type tlsConfigOption struct {

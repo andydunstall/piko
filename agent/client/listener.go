@@ -122,14 +122,14 @@ func (l *listener) connect(ctx context.Context) (*yamux.Session, error) {
 	for {
 		conn, err := websocket.Dial(
 			ctx,
-			serverURL(l.options.url, l.endpointID),
+			upstreamURL(l.options.upstreamURL, l.endpointID),
 			websocket.WithToken(l.options.token),
 			websocket.WithTLSConfig(l.options.tlsConfig),
 		)
 		if err == nil {
 			l.logger.Debug(
 				"listener connected",
-				zap.String("url", serverURL(l.options.url, l.endpointID)),
+				zap.String("url", upstreamURL(l.options.upstreamURL, l.endpointID)),
 			)
 
 			muxConfig := yamux.DefaultConfig()
@@ -147,7 +147,7 @@ func (l *listener) connect(ctx context.Context) (*yamux.Session, error) {
 		if !errors.As(err, &retryableError) {
 			l.logger.Error(
 				"failed to connect to server; non-retryable",
-				zap.String("url", serverURL(l.options.url, l.endpointID)),
+				zap.String("url", upstreamURL(l.options.upstreamURL, l.endpointID)),
 				zap.Error(err),
 			)
 			return nil, err
@@ -155,7 +155,7 @@ func (l *listener) connect(ctx context.Context) (*yamux.Session, error) {
 
 		l.logger.Warn(
 			"failed to connect to server; retrying",
-			zap.String("url", serverURL(l.options.url, l.endpointID)),
+			zap.String("url", upstreamURL(l.options.upstreamURL, l.endpointID)),
 			zap.Error(err),
 		)
 
@@ -167,7 +167,7 @@ func (l *listener) connect(ctx context.Context) (*yamux.Session, error) {
 
 var _ Listener = &listener{}
 
-func serverURL(urlStr, endpointID string) string {
+func upstreamURL(urlStr, endpointID string) string {
 	// Already verified URL in Config.Validate.
 	u, _ := url.Parse(urlStr)
 	u.Path += "/piko/v1/upstream/" + endpointID

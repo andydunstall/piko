@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	// defaultURL is the URL of the Piko upstream port when running locally.
-	defaultURL = "ws://localhost:8001"
+	// defaultUpstreamURL is the URL of the Piko upstream port when running
+	// locally.
+	defaultUpstreamURL = "ws://localhost:8001"
 )
 
 // Client manages registering listeners with Piko.
@@ -23,9 +24,9 @@ type Client struct {
 
 func New(opts ...Option) *Client {
 	options := options{
-		token:  "",
-		url:    defaultURL,
-		logger: log.NewNopLogger(),
+		token:       "",
+		upstreamURL: defaultUpstreamURL,
+		logger:      log.NewNopLogger(),
 	}
 	for _, o := range opts {
 		o.apply(&options)
