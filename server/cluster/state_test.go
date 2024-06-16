@@ -210,6 +210,13 @@ func TestState_UpdateRemoteEndpoint(t *testing.T) {
 		}
 		s := NewState(localNode.Copy(), log.NewNopLogger())
 
+		var notifyNodeID string
+		var notifyEndpointID string
+		s.OnRemoteEndpointUpdate(func(nodeID string, endpointID string) {
+			notifyNodeID = nodeID
+			notifyEndpointID = endpointID
+		})
+
 		newNode := &Node{
 			ID:     "remote",
 			Status: NodeStatusUnreachable,
@@ -219,6 +226,9 @@ func TestState_UpdateRemoteEndpoint(t *testing.T) {
 
 		n, _ := s.Node("remote")
 		assert.Equal(t, 7, n.Endpoints["my-endpoint"])
+
+		assert.Equal(t, "remote", notifyNodeID)
+		assert.Equal(t, "my-endpoint", notifyEndpointID)
 	})
 
 	t.Run("update local status", func(t *testing.T) {
@@ -242,6 +252,13 @@ func TestState_RemoveRemoteEndpoint(t *testing.T) {
 		}
 		s := NewState(localNode.Copy(), log.NewNopLogger())
 
+		var notifyNodeID string
+		var notifyEndpointID string
+		s.OnRemoteEndpointUpdate(func(nodeID string, endpointID string) {
+			notifyNodeID = nodeID
+			notifyEndpointID = endpointID
+		})
+
 		newNode := &Node{
 			ID:     "remote",
 			Status: NodeStatusActive,
@@ -252,6 +269,9 @@ func TestState_RemoveRemoteEndpoint(t *testing.T) {
 
 		n, _ := s.Node("remote")
 		assert.Equal(t, 0, n.Endpoints["my-endpoint"])
+
+		assert.Equal(t, "remote", notifyNodeID)
+		assert.Equal(t, "my-endpoint", notifyEndpointID)
 	})
 
 	t.Run("update local status", func(t *testing.T) {

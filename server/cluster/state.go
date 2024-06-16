@@ -15,7 +15,8 @@ type State struct {
 	localID string
 	nodes   map[string]*Node
 
-	localEndpointSubscribers []func(endpointID string)
+	localEndpointSubscribers  []func(endpointID string)
+	remoteEndpointSubscribers []func(nodeID string, endpointID string)
 
 	// mu protects the above fields.
 	mu sync.RWMutex
@@ -210,6 +211,13 @@ func (s *State) OnLocalEndpointUpdate(f func(endpointID string)) {
 	s.localEndpointSubscribers = append(s.localEndpointSubscribers, f)
 }
 
+func (s *State) OnRemoteEndpointUpdate(f func(nodeID string, endpointID string)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	s.remoteEndpointSubscribers = append(s.remoteEndpointSubscribers, f)
+}
+
 // AddNode adds the given node to the cluster.
 func (s *State) AddNode(node *Node) {
 	s.mu.Lock()
@@ -282,8 +290,55 @@ func (s *State) UpdateRemoteEndpoint(
 	listeners int,
 ) bool {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
+	if !s.updateRemoteEndpointLocked(id, endpointID, listeners) {
+		s.mu.Unlock()
+		return false
+	}
+
+	subscribers := make([]func(nodeID string, endpointID string), 0, len(s.remoteEndpointSubscribers))
+	subscribers = append(subscribers, s.remoteEndpointSubscribers...)
+
+	s.mu.Unlock()
+
+	for _, f := range subscribers {
+		f(id, endpointID)
+	}
+
+	return true
+}
+
+// RemoveRemoteEndpoint removes the active endpoint from the node with the
+// given ID.
+func (s *State) RemoveRemoteEndpoint(id string, endpointID string) bool {
+	s.mu.Lock()
+
+	if !s.removeRemoteEndpointLocked(id, endpointID) {
+		s.mu.Unlock()
+		return false
+	}
+
+	subscribers := make([]func(nodeID string, endpointID string), 0, len(s.remoteEndpointSubscribers))
+	subscribers = append(subscribers, s.remoteEndpointSubscribers...)
+
+	s.mu.Unlock()
+
+	for _, f := range subscribers {
+		f(id, endpointID)
+	}
+
+	return true
+}
+
+func (s *State) Metrics() *Metrics {
+	return s.metrics
+}
+
+func (s *State) updateRemoteEndpointLocked(
+	id string,
+	endpointID string,
+	listeners int,
+) bool {
 	if id == s.localID {
 		s.logger.Warn("update remote endpoint: cannot update local node")
 		return false
@@ -304,12 +359,7 @@ func (s *State) UpdateRemoteEndpoint(
 	return true
 }
 
-// RemoveRemoteEndpoint removes the active endpoint from the node with the
-// given ID.
-func (s *State) RemoveRemoteEndpoint(id string, endpointID string) bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
+func (s *State) removeRemoteEndpointLocked(id string, endpointID string) bool {
 	if id == s.localID {
 		s.logger.Warn("remove remote endpoint: cannot update local node")
 		return false
@@ -326,10 +376,6 @@ func (s *State) RemoveRemoteEndpoint(id string, endpointID string) bool {
 	}
 
 	return true
-}
-
-func (s *State) Metrics() *Metrics {
-	return s.metrics
 }
 
 func (s *State) updateMetricsNode(oldStatus NodeStatus, newStatus NodeStatus) {
