@@ -6,8 +6,10 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/andydunstall/piko/agent/client"
@@ -179,5 +181,64 @@ func TestProxy_HTTP(t *testing.T) {
 		m := errorMessage{}
 		assert.NoError(t, json.NewDecoder(resp.Body).Decode(&m))
 		assert.Equal(t, "no available upstreams", m.Error)
+	})
+}
+
+func TestProxy_TCP(t *testing.T) {
+	t.Run("tcp", func(t *testing.T) {
+		node, err := cluster.NewNode("my-node")
+		require.NoError(t, err)
+		node.Start()
+		defer node.Stop()
+
+		proxyURL := "http://" + node.ProxyAddr()
+		upstreamURL := "http://" + node.UpstreamAddr()
+		pikoClient := client.New(
+			client.WithProxyURL(proxyURL),
+			client.WithUpstreamURL(upstreamURL),
+		)
+		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		assert.NoError(t, err)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			conn, err := ln.Accept()
+			assert.NoError(t, err)
+
+			// Echo server.
+			buf := make([]byte, 512)
+			for {
+				n, err := conn.Read(buf)
+				if err == io.EOF {
+					return
+				}
+				assert.NoError(t, err)
+				_, err = conn.Write(buf[:n])
+				assert.NoError(t, err)
+			}
+		}()
+
+		conn, err := pikoClient.Dial(context.TODO(), "my-endpoint")
+		assert.NoError(t, err)
+
+		// Test writing bytes to the upstream and waiting for them to be
+		// echoed back.
+
+		buf := make([]byte, 512)
+		for i := 0; i != 1; i++ {
+			_, err = conn.Write([]byte("foo"))
+			assert.NoError(t, err)
+
+			n, err := conn.Read(buf)
+			assert.NoError(t, err)
+			assert.Equal(t, 3, n)
+		}
+
+		// Verify closing the connection to Piko also closes the connection
+		// to the upstream.
+		conn.Close()
+		wg.Wait()
 	})
 }
