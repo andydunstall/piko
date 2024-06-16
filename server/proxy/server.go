@@ -19,6 +19,7 @@ import (
 
 type Server struct {
 	httpProxy *HTTPProxy
+	tcpProxy  *TCPProxy
 
 	httpServer *http.Server
 
@@ -37,6 +38,7 @@ func NewServer(
 	router := gin.New()
 	s := &Server{
 		httpProxy: NewHTTPProxy(upstreams, proxyConfig.Timeout, logger),
+		tcpProxy:  NewTCPProxy(upstreams, logger),
 		httpServer: &http.Server{
 			Handler:           router,
 			TLSConfig:         tlsConfig,
@@ -61,7 +63,7 @@ func NewServer(
 	}
 	router.Use(metrics.Handler())
 
-	router.NoRoute(s.proxyHTTPRoute)
+	s.registerRoutes(router)
 
 	return s
 }
@@ -89,8 +91,22 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
+func (s *Server) registerRoutes(router *gin.Engine) {
+	// All /_piko routes are reserved.
+	piko := router.Group("/_piko")
+	v1 := piko.Group("/v1")
+	v1.GET("/tcp/:endpointID", s.proxyTCPRoute)
+
+	router.NoRoute(s.proxyHTTPRoute)
+}
+
 func (s *Server) proxyHTTPRoute(c *gin.Context) {
 	s.httpProxy.ServeHTTP(c.Writer, c.Request)
+}
+
+func (s *Server) proxyTCPRoute(c *gin.Context) {
+	endpointID := c.Param("endpointID")
+	s.tcpProxy.ServeHTTP(c.Writer, c.Request, endpointID)
 }
 
 func (s *Server) panicRoute(c *gin.Context, err any) {
