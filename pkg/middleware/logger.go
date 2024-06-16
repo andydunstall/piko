@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
@@ -27,6 +28,11 @@ func NewLogger(accessLog bool, logger log.Logger) gin.HandlerFunc {
 		s := time.Now()
 
 		c.Next()
+
+		// Ignore internal endpoints.
+		if strings.HasPrefix(c.Request.URL.Path, "/_piko") {
+			return
+		}
 
 		req := &loggedRequest{
 			Proto:           c.Request.Proto,
