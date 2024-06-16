@@ -18,7 +18,7 @@ import (
 )
 
 type Server struct {
-	proxy *ReverseProxy
+	httpProxy *HTTPProxy
 
 	httpServer *http.Server
 
@@ -36,7 +36,7 @@ func NewServer(
 
 	router := gin.New()
 	s := &Server{
-		proxy: NewReverseProxy(upstreams, proxyConfig.Timeout, logger),
+		httpProxy: NewHTTPProxy(upstreams, proxyConfig.Timeout, logger),
 		httpServer: &http.Server{
 			Handler:           router,
 			TLSConfig:         tlsConfig,
@@ -61,7 +61,7 @@ func NewServer(
 	}
 	router.Use(metrics.Handler())
 
-	router.NoRoute(s.proxyRoute)
+	router.NoRoute(s.proxyHTTPRoute)
 
 	return s
 }
@@ -89,9 +89,8 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	return s.httpServer.Shutdown(ctx)
 }
 
-// proxyRoute handles proxied requests from proxy clients.
-func (s *Server) proxyRoute(c *gin.Context) {
-	s.proxy.ServeHTTP(c.Writer, c.Request)
+func (s *Server) proxyHTTPRoute(c *gin.Context) {
+	s.httpProxy.ServeHTTP(c.Writer, c.Request)
 }
 
 func (s *Server) panicRoute(c *gin.Context, err any) {
