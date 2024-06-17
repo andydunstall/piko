@@ -7,7 +7,7 @@ require (
 	github.com/goccy/go-yaml v1.11.3
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.2
+	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-sockaddr v1.0.6
 	github.com/hashicorp/yamux v0.1.2-0.20240510232814-6034404dc2ab
 	github.com/oklog/run v1.1.0
