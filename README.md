@@ -50,7 +50,7 @@ via its outbound connection.
 Therefore your services may run anywhere without requiring a public route, as
 long as they can open a connection to Piko. This enables accessing services in
 private environments, such as an external customer network or your local
-network It can also be used to simplify your infrastructure as you don’t need
+network. It can also be used to simplify your infrastructure as you don’t need
 to set up firewall rules, DNS, certificates, load balancers…
 
 ### Endpoints
@@ -95,7 +95,7 @@ forwards the traffic to the upstream via its outbound-only connection to the
 server. If node N fails or is deprovisioned, the upstream listener will
 reconnect to another node and the cluster propagates the new routing
 information to the other nodes in the cluster. See
-[Architecture Overview](./docs/architecture/overview.md) for details.
+[How Piko Works](./docs/how-piko-works.md) for details.
 
 Piko also has a Prometheus endpoint, access logging, and status API so you can
 monitor your deployment and debug issues. See observability for details.
