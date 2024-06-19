@@ -19,6 +19,10 @@ func (u *fakeUpstream) Dial() (net.Conn, error) {
 	return nil, nil
 }
 
+func (u *fakeUpstream) Forward() bool {
+	return false
+}
+
 func TestLocalLoadBalancer(t *testing.T) {
 	lb := &loadBalancer{}
 

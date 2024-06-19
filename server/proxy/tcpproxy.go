@@ -20,34 +20,54 @@ import (
 type TCPProxy struct {
 	upstreams upstream.Manager
 
+	httpProxy *HTTPProxy
+
 	websocketUpgrader *websocket.Upgrader
 
 	logger log.Logger
 }
 
-func NewTCPProxy(upstreams upstream.Manager, logger log.Logger) *TCPProxy {
+func NewTCPProxy(
+	upstreams upstream.Manager,
+	httpProxy *HTTPProxy,
+	logger log.Logger,
+) *TCPProxy {
 	return &TCPProxy{
 		upstreams:         upstreams,
+		httpProxy:         httpProxy,
 		websocketUpgrader: &websocket.Upgrader{},
 		logger:            logger.WithSubsystem("proxy.tcp"),
 	}
 }
 
 func (p *TCPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request, endpointID string) {
+	forwarded := r.Header.Get("x-piko-forward") == "true"
+
 	// If there is a connected upstream, attempt to forward the request to one
 	// of those upstreams. Note this includes remote nodes that are reporting
 	// they have an available upstream. We don't allow multiple hops, so if
 	// forwarded is true we only select from local nodes.
-	//
-	// TODO(andydunstall): Forwarding to a remote node isn't support for TCP
-	// yet.
-	upstream, ok := p.upstreams.Select(endpointID, false)
+	u, ok := p.upstreams.Select(endpointID, !forwarded)
 	if !ok {
+		p.logger.Warn(
+			"no available upstreams",
+			zap.String("endpoint-id", endpointID),
+		)
+
 		_ = errorResponse(w, http.StatusBadGateway, "no available upstreams")
 		return
 	}
 
-	upstreamConn, err := upstream.Dial()
+	// If the upstream is a remote node rather than a client listener, forward
+	// the connection via the HTTP reverse proxy. As it is a WebSocket
+	// connection the remote node can handle the connection and forward to an
+	// upstream listener.
+	if u.Forward() {
+		p.httpProxy.ServeHTTPWithUpstream(w, r, endpointID, u)
+		return
+	}
+
+	upstreamConn, err := u.Dial()
 	if err != nil {
 		_ = errorResponse(w, http.StatusBadGateway, "upstream unreachable")
 		return

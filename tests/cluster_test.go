@@ -4,8 +4,10 @@ package tests
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"sync"
 	"testing"
 
 	"github.com/andydunstall/piko/agent/client"
@@ -43,7 +45,7 @@ func TestCluster_Proxy(t *testing.T) {
 		go server.Start()
 		defer server.Close()
 
-		// Wait for node 1 to learn about the new upstream.
+		// Wait for node 2 to learn about the new upstream.
 		assert.Equal(t, "my-endpoint", <-remoteEndpointCh)
 
 		// Send a request to the upstream via Piko.
@@ -60,5 +62,74 @@ func TestCluster_Proxy(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("tcp", func(t *testing.T) {
+		cluster, err := cluster.NewCluster()
+		require.NoError(t, err)
+		require.NoError(t, cluster.Start())
+		defer cluster.Stop()
+
+		remoteEndpointCh := make(chan string)
+		cluster.Nodes()[1].ClusterState().OnRemoteEndpointUpdate(
+			func(nodeID string, endpointID string) {
+				remoteEndpointCh <- endpointID
+			},
+		)
+
+		// Create a client connecting to node 1 for the upstream listener and
+		// node 2 for the proxy connection.
+		proxyURL := "http://" + cluster.Nodes()[1].ProxyAddr()
+		upstreamURL := "http://" + cluster.Nodes()[0].UpstreamAddr()
+		pikoClient := client.New(
+			client.WithProxyURL(proxyURL),
+			client.WithUpstreamURL(upstreamURL),
+		)
+		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		assert.NoError(t, err)
+
+		// Wait for node 2 to learn about the new upstream.
+		assert.Equal(t, "my-endpoint", <-remoteEndpointCh)
+
+		var wg sync.WaitGroup
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			conn, err := ln.Accept()
+			assert.NoError(t, err)
+
+			// Echo server.
+			buf := make([]byte, 512)
+			for {
+				n, err := conn.Read(buf)
+				if err == io.EOF {
+					return
+				}
+				assert.NoError(t, err)
+				_, err = conn.Write(buf[:n])
+				assert.NoError(t, err)
+			}
+		}()
+
+		conn, err := pikoClient.Dial(context.TODO(), "my-endpoint")
+		assert.NoError(t, err)
+
+		// Test writing bytes to the upstream and waiting for them to be
+		// echoed back.
+
+		buf := make([]byte, 512)
+		for i := 0; i != 1; i++ {
+			_, err = conn.Write([]byte("foo"))
+			assert.NoError(t, err)
+
+			n, err := conn.Read(buf)
+			assert.NoError(t, err)
+			assert.Equal(t, 3, n)
+		}
+
+		// Verify closing the connection to Piko also closes the connection
+		// to the upstream.
+		conn.Close()
+		wg.Wait()
 	})
 }
