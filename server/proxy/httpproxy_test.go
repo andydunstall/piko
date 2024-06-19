@@ -34,7 +34,8 @@ func (m *fakeManager) RemoveConn(_ upstream.Upstream) {
 }
 
 type tcpUpstream struct {
-	addr string
+	addr    string
+	forward bool
 }
 
 func (u *tcpUpstream) Dial() (net.Conn, error) {
@@ -43,6 +44,10 @@ func (u *tcpUpstream) Dial() (net.Conn, error) {
 
 func (u *tcpUpstream) EndpointID() string {
 	return "my-endpoint"
+}
+
+func (u *tcpUpstream) Forward() bool {
+	return u.forward
 }
 
 func TestHTTPProxy_Forward(t *testing.T) {

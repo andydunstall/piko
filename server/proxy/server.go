@@ -35,10 +35,12 @@ func NewServer(
 ) *Server {
 	logger = logger.WithSubsystem("proxy")
 
+	httpProxy := NewHTTPProxy(upstreams, proxyConfig.Timeout, logger)
+
 	router := gin.New()
 	s := &Server{
-		httpProxy: NewHTTPProxy(upstreams, proxyConfig.Timeout, logger),
-		tcpProxy:  NewTCPProxy(upstreams, logger),
+		httpProxy: httpProxy,
+		tcpProxy:  NewTCPProxy(upstreams, httpProxy, logger),
 		httpServer: &http.Server{
 			Handler:           router,
 			TLSConfig:         tlsConfig,

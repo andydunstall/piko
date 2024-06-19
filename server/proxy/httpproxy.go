@@ -49,8 +49,6 @@ func NewHTTPProxy(
 		Director: func(req *http.Request) {
 			req.URL.Scheme = "http"
 			req.URL.Host = req.Context().Value(endpointContextKey).(string)
-
-			req.Header.Set("x-piko-forward", "true")
 		},
 		Transport: &http.Transport{
 			DialContext: rp.dialUpstream,
@@ -67,13 +65,6 @@ func NewHTTPProxy(
 }
 
 func (p *HTTPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if p.timeout != 0 {
-		ctx, cancel := context.WithTimeout(r.Context(), p.timeout)
-		defer cancel()
-
-		r = r.WithContext(ctx)
-	}
-
 	endpointID := EndpointIDFromRequest(r)
 	if endpointID == "" {
 		p.logger.Warn("request missing endpoint id")
@@ -81,9 +72,6 @@ func (p *HTTPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		_ = errorResponse(w, http.StatusBadRequest, "missing endpoint id")
 		return
 	}
-
-	ctx := context.WithValue(r.Context(), endpointContextKey, endpointID)
-	r = r.WithContext(ctx)
 
 	// Whether the request was forwarded from another Piko node.
 	forwarded := r.Header.Get("x-piko-forward") == "true"
@@ -94,13 +82,37 @@ func (p *HTTPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// forwarded is true we only select from local nodes.
 	upstream, ok := p.upstreams.Select(endpointID, !forwarded)
 	if !ok {
+		p.logger.Warn(
+			"no available upstreams",
+			zap.String("endpoint-id", endpointID),
+		)
+
 		_ = errorResponse(w, http.StatusBadGateway, "no available upstreams")
 		return
 	}
 
+	p.ServeHTTPWithUpstream(w, r, endpointID, upstream)
+}
+
+func (p *HTTPProxy) ServeHTTPWithUpstream(
+	w http.ResponseWriter,
+	r *http.Request,
+	endpointID string,
+	upstream upstream.Upstream,
+) {
+	if p.timeout != 0 {
+		ctx, cancel := context.WithTimeout(r.Context(), p.timeout)
+		defer cancel()
+
+		r = r.WithContext(ctx)
+	}
+
+	r.Header.Set("x-piko-forward", "true")
+
+	r = r.WithContext(context.WithValue(r.Context(), endpointContextKey, endpointID))
+
 	// Add the upstream to the context to pass to 'DialContext'.
-	ctx = context.WithValue(r.Context(), upstreamContextKey, upstream)
-	r = r.WithContext(ctx)
+	r = r.WithContext(context.WithValue(r.Context(), upstreamContextKey, upstream))
 
 	p.proxy.ServeHTTP(w, r)
 }

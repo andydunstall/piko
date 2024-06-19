@@ -96,6 +96,7 @@ func TestTCPProxy_Forward(t *testing.T) {
 					}, true
 				},
 			},
+			nil,
 			log.NewNopLogger(),
 		)
 
@@ -119,10 +120,11 @@ func TestTCPProxy_Forward(t *testing.T) {
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
 					assert.Equal(t, "my-endpoint", endpointID)
-					assert.False(t, allowForward)
+					assert.True(t, allowForward)
 					return nil, false
 				},
 			},
+			nil,
 			log.NewNopLogger(),
 		)
 
