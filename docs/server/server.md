@@ -1,6 +1,6 @@
 # Server
 
-The Piko server is responsible for forwarding requests from downstream clients
+The Piko server is responsible for forwarding traffic from downstream clients
 to upstream listeners. See [How Piko Works](../how-piko-works.md) for details.
 
 The server is designed to be hosted as a cluster of nodes behind a HTTP load

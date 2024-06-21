@@ -4,8 +4,8 @@ This tutorial shows you how to use Piko to forward TCP traffic to upstream
 listeners.
 
 Piko supports proxying TCP traffic, though unlike HTTP it requires using either
-[Piko forward](./docs/forward/forward.md) or the
-[Go SDK](./docs/sdk/go-sdk.md) to map the desired local TCP port to the target
+[Piko forward](../forward/forward.md) or the
+[Go SDK](../sdk/go-sdk.md) to map the desired local TCP port to the target
 endpoint (as there's no way to identify the target endpoint using raw TCP).
 
 As an example, this runs an upstream Redis server then connects to it via
