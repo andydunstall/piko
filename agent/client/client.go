@@ -2,11 +2,15 @@ package client
 
 import (
 	"context"
+	"fmt"
+	"io"
 	"net"
 	"net/url"
+	"sync"
 
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/websocket"
+	"go.uber.org/zap"
 )
 
 const (
@@ -54,10 +58,62 @@ func (c *Client) Listen(ctx context.Context, endpointID string) (Listener, error
 	return listen(ctx, endpointID, c.options, c.logger)
 }
 
+// ListenAndForward listens for connections on the given endpoint ID and
+// forwards to the configured address.
+func (c *Client) ListenAndForward(
+	ctx context.Context, endpointID string, addr string,
+) error {
+	ln, err := listen(ctx, endpointID, c.options, c.logger)
+	if err != nil {
+		return fmt.Errorf("listen: %w", err)
+	}
+	defer ln.Close()
+
+	for {
+		conn, err := ln.AcceptWithContext(ctx)
+		if err != nil {
+			return fmt.Errorf("accept: %w", err)
+		}
+
+		go c.forwardConn(ctx, conn, addr)
+	}
+}
+
 // Dial opens a TCP connection to an upstream listening on the given endpoint
 // ID via Piko.
 func (c *Client) Dial(ctx context.Context, endpointID string) (net.Conn, error) {
 	return websocket.Dial(ctx, proxyTCPURL(c.options.proxyURL, endpointID))
+}
+
+func (c *Client) forwardConn(ctx context.Context, conn net.Conn, addr string) {
+	defer conn.Close()
+
+	dialer := &net.Dialer{}
+	upstream, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		c.logger.Error(
+			"failed to dial upstream",
+			zap.String("addr", addr),
+			zap.Error(err),
+		)
+		return
+	}
+
+	g := &sync.WaitGroup{}
+	g.Add(2)
+	go func() {
+		defer g.Done()
+		defer conn.Close()
+		// nolint
+		io.Copy(conn, upstream)
+	}()
+	go func() {
+		defer g.Done()
+		defer upstream.Close()
+		// nolint
+		io.Copy(upstream, conn)
+	}()
+	g.Wait()
 }
 
 func proxyTCPURL(urlStr, endpointID string) string {

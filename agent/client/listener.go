@@ -103,6 +103,31 @@ func (l *listener) Accept() (net.Conn, error) {
 	}
 }
 
+func (l *listener) AcceptWithContext(ctx context.Context) (net.Conn, error) {
+	for {
+		conn, err := l.sess.AcceptStreamWithContext(ctx)
+		if err == nil {
+			return conn, nil
+		}
+
+		if ctx.Err() != nil {
+			return nil, err
+		}
+		if l.closeCtx.Err() != nil {
+			return nil, err
+		}
+
+		l.logger.Warn("failed to accept conn", zap.Error(err))
+
+		sess, err := l.connect(l.closeCtx)
+		if err != nil {
+			return nil, err
+		}
+
+		l.sess = sess
+	}
+}
+
 func (l *listener) Addr() net.Addr {
 	return &pikoAddr{endpointID: l.endpointID}
 }
