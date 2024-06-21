@@ -98,7 +98,7 @@ can send requests to endpoint `foo` using header `x-piko-endpoint: foo`.
 
 Piko supports proxying TCP traffic, though unlike HTTP it requires using either
 [Piko forward](./docs/forward/forward.md) or the
-[Go SDK](./docs/sdk/go-sdk.md), SDK to map the desired TCP port to the target
+[Go SDK](./docs/sdk/go-sdk.md) to map the desired local TCP port to the target
 endpoint (as there's no way to identify the target endpoint using raw TCP).
 
 [Piko forward](./docs/forward/forward.md) is basically the reverse of
@@ -165,6 +165,7 @@ ask questions, get help, or suggest ideas.
 - Tutorials
   - [Getting Started](./docs/getting-started.md)
   - [Install](./docs/tutorials/install.md)
+  - [TCP Forwarding](./docs/tutorials/tcp-forwarding.md)
 - [Server](./docs/server/server.md)
   - [Observability](./docs/server/observability.md)
   - [Kubernetes](./docs/server/kubernetes.md)
