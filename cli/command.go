@@ -2,6 +2,7 @@ package cli
 
 import (
 	"github.com/andydunstall/piko/cli/agent"
+	"github.com/andydunstall/piko/cli/forward"
 	"github.com/andydunstall/piko/cli/server"
 	"github.com/andydunstall/piko/cli/workload"
 	"github.com/spf13/cobra"
@@ -37,15 +38,28 @@ proxy that runs alongside your services. It connects to the Piko server,
 registers the configured endpoints, then forwards incoming requests to your
 services.
 
-Such as to register endpoint 'my-endpoint' to forward connections to your
+Such as to register endpoint 'my-endpoint' to forward HTTP requests to your
 service at 'localhost:3000':
 
   $ piko agent http my-endpoint 3000
+
+You can also forward raw TCP using:
+
+  $ piko agent tcp my-endpoint 3000
+
+To forward a local TCP port to an upstream endpoint, use 'piko forward'.
+This listens for TCP connections on the configured local port and forwards them
+to an upstream listener via Piko. Such as to forward port 3000 to endpoint
+'my-endpoint':
+
+  $ piko forward tcp 3000 my-endpoint
+
 `,
 	}
 
 	cmd.AddCommand(server.NewCommand())
 	cmd.AddCommand(agent.NewCommand())
+	cmd.AddCommand(forward.NewCommand())
 	cmd.AddCommand(workload.NewCommand())
 
 	return cmd
