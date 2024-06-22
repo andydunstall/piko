@@ -40,8 +40,8 @@ the Piko version:
 # Latest version.
 docker pull ghcr.io/andydunstall/piko:latest
 
-# v0.4.0
-docker pull ghcr.io/andydunstall/piko:v0.4.0
+# v0.5.0
+docker pull ghcr.io/andydunstall/piko:v0.5.0
 ```
 
 Run `docker run ghcr.io/andydunstall/piko:latest` to verify the installation
