@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -22,6 +23,10 @@ var retryableStatusCodes = map[int]struct{}{
 	http.StatusBadGateway:          {},
 	http.StatusServiceUnavailable:  {},
 	http.StatusGatewayTimeout:      {},
+}
+
+type errorMessage struct {
+	Error string `json:"error"`
 }
 
 // RetryableError indicates a error is retryable.
@@ -111,17 +116,27 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 	wsConn, resp, err := dialer.DialContext(
 		ctx, url, header,
 	)
-	if err != nil {
-		if resp != nil {
-			err = fmt.Errorf("%d: %w", resp.StatusCode, err)
-			if _, ok := retryableStatusCodes[resp.StatusCode]; ok {
-				return nil, NewRetryableError(err)
-			}
-			return nil, err
-		}
+	if err == nil {
+		return New(wsConn), nil
+	}
+	if resp == nil {
 		return nil, NewRetryableError(err)
 	}
-	return New(wsConn), nil
+	defer resp.Body.Close()
+
+	// If the error has a JSON response parse the error message.
+	if resp.Header.Get("content-type") == "application/json" {
+		var m errorMessage
+		if decodeErr := json.NewDecoder(resp.Body).Decode(&m); decodeErr == nil {
+			err = fmt.Errorf(m.Error)
+		}
+	}
+
+	err = fmt.Errorf("%d: %w", resp.StatusCode, err)
+	if _, ok := retryableStatusCodes[resp.StatusCode]; ok {
+		return nil, NewRetryableError(err)
+	}
+	return nil, err
 }
 
 func (c *Conn) Read(b []byte) (int, error) {
