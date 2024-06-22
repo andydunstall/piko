@@ -44,7 +44,7 @@ func NewLogger(accessLog bool, logger log.Logger) gin.HandlerFunc {
 			Status:          c.Writer.Status(),
 			Duration:        time.Since(s).String(),
 		}
-		if c.Writer.Status() > http.StatusInternalServerError {
+		if c.Writer.Status() >= http.StatusInternalServerError {
 			logger.Warn("request", zap.Any("request", req))
 		} else if accessLog {
 			logger.Info("request", zap.Any("request", req))
