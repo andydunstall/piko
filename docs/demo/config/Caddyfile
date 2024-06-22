@@ -1,0 +1,11 @@
+:8000 {
+	reverse_proxy piko-1:8000 piko-2:8000 piko-3:8000
+}
+
+:8001 {
+	reverse_proxy piko-1:8001 piko-2:8001 piko-3:8001
+}
+
+:8002 {
+	reverse_proxy piko-1:8002 piko-2:8002 piko-3:8002
+}
