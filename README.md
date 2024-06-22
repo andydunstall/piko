@@ -60,9 +60,10 @@ same endpoint, requests are load balanced among the available upstreams.
 No static configuration is required to configure endpoints, upstreams can
 listen on any endpoint they choose.
 
-Such as to open a HTTP or TCP upstream listener using the
-[Piko agent](./docs/agent/agent.md) that listens on endpoint `my-endpoint` and
-forwards traffic to `localhost:3000`:
+You can open an upstream listener using the
+[Piko agent](./docs/agent/agent.md), which supports both HTTP and TCP
+upstreams. Such as to listen on endpoint `my-endpoint` and forward traffic to
+`localhost:3000`:
 ```
 # HTTP listener.
 $ piko agent http my-endpoint 3000
@@ -101,12 +102,14 @@ Piko supports proxying TCP traffic, though unlike HTTP it requires using either
 [Go SDK](./docs/sdk/go-sdk.md) to map the desired local TCP port to the target
 endpoint (as there's no way to identify the target endpoint using raw TCP).
 
-[Piko forward](./docs/forward/forward.md) is basically the reverse of
+[Piko forward](./docs/forward/forward.md) is basically the opposite of
 [Piko agent](./docs/agent/agent.md). Instead of listening on an endpoint and
 forwarding to a local port on the upstream, Piko forward runs on the client and
-listens on a TCP port then forwards the connection to the configured endpoint.
+listens on a TCP port then forwards connections to the configured upstream
+endpoint.
 
-Such as using to listen on port `3000` and forward the connection to endpoint `my-endpoint`:
+Such as to listen on port `3000` and forward connections to endpoint
+`my-endpoint`:
 ```
 piko forward 3000 my-endpoint
 ```
@@ -118,8 +121,8 @@ connected to the configured endpoint.
 
 ### Production Traffic
 
-Piko is built to serve production traffic, which means the Piko server must run
-as a cluster of nodes to be fault tolerant, scale horizontally and support zero
+Piko is built to serve production traffic by running the Piko server as a
+cluster of nodes to be fault tolerant, scale horizontally and support zero
 downtime deployments.
 
 Say an upstream is listening for traffic on endpoint E and connects to node N.
@@ -144,7 +147,7 @@ Upstream services and downstream clients may connect to any node in the cluster
 via the load balancer, then the cluster manages routing traffic to the
 appropriate upstream.
 
-See [Kubernetes](./docs/manage/kubernetes.md) for details.
+See [Kubernetes](./docs/server/kubernetes.md) for details.
 
 ## Getting Started
 
