@@ -3,6 +3,7 @@ package config
 import (
 	"fmt"
 	"net/url"
+	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
@@ -23,12 +24,41 @@ func (c *ServerConfig) Validate() error {
 	return nil
 }
 
+type ChurnConfig struct {
+	// Interval specifies how often each upstream should 'churn'
+	// (disconnect and reconnect).
+	Interval time.Duration `json:"interval" yaml:"interval"`
+
+	// Delay is the duration to wait before reconnecting when churning.
+	Delay time.Duration `json:"delay" yaml:"delay"`
+}
+
+func (c *ChurnConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.DurationVar(
+		&c.Interval,
+		"churn.interval",
+		0,
+		`
+How often each upstream should 'churn' (disconnect and reconnect).`,
+	)
+
+	fs.DurationVar(
+		&c.Delay,
+		"churn.delay",
+		0,
+		`
+Duration to wait before reconnecting when an upstream churns.`,
+	)
+}
+
 type UpstreamsConfig struct {
 	// Upstreams is the number of upstream servers to register.
 	Upstreams int `json:"upstreams" yaml:"upstreams"`
 
 	// Endpoints is the number of endpoint IDs to register.
 	Endpoints int `json:"endpoints" yaml:"endpoints"`
+
+	Churn ChurnConfig `json:"churn" yaml:"churn"`
 
 	Server ServerConfig `json:"server" yaml:"server"`
 
@@ -80,6 +110,8 @@ servers per endpoint.
 
 Therefore 'endpoints' must be greater than or equal to 'upstreams'.`,
 	)
+
+	c.Churn.RegisterFlags(fs)
 
 	fs.StringVar(
 		&c.Server.URL,
