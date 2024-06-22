@@ -29,8 +29,15 @@ func NewUpstream(endpointID string, serverURL string, logger log.Logger) *Upstre
 
 func (u *Upstream) Run(ctx context.Context) error {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		//nolint
-		io.Copy(w, r.Body)
+		// Note can't use io.Copy as not supported by http.ResponseWriter.
+		b, err := io.ReadAll(r.Body)
+		if err != nil {
+			panic(fmt.Sprintf("read body: %s", err.Error()))
+		}
+		n, err := w.Write(b)
+		if err != nil {
+			panic(fmt.Sprintf("write bytes: %d: %s", n, err))
+		}
 	}))
 	defer server.Close()
 
@@ -48,7 +55,7 @@ func (u *Upstream) Run(ctx context.Context) error {
 	proxy := reverseproxy.NewServer(config.ListenerConfig{
 		EndpointID: u.endpointID,
 		Addr:       server.Listener.Addr().String(),
-	}, nil, log.NewNopLogger())
+	}, nil, u.logger)
 	go func() {
 		_ = proxy.Serve(ln)
 	}()

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"math/rand"
 	"net/http"
 	"os"
@@ -112,11 +113,17 @@ func runClient(ctx context.Context, conf *config.RequestsConfig, logger log.Logg
 				logger.Warn("request", zap.Error(err))
 				continue
 			}
-			resp.Body.Close()
 
 			if resp.StatusCode != http.StatusOK {
 				logger.Warn("bad status", zap.Int("status", resp.StatusCode))
+			} else {
+				// Verify we can read the full request.
+				if _, err := io.ReadFull(resp.Body, body); err != nil {
+					logger.Warn("read body", zap.Error(err))
+				}
 			}
+
+			resp.Body.Close()
 		case <-ctx.Done():
 			return nil
 		}
