@@ -34,11 +34,14 @@ func (u *Upstream) Run(ctx context.Context) error {
 	}))
 	defer server.Close()
 
-	client := client.New(client.WithUpstreamURL(u.serverURL))
+	client := client.New(
+		client.WithUpstreamURL(u.serverURL),
+		client.WithLogger(u.logger),
+	)
 
-	ln, err := client.Listen(context.Background(), u.endpointID)
+	ln, err := client.Listen(ctx, u.endpointID)
 	if err != nil {
-		return fmt.Errorf("listen: %s: %w", ln.EndpointID(), err)
+		return fmt.Errorf("listen: %w", err)
 	}
 	defer ln.Close()
 

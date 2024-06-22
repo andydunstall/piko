@@ -3,10 +3,12 @@ package workload
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/workload/config"
@@ -87,7 +89,7 @@ func runUpstreams(conf *config.UpstreamsConfig, logger log.Logger) error {
 			logger,
 		)
 		g.Go(func() error {
-			return upstream.Run(ctx)
+			return runUpstream(ctx, upstream, conf)
 		})
 
 		nextEndpointID++
@@ -95,4 +97,40 @@ func runUpstreams(conf *config.UpstreamsConfig, logger log.Logger) error {
 	}
 
 	return g.Wait()
+}
+
+func runUpstream(
+	ctx context.Context,
+	upstream *upstream.Upstream,
+	conf *config.UpstreamsConfig,
+) error {
+	if conf.Churn.Interval == 0 {
+		return upstream.Run(ctx)
+	}
+
+	for {
+		multipler := rand.Float64()
+
+		churnInterval := time.Duration(float64(conf.Churn.Interval) * multipler)
+		upstreamCtx, cancel := context.WithTimeout(ctx, churnInterval)
+		defer cancel()
+
+		if err := upstream.Run(upstreamCtx); err != nil {
+			if upstreamCtx.Err() == nil {
+				return err
+			}
+		}
+
+		if ctx.Err() != nil {
+			return nil
+		}
+
+		if conf.Churn.Delay != 0 {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-time.After(conf.Churn.Delay):
+			}
+		}
+	}
 }
