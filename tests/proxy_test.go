@@ -3,9 +3,12 @@
 package tests
 
 import (
+	"bytes"
 	"context"
+	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -39,7 +42,17 @@ func TestProxy_HTTP(t *testing.T) {
 		assert.NoError(t, err)
 
 		server := httptest.NewUnstartedServer(http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {},
+			func(w http.ResponseWriter, r *http.Request) {
+				// Note can't use io.Copy as not supported by http.ResponseWriter.
+				b, err := io.ReadAll(r.Body)
+				if err != nil {
+					panic(fmt.Sprintf("read body: %s", err.Error()))
+				}
+				n, err := w.Write(b)
+				if err != nil {
+					panic(fmt.Sprintf("write bytes: %d: %s", n, err))
+				}
+			},
 		))
 		server.Listener = ln
 		go server.Start()
@@ -47,10 +60,11 @@ func TestProxy_HTTP(t *testing.T) {
 
 		// Send a request to the upstream via Piko.
 
+		reqBody := randomBytes(4 * 1024)
 		req, _ := http.NewRequest(
 			http.MethodGet,
 			"http://"+node.ProxyAddr(),
-			nil,
+			bytes.NewReader(reqBody),
 		)
 		req.Header.Add("x-piko-endpoint", "my-endpoint")
 		httpClient := &http.Client{}
@@ -59,6 +73,10 @@ func TestProxy_HTTP(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		respBody, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		assert.Equal(t, reqBody, respBody)
 	})
 
 	t.Run("https", func(t *testing.T) {
@@ -82,7 +100,17 @@ func TestProxy_HTTP(t *testing.T) {
 		assert.NoError(t, err)
 
 		server := httptest.NewUnstartedServer(http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {},
+			func(w http.ResponseWriter, r *http.Request) {
+				// Note can't use io.Copy as not supported by http.ResponseWriter.
+				b, err := io.ReadAll(r.Body)
+				if err != nil {
+					panic(fmt.Sprintf("read body: %s", err.Error()))
+				}
+				n, err := w.Write(b)
+				if err != nil {
+					panic(fmt.Sprintf("write bytes: %d: %s", n, err))
+				}
+			},
 		))
 		server.Listener = ln
 		go server.Start()
@@ -90,10 +118,11 @@ func TestProxy_HTTP(t *testing.T) {
 
 		// Send a request to the upstream via Piko.
 
+		reqBody := randomBytes(4 * 1024)
 		req, _ := http.NewRequest(
 			http.MethodGet,
 			"https://"+node.ProxyAddr(),
-			nil,
+			bytes.NewReader(reqBody),
 		)
 		req.Header.Add("x-piko-endpoint", "my-endpoint")
 		httpClient := &http.Client{
@@ -106,6 +135,10 @@ func TestProxy_HTTP(t *testing.T) {
 		defer resp.Body.Close()
 
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		respBody, err := io.ReadAll(resp.Body)
+		assert.NoError(t, err)
+		assert.Equal(t, reqBody, respBody)
 	})
 
 	t.Run("websocket", func(t *testing.T) {
@@ -241,4 +274,13 @@ func TestProxy_TCP(t *testing.T) {
 		conn.Close()
 		wg.Wait()
 	})
+}
+
+func randomBytes(n int) []byte {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic("read rand: " + err.Error())
+	}
+	return b
 }
