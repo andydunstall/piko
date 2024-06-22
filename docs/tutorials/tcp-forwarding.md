@@ -96,6 +96,7 @@ client := piko.New(opts...)
 dialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
     return client.Dial(ctx, addr)
 }
+// github.com/redis/go-redis/v9
 rdb := redis.NewClient(&redis.Options{
     Addr:   "my-redis-endpoint",
     Dialer: dialer,
