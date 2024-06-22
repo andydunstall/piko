@@ -37,9 +37,9 @@ services:
       - ./config/piko.yaml:/etc/piko.yaml
 
   load-balancer:
-    image: nginx:latest
+    image: caddy:latest
     volumes:
-      - ./config/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./config/Caddyfile:/etc/caddy/Caddyfile:ro
     depends_on:
       - "piko-1"
       - "piko-2"
