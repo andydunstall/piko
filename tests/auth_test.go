@@ -10,7 +10,7 @@ import (
 
 	"github.com/andydunstall/piko/agent/client"
 	"github.com/andydunstall/piko/server/auth"
-	"github.com/andydunstall/piko/tests/cluster"
+	"github.com/andydunstall/piko/workload/cluster"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

@@ -18,6 +18,7 @@ import (
 	"github.com/andydunstall/piko/server/gossip"
 	"github.com/andydunstall/piko/server/proxy"
 	"github.com/andydunstall/piko/server/upstream"
+	"go.uber.org/zap"
 )
 
 type Node struct {
@@ -50,6 +51,8 @@ func NewNode(nodeID string, opts ...Option) (*Node, error) {
 	for _, o := range opts {
 		o.apply(&options)
 	}
+
+	options.logger = options.logger.With(zap.String("cluster-node", nodeID))
 
 	proxyLn, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
