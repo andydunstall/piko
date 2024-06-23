@@ -253,7 +253,7 @@ func TestServer_TLS(t *testing.T) {
 			ln.Addr().String(),
 		)
 		_, err := websocket.Dial(context.TODO(), url)
-		require.ErrorContains(t, err, "certificate signed by unknown authority")
+		require.ErrorContains(t, err, "verify certificate")
 	})
 
 	t.Run("ws", func(t *testing.T) {
