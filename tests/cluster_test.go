@@ -11,7 +11,7 @@ import (
 	"testing"
 
 	"github.com/andydunstall/piko/agent/client"
-	"github.com/andydunstall/piko/tests/cluster"
+	"github.com/andydunstall/piko/workload/cluster"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
