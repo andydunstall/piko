@@ -245,7 +245,7 @@ func TestServer_TLS(t *testing.T) {
 	t.Run("https bad ca", func(t *testing.T) {
 		url := fmt.Sprintf("https://%s/health", ln.Addr().String())
 		_, err := http.Get(url)
-		assert.ErrorContains(t, err, "certificate signed by unknown authority")
+		assert.ErrorContains(t, err, "verify certificate")
 	})
 
 	t.Run("http", func(t *testing.T) {
