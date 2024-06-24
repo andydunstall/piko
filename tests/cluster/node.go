@@ -12,6 +12,7 @@ import (
 	pikogossip "github.com/andydunstall/piko/pkg/gossip"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/testutil"
+	"github.com/andydunstall/piko/server/auth"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/config"
 	"github.com/andydunstall/piko/server/gossip"
@@ -121,9 +122,14 @@ func (n *Node) Start() {
 		_ = n.proxyServer.Serve(n.proxyLn)
 	}()
 
+	var verifier auth.Verifier
+	if n.options.verifierConfig != nil {
+		verifier = auth.NewJWTVerifier(*n.options.verifierConfig)
+	}
+
 	n.upstreamServer = upstream.NewServer(
 		upstreams,
-		nil,
+		verifier,
 		n.tlsConfig,
 		n.options.logger,
 	)

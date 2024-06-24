@@ -176,7 +176,7 @@ func TestServer_Authentication(t *testing.T) {
 			ln.Addr().String(),
 		)
 		_, err = websocket.Dial(context.TODO(), url, websocket.WithToken("123"))
-		require.ErrorContains(t, err, "401: websocket: bad handshake")
+		require.ErrorContains(t, err, "401: endpoint not permitted")
 	})
 
 	t.Run("unauthenticated", func(t *testing.T) {
@@ -203,7 +203,7 @@ func TestServer_Authentication(t *testing.T) {
 			ln.Addr().String(),
 		)
 		_, err = websocket.Dial(context.TODO(), url, websocket.WithToken("123"))
-		require.ErrorContains(t, err, "401: websocket: bad handshake")
+		require.ErrorContains(t, err, "401: invalid token")
 	})
 }
 
