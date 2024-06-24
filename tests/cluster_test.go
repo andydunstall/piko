@@ -26,7 +26,7 @@ func TestCluster_Proxy(t *testing.T) {
 
 		remoteEndpointCh := make(chan string)
 		cluster.Nodes()[1].ClusterState().OnRemoteEndpointUpdate(
-			func(nodeID string, endpointID string) {
+			func(_ string, endpointID string) {
 				remoteEndpointCh <- endpointID
 			},
 		)
@@ -39,7 +39,7 @@ func TestCluster_Proxy(t *testing.T) {
 		assert.NoError(t, err)
 
 		server := httptest.NewUnstartedServer(http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {},
+			func(_ http.ResponseWriter, _ *http.Request) {},
 		))
 		server.Listener = ln
 		go server.Start()
@@ -72,7 +72,7 @@ func TestCluster_Proxy(t *testing.T) {
 
 		remoteEndpointCh := make(chan string)
 		cluster.Nodes()[1].ClusterState().OnRemoteEndpointUpdate(
-			func(nodeID string, endpointID string) {
+			func(_ string, endpointID string) {
 				remoteEndpointCh <- endpointID
 			},
 		)

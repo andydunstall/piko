@@ -38,7 +38,7 @@ Examples:
 
 	c := client.NewClient(nil)
 
-	cmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+	cmd.PersistentPreRun = func(_ *cobra.Command, _ []string) {
 		if err := conf.Validate(); err != nil {
 			fmt.Printf("config: %s\n", err.Error())
 			os.Exit(1)

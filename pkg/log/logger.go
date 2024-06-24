@@ -220,7 +220,7 @@ func (l *nopLogger) Sync() error {
 
 func (l *nopLogger) StdLogger(_ zapcore.Level) *stdlog.Logger {
 	return stdlog.New(&loggerWriter{
-		logFunc: func(msg string, fields ...zap.Field) {
+		logFunc: func(_ string, _ ...zap.Field) {
 		},
 	}, "", 0)
 }

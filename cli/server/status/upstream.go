@@ -33,7 +33,7 @@ Examples:
 `,
 	}
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
+	cmd.Run = func(_ *cobra.Command, _ []string) {
 		showUpstreamEndpoints(c)
 	}
 

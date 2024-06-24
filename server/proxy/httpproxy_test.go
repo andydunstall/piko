@@ -71,6 +71,8 @@ func TestHTTPProxy_Forward(t *testing.T) {
 		proxy := NewHTTPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
+					assert.Equal(t, "my-endpoint", endpointID)
+					assert.True(t, allowForward)
 					return &tcpUpstream{
 						addr: server.Listener.Addr().String(),
 					}, true
@@ -101,7 +103,7 @@ func TestHTTPProxy_Forward(t *testing.T) {
 	t.Run("timeout", func(t *testing.T) {
 		blockCh := make(chan struct{})
 		server := httptest.NewServer(http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
+			func(_ http.ResponseWriter, _ *http.Request) {
 				<-blockCh
 			},
 		))
@@ -111,6 +113,8 @@ func TestHTTPProxy_Forward(t *testing.T) {
 		proxy := NewHTTPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
+					assert.Equal(t, "my-endpoint", endpointID)
+					assert.True(t, allowForward)
 					return &tcpUpstream{
 						addr: server.Listener.Addr().String(),
 					}, true
@@ -121,6 +125,7 @@ func TestHTTPProxy_Forward(t *testing.T) {
 		)
 
 		r := httptest.NewRequest(http.MethodGet, "/", nil)
+		r.Header.Add("x-piko-endpoint", "my-endpoint")
 
 		w := httptest.NewRecorder()
 		proxy.ServeHTTP(w, r)
@@ -139,6 +144,8 @@ func TestHTTPProxy_Forward(t *testing.T) {
 		proxy := NewHTTPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
+					assert.Equal(t, "my-endpoint", endpointID)
+					assert.True(t, allowForward)
 					return &tcpUpstream{
 						addr: "localhost:55555",
 					}, true

@@ -25,7 +25,7 @@ Examples:
 
 	var logger log.Logger
 
-	cmd.PreRun = func(cmd *cobra.Command, args []string) {
+	cmd.PreRun = func(_ *cobra.Command, _ []string) {
 		var err error
 		logger, err = log.NewLogger(conf.Log.Level, conf.Log.Subsystems)
 		if err != nil {
@@ -39,7 +39,7 @@ Examples:
 		}
 	}
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
+	cmd.Run = func(_ *cobra.Command, _ []string) {
 		if err := runAgent(conf, logger); err != nil {
 			logger.Error("failed to run agent", zap.Error(err))
 			os.Exit(1)
