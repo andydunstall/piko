@@ -54,7 +54,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 
 	var logger log.Logger
 
-	cmd.PreRun = func(cmd *cobra.Command, args []string) {
+	cmd.PreRun = func(_ *cobra.Command, args []string) {
 		// Discard any listeners in the configuration file and use from command
 		// line.
 		conf.Listeners = []config.ListenerConfig{{
@@ -73,7 +73,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 		}
 	}
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
+	cmd.Run = func(_ *cobra.Command, _ []string) {
 		if err := runAgent(conf, logger); err != nil {
 			logger.Error("failed to run agent", zap.Error(err))
 			os.Exit(1)

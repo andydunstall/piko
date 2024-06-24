@@ -49,7 +49,7 @@ Examples:
 	conf.RegisterFlags(cmd.PersistentFlags())
 	loadConf.RegisterFlags(cmd.PersistentFlags())
 
-	cmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+	cmd.PersistentPreRun = func(_ *cobra.Command, _ []string) {
 		if err := loadConf.Load(&conf); err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)

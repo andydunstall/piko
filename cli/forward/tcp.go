@@ -30,7 +30,7 @@ Examples:
 
 	var logger log.Logger
 
-	cmd.PreRun = func(cmd *cobra.Command, args []string) {
+	cmd.PreRun = func(_ *cobra.Command, args []string) {
 		// Discard any ports in the configuration file and use from command
 		// line.
 		conf.Ports = []config.PortConfig{{
@@ -46,7 +46,7 @@ Examples:
 		}
 	}
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
+	cmd.Run = func(_ *cobra.Command, _ []string) {
 		if err := runForward(conf, logger); err != nil {
 			logger.Error("failed to run forward", zap.Error(err))
 			os.Exit(1)

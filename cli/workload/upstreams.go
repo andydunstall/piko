@@ -50,7 +50,7 @@ Examples:
 	// Register flags and set default values.
 	conf.RegisterFlags(cmd.Flags())
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
+	cmd.Run = func(_ *cobra.Command, _ []string) {
 		if err := conf.Validate(); err != nil {
 			fmt.Printf("invalid config: %s\n", err.Error())
 			os.Exit(1)

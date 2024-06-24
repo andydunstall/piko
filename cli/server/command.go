@@ -80,7 +80,7 @@ Examples:
 
 	var logger log.Logger
 
-	cmd.PreRun = func(cmd *cobra.Command, args []string) {
+	cmd.PreRun = func(_ *cobra.Command, _ []string) {
 		if err := loadConf.Load(&conf); err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -134,7 +134,7 @@ Examples:
 		}
 	}
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
+	cmd.Run = func(_ *cobra.Command, _ []string) {
 		if err := runServer(&conf, logger); err != nil {
 			logger.Error("failed to run agent", zap.Error(err))
 			os.Exit(1)

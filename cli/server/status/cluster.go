@@ -37,7 +37,7 @@ Examples:
 `,
 	}
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
+	cmd.Run = func(_ *cobra.Command, _ []string) {
 		showClusterNodes(c)
 	}
 
@@ -88,7 +88,7 @@ Examples:
 `,
 	}
 
-	cmd.Run = func(cmd *cobra.Command, args []string) {
+	cmd.Run = func(_ *cobra.Command, args []string) {
 		showClusterNode(args[0], c)
 	}
 

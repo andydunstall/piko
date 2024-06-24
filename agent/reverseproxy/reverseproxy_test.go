@@ -58,7 +58,7 @@ func TestReverseProxy_Forward(t *testing.T) {
 	t.Run("timeout", func(t *testing.T) {
 		blockCh := make(chan struct{})
 		upstream := httptest.NewServer(http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
+			func(_ http.ResponseWriter, _ *http.Request) {
 				<-blockCh
 			},
 		))

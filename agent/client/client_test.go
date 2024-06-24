@@ -9,6 +9,7 @@ import (
 )
 
 func handler(w http.ResponseWriter, _ *http.Request) {
+	// nolint
 	fmt.Fprintln(w, "Hello from Piko")
 }
 

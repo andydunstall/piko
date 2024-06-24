@@ -49,6 +49,8 @@ func TestTCPProxy_Forward(t *testing.T) {
 		server := NewServer(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
+					assert.Equal(t, "my-endpoint", endpointID)
+					assert.True(t, allowForward)
 					return &tcpUpstream{
 						addr: echoLn.Addr().String(),
 					}, true
@@ -91,6 +93,8 @@ func TestTCPProxy_Forward(t *testing.T) {
 		proxy := NewTCPProxy(
 			&fakeManager{
 				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
+					assert.Equal(t, "my-endpoint", endpointID)
+					assert.True(t, allowForward)
 					return &tcpUpstream{
 						addr: "localhost:55555",
 					}, true
