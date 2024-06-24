@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -125,7 +126,7 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 	defer resp.Body.Close()
 
 	// If the error has a JSON response parse the error message.
-	if resp.Header.Get("content-type") == "application/json" {
+	if strings.HasPrefix(resp.Header.Get("content-type"), "application/json") {
 		var m errorMessage
 		if decodeErr := json.NewDecoder(resp.Body).Decode(&m); decodeErr == nil {
 			err = fmt.Errorf(m.Error)
