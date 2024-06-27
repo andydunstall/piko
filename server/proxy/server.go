@@ -90,7 +90,10 @@ func (s *Server) Serve(ln net.Listener) error {
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
-	return s.httpServer.Shutdown(ctx)
+	if err := s.httpServer.Shutdown(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *Server) registerRoutes(router *gin.Engine) {

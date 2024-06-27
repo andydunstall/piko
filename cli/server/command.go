@@ -10,21 +10,12 @@ import (
 	"syscall"
 
 	"github.com/andydunstall/piko/cli/server/status"
-	"github.com/andydunstall/piko/pkg/build"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/admin"
-	"github.com/andydunstall/piko/server/auth"
+	"github.com/andydunstall/piko/server"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/config"
-	"github.com/andydunstall/piko/server/gossip"
-	"github.com/andydunstall/piko/server/proxy"
-	"github.com/andydunstall/piko/server/upstream"
-	"github.com/andydunstall/piko/server/usage"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-sockaddr"
-	rungroup "github.com/oklog/run"
-	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -136,7 +127,7 @@ Examples:
 
 	cmd.Run = func(_ *cobra.Command, _ []string) {
 		if err := runServer(conf, logger); err != nil {
-			logger.Error("failed to run agent", zap.Error(err))
+			logger.Error("failed to run server", zap.Error(err))
 			os.Exit(1)
 		}
 	}
@@ -147,278 +138,17 @@ Examples:
 }
 
 func runServer(conf *config.Config, logger log.Logger) error {
-	var verifier auth.Verifier
-	if conf.Auth.AuthEnabled() {
-		verifierConf := auth.JWTVerifierConfig{
-			HMACSecretKey: []byte(conf.Auth.TokenHMACSecretKey),
-			Audience:      conf.Auth.TokenAudience,
-			Issuer:        conf.Auth.TokenIssuer,
-		}
-
-		if conf.Auth.TokenRSAPublicKey != "" {
-			rsaPublicKey, err := jwt.ParseRSAPublicKeyFromPEM(
-				[]byte(conf.Auth.TokenRSAPublicKey),
-			)
-			if err != nil {
-				return fmt.Errorf("parse rsa public key: %w", err)
-			}
-			verifierConf.RSAPublicKey = rsaPublicKey
-		}
-		if conf.Auth.TokenECDSAPublicKey != "" {
-			ecdsaPublicKey, err := jwt.ParseECPublicKeyFromPEM(
-				[]byte(conf.Auth.TokenECDSAPublicKey),
-			)
-			if err != nil {
-				return fmt.Errorf("parse ecdsa public key: %w", err)
-			}
-			verifierConf.ECDSAPublicKey = ecdsaPublicKey
-		}
-		verifier = auth.NewJWTVerifier(verifierConf)
-	}
-
-	logger.Info(
-		"starting piko server",
-		zap.String("node-id", conf.Cluster.NodeID),
-		zap.String("version", build.Version),
+	ctx, cancel := signal.NotifyContext(
+		context.Background(), syscall.SIGINT, syscall.SIGTERM,
 	)
-	logger.Debug("piko config", zap.Any("config", conf))
+	defer cancel()
 
-	registry := prometheus.NewRegistry()
-
-	clusterState := cluster.NewState(&cluster.Node{
-		ID:        conf.Cluster.NodeID,
-		ProxyAddr: conf.Proxy.AdvertiseAddr,
-		AdminAddr: conf.Admin.AdvertiseAddr,
-	}, logger)
-	clusterState.Metrics().Register(registry)
-
-	upstreams := upstream.NewLoadBalancedManager(clusterState)
-	upstreams.Metrics().Register(registry)
-
-	var group rungroup.Group
-
-	// Gossip.
-
-	gossipStreamLn, err := net.Listen("tcp", conf.Gossip.BindAddr)
+	server, err := server.NewServer(conf, logger)
 	if err != nil {
-		return fmt.Errorf("gossip listen: %s: %w", conf.Gossip.BindAddr, err)
+		return err
 	}
 
-	gossipPacketLn, err := net.ListenUDP("udp", &net.UDPAddr{
-		IP:   gossipStreamLn.Addr().(*net.TCPAddr).IP,
-		Port: gossipStreamLn.Addr().(*net.TCPAddr).Port,
-	})
-	if err != nil {
-		return fmt.Errorf("gossip listen: %s: %w", conf.Gossip.BindAddr, err)
-	}
-
-	gossiper := gossip.NewGossip(
-		clusterState,
-		gossipStreamLn,
-		gossipPacketLn,
-		&conf.Gossip,
-		logger,
-	)
-	defer gossiper.Close()
-	gossiper.Metrics().Register(registry)
-
-	// Attempt to join an existing cluster.
-	//
-	// Note when running on Kubernetes, if this is the first member, as it is
-	// not yet ready the service DNS record won't resolve so this may fail.
-	// Therefore we attempt to join though continue booting if join fails.
-	// Once booted we then attempt to join again with retries.
-	nodeIDs, err := gossiper.JoinOnBoot(conf.Cluster.Join)
-	if err != nil {
-		logger.Warn("failed to join cluster", zap.Error(err))
-	}
-	if len(nodeIDs) > 0 {
-		logger.Info(
-			"joined cluster",
-			zap.Strings("node-ids", nodeIDs),
-		)
-	}
-
-	gossipCtx, gossipCancel := context.WithCancel(context.Background())
-	group.Add(func() error {
-		if len(nodeIDs) == 0 {
-			nodeIDs, err = gossiper.JoinOnStartup(gossipCtx, conf.Cluster.Join)
-			if err != nil {
-				if conf.Cluster.AbortIfJoinFails {
-					return fmt.Errorf("join on startup: %w", err)
-				}
-				logger.Warn("failed to join cluster", zap.Error(err))
-			}
-			if len(nodeIDs) > 0 {
-				logger.Info(
-					"joined cluster",
-					zap.Strings("node-ids", nodeIDs),
-				)
-			}
-		}
-
-		<-gossipCtx.Done()
-
-		leaveCtx, cancel := context.WithTimeout(
-			context.Background(),
-			conf.GracePeriod,
-		)
-		defer cancel()
-
-		// Leave as soon as we receive the shutdown signal to avoid receiving
-		// forward proxy requests.
-		if err := gossiper.Leave(leaveCtx); err != nil {
-			logger.Warn("failed to gracefully leave cluster", zap.Error(err))
-		} else {
-			logger.Info("left cluster")
-		}
-
-		return nil
-	}, func(error) {
-		gossipCancel()
-	})
-
-	// Proxy server.
-	proxyLn, err := net.Listen("tcp", conf.Proxy.BindAddr)
-	if err != nil {
-		return fmt.Errorf("proxy listen: %s: %w", conf.Proxy.BindAddr, err)
-	}
-	proxyTLSConfig, err := conf.Proxy.TLS.Load()
-	if err != nil {
-		return fmt.Errorf("proxy tls: %w", err)
-	}
-	proxyServer := proxy.NewServer(
-		upstreams,
-		conf.Proxy,
-		registry,
-		proxyTLSConfig,
-		logger,
-	)
-
-	group.Add(func() error {
-		if err := proxyServer.Serve(proxyLn); err != nil {
-			return fmt.Errorf("proxy server serve: %w", err)
-		}
-		return nil
-	}, func(error) {
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			conf.GracePeriod,
-		)
-		defer cancel()
-
-		if err := proxyServer.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
-		}
-
-		logger.Info("proxy server shut down")
-	})
-
-	// Upstream server.
-	upstreamLn, err := net.Listen("tcp", conf.Upstream.BindAddr)
-	if err != nil {
-		return fmt.Errorf("upstream listen: %s: %w", conf.Upstream.BindAddr, err)
-	}
-	upstreamTLSConfig, err := conf.Upstream.TLS.Load()
-	if err != nil {
-		return fmt.Errorf("upstream tls: %w", err)
-	}
-	upstreamServer := upstream.NewServer(
-		upstreams,
-		verifier,
-		upstreamTLSConfig,
-		logger,
-	)
-
-	group.Add(func() error {
-		if err := upstreamServer.Serve(upstreamLn); err != nil {
-			return fmt.Errorf("upstream server serve: %w", err)
-		}
-		return nil
-	}, func(error) {
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			conf.GracePeriod,
-		)
-		defer cancel()
-
-		if err := upstreamServer.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
-		}
-
-		logger.Info("upstream server shut down")
-	})
-
-	// Admin Server.
-	adminLn, err := net.Listen("tcp", conf.Admin.BindAddr)
-	if err != nil {
-		return fmt.Errorf("admin listen: %s: %w", conf.Admin.BindAddr, err)
-	}
-	adminTLSConfig, err := conf.Admin.TLS.Load()
-	if err != nil {
-		return fmt.Errorf("admin tls: %w", err)
-	}
-	adminServer := admin.NewServer(
-		clusterState,
-		registry,
-		adminTLSConfig,
-		logger,
-	)
-	adminServer.AddStatus("/upstream", upstream.NewStatus(upstreams))
-	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
-	adminServer.AddStatus("/gossip", gossip.NewStatus(gossiper))
-
-	group.Add(func() error {
-		if err := adminServer.Serve(adminLn); err != nil {
-			return fmt.Errorf("admin server serve: %w", err)
-		}
-		return nil
-	}, func(error) {
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(),
-			conf.GracePeriod,
-		)
-		defer cancel()
-
-		if err := adminServer.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown server", zap.Error(err))
-		}
-
-		logger.Info("admin server shut down")
-	})
-
-	// Usage.
-	reporter := usage.NewReporter(upstreams.Usage(), logger)
-	if !conf.Usage.Disable {
-		usageCtx, usageCancel := context.WithCancel(context.Background())
-		group.Add(func() error {
-			reporter.Run(usageCtx)
-			return nil
-		}, func(error) {
-			usageCancel()
-		})
-	}
-
-	// Termination handler.
-	signalCtx, signalCancel := context.WithCancel(context.Background())
-	signalCh := make(chan os.Signal, 1)
-	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM)
-	group.Add(func() error {
-		select {
-		case sig := <-signalCh:
-			logger.Info(
-				"received shutdown signal",
-				zap.String("signal", sig.String()),
-			)
-			return nil
-		case <-signalCtx.Done():
-			return nil
-		}
-	}, func(error) {
-		signalCancel()
-	})
-
-	if err := group.Run(); err != nil {
+	if err := server.Run(ctx); err != nil {
 		return err
 	}
 
