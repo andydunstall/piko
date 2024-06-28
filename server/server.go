@@ -187,6 +187,24 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	}, nil
 }
 
+func (s *Server) ProxyAddr() string {
+	if s.conf.Proxy.AdvertiseAddr != "" {
+		return s.conf.Proxy.AdvertiseAddr
+	}
+	return s.proxyLn.Addr().String()
+}
+
+func (s *Server) UpstreamAddr() string {
+	return s.upstreamLn.Addr().String()
+}
+
+func (s *Server) AdminAddr() string {
+	if s.conf.Admin.AdvertiseAddr != "" {
+		return s.conf.Admin.AdvertiseAddr
+	}
+	return s.adminLn.Addr().String()
+}
+
 func (s *Server) Run(ctx context.Context) error {
 	s.logger.Info(
 		"starting piko server",

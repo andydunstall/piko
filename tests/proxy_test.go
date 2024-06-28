@@ -19,7 +19,6 @@ import (
 	"github.com/andydunstall/piko/workload/cluster"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type errorMessage struct {
@@ -29,8 +28,7 @@ type errorMessage struct {
 // Tests proxying HTTP traffic with a single Piko server node.
 func TestProxy_HTTP(t *testing.T) {
 	t.Run("http", func(t *testing.T) {
-		node, err := cluster.NewNode("my-node")
-		require.NoError(t, err)
+		node := cluster.NewNodeV2()
 		node.Start()
 		defer node.Stop()
 
@@ -80,8 +78,7 @@ func TestProxy_HTTP(t *testing.T) {
 	})
 
 	t.Run("https", func(t *testing.T) {
-		node, err := cluster.NewNode("my-node", cluster.WithTLS(true))
-		require.NoError(t, err)
+		node := cluster.NewNodeV2(cluster.WithTLS(true))
 		node.Start()
 		defer node.Stop()
 
@@ -142,8 +139,7 @@ func TestProxy_HTTP(t *testing.T) {
 	})
 
 	t.Run("websocket", func(t *testing.T) {
-		node, err := cluster.NewNode("my-node")
-		require.NoError(t, err)
+		node := cluster.NewNodeV2()
 		node.Start()
 		defer node.Stop()
 
@@ -192,8 +188,7 @@ func TestProxy_HTTP(t *testing.T) {
 
 	// Tests sending a request to an endpoint with no listeners.
 	t.Run("no listeners", func(t *testing.T) {
-		node, err := cluster.NewNode("my-node")
-		require.NoError(t, err)
+		node := cluster.NewNodeV2()
 		node.Start()
 		defer node.Stop()
 
@@ -219,8 +214,7 @@ func TestProxy_HTTP(t *testing.T) {
 
 func TestProxy_TCP(t *testing.T) {
 	t.Run("tcp", func(t *testing.T) {
-		node, err := cluster.NewNode("my-node")
-		require.NoError(t, err)
+		node := cluster.NewNodeV2()
 		node.Start()
 		defer node.Stop()
 

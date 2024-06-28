@@ -13,7 +13,6 @@ import (
 	"github.com/andydunstall/piko/workload/cluster"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type pikoEndpointClaims struct {
@@ -39,10 +38,9 @@ func TestAuth_Upstream(t *testing.T) {
 	// Tests an upstream authenticating with a valid token.
 	t.Run("valid", func(t *testing.T) {
 		secretKey := generateTestHSKey()
-		node, err := cluster.NewNode("my-node", cluster.WithVerifierConfig(&auth.JWTVerifierConfig{
-			HMACSecretKey: secretKey,
+		node := cluster.NewNodeV2(cluster.WithAuthConfig(auth.Config{
+			TokenHMACSecretKey: string(secretKey),
 		}))
-		require.NoError(t, err)
 		node.Start()
 		defer node.Stop()
 
@@ -64,10 +62,9 @@ func TestAuth_Upstream(t *testing.T) {
 	// the wrong key).
 	t.Run("invalid", func(t *testing.T) {
 		secretKey := generateTestHSKey()
-		node, err := cluster.NewNode("my-node", cluster.WithVerifierConfig(&auth.JWTVerifierConfig{
-			HMACSecretKey: secretKey,
+		node := cluster.NewNodeV2(cluster.WithAuthConfig(auth.Config{
+			TokenHMACSecretKey: string(secretKey),
 		}))
-		require.NoError(t, err)
 		node.Start()
 		defer node.Stop()
 
@@ -86,16 +83,15 @@ func TestAuth_Upstream(t *testing.T) {
 
 	// Tests an unauthenticated upstream attempting to connect.
 	t.Run("unauthenticated", func(t *testing.T) {
-		node, err := cluster.NewNode("my-node", cluster.WithVerifierConfig(&auth.JWTVerifierConfig{
-			HMACSecretKey: generateTestHSKey(),
+		node := cluster.NewNodeV2(cluster.WithAuthConfig(auth.Config{
+			TokenHMACSecretKey: string(generateTestHSKey()),
 		}))
-		require.NoError(t, err)
 		node.Start()
 		defer node.Stop()
 
 		upstreamURL := "http://" + node.UpstreamAddr()
 		pikoClient := client.New(client.WithUpstreamURL(upstreamURL))
-		_, err = pikoClient.Listen(context.TODO(), "my-endpoint")
+		_, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.ErrorContains(t, err, "connect: 401: missing authorization")
 	})
 }

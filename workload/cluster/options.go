@@ -6,10 +6,10 @@ import (
 )
 
 type options struct {
-	nodes          int
-	tls            bool
-	verifierConfig *auth.JWTVerifierConfig
-	logger         log.Logger
+	nodes      int
+	authConfig auth.Config
+	tls        bool
+	logger     log.Logger
 }
 
 type nodesOption int
@@ -33,17 +33,17 @@ func WithTLS(tls bool) Option {
 	return tlsOption(tls)
 }
 
-type verifierConfigOption struct {
-	VerifierConfig *auth.JWTVerifierConfig
+type authConfigOption struct {
+	AuthConfig auth.Config
 }
 
-func (o verifierConfigOption) apply(opts *options) {
-	opts.verifierConfig = o.VerifierConfig
+func (o authConfigOption) apply(opts *options) {
+	opts.authConfig = o.AuthConfig
 }
 
-// WithVerifierConfig configures the upstream JWT verification config.
-func WithVerifierConfig(config *auth.JWTVerifierConfig) Option {
-	return verifierConfigOption{VerifierConfig: config}
+// WithAuthConfig configures the upstream authentication config.
+func WithAuthConfig(config auth.Config) Option {
+	return authConfigOption{AuthConfig: config}
 }
 
 type loggerOption struct {
