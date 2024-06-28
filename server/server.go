@@ -25,6 +25,8 @@ import (
 
 // Server is a Piko server node.
 type Server struct {
+	clusterState *cluster.State
+
 	proxyLn     net.Listener
 	proxyServer *proxy.Server
 
@@ -220,6 +222,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	reporter := usage.NewReporter(upstreams.Usage(), logger)
 
 	return &Server{
+		clusterState:   clusterState,
 		proxyLn:        proxyLn,
 		proxyServer:    proxyServer,
 		upstreamLn:     upstreamLn,
@@ -237,6 +240,10 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 func (s *Server) Config() *config.Config {
 	return s.conf
+}
+
+func (s *Server) ClusterState() *cluster.State {
+	return s.clusterState
 }
 
 func (s *Server) Run(ctx context.Context) error {

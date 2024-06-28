@@ -5,6 +5,7 @@ import (
 	"github.com/andydunstall/piko/cli/forward"
 	"github.com/andydunstall/piko/cli/server"
 	"github.com/andydunstall/piko/cli/workload"
+	workloadv2 "github.com/andydunstall/piko/cli/workloadv2"
 	"github.com/spf13/cobra"
 )
 
@@ -61,6 +62,7 @@ to an upstream listener via Piko. Such as to forward port 3000 to endpoint
 	cmd.AddCommand(agent.NewCommand())
 	cmd.AddCommand(forward.NewCommand())
 	cmd.AddCommand(workload.NewCommand())
+	cmd.AddCommand(workloadv2.NewCommand())
 
 	return cmd
 }
