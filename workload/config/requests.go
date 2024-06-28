@@ -24,6 +24,18 @@ type RequestsConfig struct {
 	Log log.Config `json:"log" yaml:"log"`
 }
 
+func DefaultRequestsConfig() *RequestsConfig {
+	return &RequestsConfig{
+		Clients:     50,
+		Rate:        10,
+		Endpoints:   100,
+		RequestSize: 1024,
+		Server: ServerConfig{
+			URL: "http://localhost:8000",
+		},
+	}
+}
+
 func (c *RequestsConfig) Validate() error {
 	if c.Clients == 0 {
 		return fmt.Errorf("missing clients")
@@ -48,7 +60,7 @@ func (c *RequestsConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.IntVar(
 		&c.Clients,
 		"clients",
-		50,
+		c.Clients,
 		`
 The number of clients to run.`,
 	)
@@ -56,7 +68,7 @@ The number of clients to run.`,
 	fs.IntVar(
 		&c.Rate,
 		"rate",
-		10,
+		c.Rate,
 		`
 The number of requests per second per client to send.`,
 	)
@@ -64,7 +76,7 @@ The number of requests per second per client to send.`,
 	fs.IntVar(
 		&c.Endpoints,
 		"endpoints",
-		100,
+		c.Endpoints,
 		`
 The number of available endpoint IDs to send requests to.
 
@@ -75,7 +87,7 @@ On each request, the client selects a random endpoint ID from 0 to
 	fs.IntVar(
 		&c.RequestSize,
 		"request-size",
-		1024,
+		c.RequestSize,
 		`
 The size of each request. As the upstream echos the response body, the response
 will have the same size.`,
@@ -84,7 +96,7 @@ will have the same size.`,
 	fs.StringVar(
 		&c.Server.URL,
 		"server.url",
-		"http://localhost:8000",
+		c.Server.URL,
 		`
 Piko server proxy URL.`,
 	)

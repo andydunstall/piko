@@ -129,7 +129,7 @@ func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
 	fs.StringVar(
 		&c.RootCAs,
 		prefix+"root-cas",
-		"",
+		c.RootCAs,
 		`
 A path to a certificate PEM file containing root certificiate authorities to
 validate the TLS connection to the Piko server.
@@ -190,7 +190,7 @@ func (c *ConnectConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.URL,
 		"connect.url",
-		"http://localhost:8001",
+		c.URL,
 		`
 The Piko server URL to connect to. Note this must be configured to use the
 Piko server 'upstream' port.`,
@@ -199,7 +199,7 @@ Piko server 'upstream' port.`,
 	fs.StringVar(
 		&c.Token,
 		"connect.token",
-		"",
+		c.Token,
 		`
 Token is a token to authenticate with the Piko server.`,
 	)
@@ -207,7 +207,7 @@ Token is a token to authenticate with the Piko server.`,
 	fs.DurationVar(
 		&c.Timeout,
 		"connect.timeout",
-		time.Second*30,
+		c.Timeout,
 		`
 Timeout attempting to connect to the Piko server on boot. Note if the agent
 is disconnected after the initial connection succeeds it will keep trying to
@@ -233,7 +233,7 @@ func (c *ServerConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.BindAddr,
 		"server.bind-addr",
-		":5000",
+		c.BindAddr,
 		`
 The host/port to bind the server to.
 
@@ -255,6 +255,22 @@ type Config struct {
 	// the grace period, listeners and idle connections are closed, then waits
 	// for active requests to complete and closes their connections.
 	GracePeriod time.Duration `json:"grace_period" yaml:"grace_period"`
+}
+
+func Default() *Config {
+	return &Config{
+		Connect: ConnectConfig{
+			URL:     "http://localhost:8001",
+			Timeout: time.Second * 30,
+		},
+		Server: ServerConfig{
+			BindAddr: ":5000",
+		},
+		Log: log.Config{
+			Level: "info",
+		},
+		GracePeriod: time.Minute,
+	}
 }
 
 func (c *Config) Validate() error {
@@ -296,7 +312,7 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(
 		&c.GracePeriod,
 		"grace-period",
-		time.Minute,
+		c.GracePeriod,
 		`
 Maximum duration after a shutdown signal is received (SIGTERM or
 SIGINT) to gracefully shutdown each listener.

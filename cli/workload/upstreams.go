@@ -45,7 +45,7 @@ Examples:
 `,
 	}
 
-	var conf config.UpstreamsConfig
+	conf := config.DefaultUpstreamsConfig()
 
 	// Register flags and set default values.
 	conf.RegisterFlags(cmd.Flags())
@@ -62,7 +62,7 @@ Examples:
 			os.Exit(1)
 		}
 
-		if err := runUpstreams(&conf, logger); err != nil {
+		if err := runUpstreams(conf, logger); err != nil {
 			logger.Error("failed to run server", zap.Error(err))
 			os.Exit(1)
 		}

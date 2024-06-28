@@ -38,7 +38,7 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.BindAddr,
 		"gossip.bind-addr",
-		":8003",
+		c.BindAddr,
 		`
 The host/port to listen for inter-node gossip traffic.
 
@@ -49,7 +49,7 @@ If the host is unspecified it defaults to all listeners, such as
 	fs.StringVar(
 		&c.AdvertiseAddr,
 		"gossip.advertise-addr",
-		"",
+		c.AdvertiseAddr,
 		`
 Gossip listen address to advertise to other nodes in the cluster. This is the
 address other nodes will used to gossip with the node.
@@ -66,7 +66,7 @@ advertise address of '10.26.104.14:8003'.`,
 	fs.DurationVar(
 		&c.Interval,
 		"gossip.interval",
-		time.Millisecond*500,
+		c.Interval,
 		`
 The interval to initiate rounds of gossip.
 
@@ -76,7 +76,7 @@ Each gossip round selects another known node to synchronize with.`,
 	fs.IntVar(
 		&c.MaxPacketSize,
 		"gossip.max-packet-size",
-		1400,
+		c.MaxPacketSize,
 		`
 The maximum size of any packet sent.
 

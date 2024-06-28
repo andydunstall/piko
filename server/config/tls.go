@@ -33,7 +33,7 @@ func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
 	fs.BoolVar(
 		&c.Enabled,
 		prefix+"enabled",
-		false,
+		c.Enabled,
 		`
 Whether to enable TLS on the listener.
 
@@ -42,14 +42,14 @@ If enabled must configure the cert and key.`,
 	fs.StringVar(
 		&c.Cert,
 		prefix+"cert",
-		"",
+		c.Cert,
 		`
 Path to the PEM encoded certificate file.`,
 	)
 	fs.StringVar(
 		&c.Key,
 		prefix+"key",
-		"",
+		c.Key,
 		`
 Path to the PEM encoded key file.`,
 	)
