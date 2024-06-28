@@ -297,7 +297,7 @@ func (c *AdminConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.BindAddr,
 		"admin.bind-addr",
-		":8002",
+		c.BindAddr,
 		`
 The host/port to listen for incoming admin connections.
 
@@ -308,7 +308,7 @@ If the host is unspecified it defaults to all listeners, such as
 	fs.StringVar(
 		&c.AdvertiseAddr,
 		"admin.advertise-addr",
-		"",
+		c.AdvertiseAddr,
 		`
 Admin listen address to advertise to other nodes in the cluster. This is the
 address other nodes will used to forward admin requests.
@@ -387,7 +387,7 @@ func Default() *Config {
 			BindAddr: ":8001",
 		},
 		Admin: AdminConfig{
-			BindAddr: "8002",
+			BindAddr: ":8002",
 		},
 		Gossip: gossip.Config{
 			BindAddr:      ":8003",
