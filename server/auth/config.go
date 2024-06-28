@@ -36,28 +36,28 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.TokenHMACSecretKey,
 		"auth.token-hmac-secret-key",
-		"",
+		c.TokenHMACSecretKey,
 		`
 Secret key to authenticate HMAC endpoint connection JWTs.`,
 	)
 	fs.StringVar(
 		&c.TokenRSAPublicKey,
 		"auth.token-rsa-public-key",
-		"",
+		c.TokenRSAPublicKey,
 		`
 Public key to authenticate RSA endpoint connection JWTs.`,
 	)
 	fs.StringVar(
 		&c.TokenECDSAPublicKey,
 		"auth.token-ecdsa-public-key",
-		"",
+		c.TokenECDSAPublicKey,
 		`
 Public key to authenticate ECDSA endpoint connection JWTs.`,
 	)
 	fs.StringVar(
 		&c.TokenAudience,
 		"auth.token-audience",
-		"",
+		c.TokenAudience,
 		`
 Audience of endpoint connection JWT token to verify.
 
@@ -67,7 +67,7 @@ is ignored.`,
 	fs.StringVar(
 		&c.TokenIssuer,
 		"auth.token-issuer",
-		"",
+		c.TokenIssuer,
 		`
 Issuer of endpoint connection JWT token to verify.
 

@@ -30,7 +30,7 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.Level,
 		"log.level",
-		"info",
+		c.Level,
 		`
 Minimum log level to output.
 
@@ -39,7 +39,7 @@ The available levels are 'debug', 'info', 'warn' and 'error'.`,
 	fs.StringSliceVar(
 		&c.Subsystems,
 		"log.subsystems",
-		nil,
+		c.Subsystems,
 		`
 Each log has a 'subsystem' field where the log occured.
 

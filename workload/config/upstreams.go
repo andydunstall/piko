@@ -37,7 +37,7 @@ func (c *ChurnConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(
 		&c.Interval,
 		"churn.interval",
-		0,
+		c.Interval,
 		`
 How often each upstream should 'churn' (disconnect and reconnect).`,
 	)
@@ -45,7 +45,7 @@ How often each upstream should 'churn' (disconnect and reconnect).`,
 	fs.DurationVar(
 		&c.Delay,
 		"churn.delay",
-		0,
+		c.Delay,
 		`
 Duration to wait before reconnecting when an upstream churns.`,
 	)
@@ -63,6 +63,20 @@ type UpstreamsConfig struct {
 	Server ServerConfig `json:"server" yaml:"server"`
 
 	Log log.Config `json:"log" yaml:"log"`
+}
+
+func DefaultUpstreamsConfig() *UpstreamsConfig {
+	return &UpstreamsConfig{
+		Upstreams: 1000,
+		Endpoints: 100,
+		Churn: ChurnConfig{
+			Interval: 0,
+			Delay:    0,
+		},
+		Server: ServerConfig{
+			URL: "http://localhost:8001",
+		},
+	}
 }
 
 func (c *UpstreamsConfig) Validate() error {
@@ -89,7 +103,7 @@ func (c *UpstreamsConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.IntVar(
 		&c.Upstreams,
 		"upstreams",
-		1000,
+		c.Upstreams,
 		`
 The number of upstream servers to register.
 
@@ -100,7 +114,7 @@ the number endpoints to register.`,
 	fs.IntVar(
 		&c.Endpoints,
 		"endpoints",
-		100,
+		c.Endpoints,
 		`
 The number of available endpoint IDs to register.
 
@@ -116,7 +130,7 @@ Therefore 'endpoints' must be greater than or equal to 'upstreams'.`,
 	fs.StringVar(
 		&c.Server.URL,
 		"server.url",
-		"http://localhost:8001",
+		c.Server.URL,
 		`
 Piko server URL.
 

@@ -42,7 +42,7 @@ Examples:
 `,
 	}
 
-	var conf config.Config
+	conf := config.Default()
 	var loadConf pikoconfig.Config
 
 	// Register flags and set default values.
@@ -50,7 +50,7 @@ Examples:
 	loadConf.RegisterFlags(cmd.PersistentFlags())
 
 	cmd.PersistentPreRun = func(_ *cobra.Command, _ []string) {
-		if err := loadConf.Load(&conf); err != nil {
+		if err := loadConf.Load(conf); err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
@@ -61,8 +61,8 @@ Examples:
 		}
 	}
 
-	cmd.AddCommand(newStartCommand(&conf))
-	cmd.AddCommand(newTCPCommand(&conf))
+	cmd.AddCommand(newStartCommand(conf))
+	cmd.AddCommand(newTCPCommand(conf))
 
 	return cmd
 }

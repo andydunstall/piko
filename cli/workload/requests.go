@@ -50,7 +50,7 @@ Examples:
 `,
 	}
 
-	var conf config.RequestsConfig
+	conf := config.DefaultRequestsConfig()
 
 	// Register flags and set default values.
 	conf.RegisterFlags(cmd.Flags())
@@ -67,7 +67,7 @@ Examples:
 			os.Exit(1)
 		}
 
-		if err := runRequests(&conf, logger); err != nil {
+		if err := runRequests(conf, logger); err != nil {
 			logger.Error("failed to run server", zap.Error(err))
 			os.Exit(1)
 		}

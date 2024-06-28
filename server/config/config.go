@@ -36,7 +36,7 @@ func (c *ClusterConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.NodeID,
 		"cluster.node-id",
-		"",
+		c.NodeID,
 		`
 A unique identifier for the node in the cluster.
 
@@ -46,7 +46,7 @@ By default a random ID will be generated for the node.`,
 	fs.StringVar(
 		&c.NodeIDPrefix,
 		"cluster.node-id-prefix",
-		"",
+		c.NodeIDPrefix,
 		`
 A prefix for the node ID.
 
@@ -60,7 +60,7 @@ identifier to ensure the node ID is unique across restarts.`,
 	fs.StringSliceVar(
 		&c.Join,
 		"cluster.join",
-		nil,
+		c.Join,
 		`
 A list of addresses of members in the cluster to join.
 
@@ -79,7 +79,7 @@ so the initial set of configured members only needs to be a subset of nodes.`,
 	fs.BoolVar(
 		&c.AbortIfJoinFails,
 		"cluster.abort-if-join-fails",
-		true,
+		c.AbortIfJoinFails,
 		`
 Whether the server node should abort if it is configured with more than one
 node to join (excluding itself) but fails to join any members.`,
@@ -121,7 +121,7 @@ func (c *HTTPConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
 	fs.DurationVar(
 		&c.ReadTimeout,
 		prefix+"read-timeout",
-		time.Second*10,
+		c.ReadTimeout,
 		`
 The maximum duration for reading the entire request, including the body. A
 zero or negative value means there will be no timeout.`,
@@ -129,7 +129,7 @@ zero or negative value means there will be no timeout.`,
 	fs.DurationVar(
 		&c.ReadHeaderTimeout,
 		prefix+"read-header-timeout",
-		time.Second*10,
+		c.ReadHeaderTimeout,
 		`
 The maximum duration for reading the request headers. If zero,
 http.read-timeout is used.`,
@@ -137,14 +137,14 @@ http.read-timeout is used.`,
 	fs.DurationVar(
 		&c.WriteTimeout,
 		prefix+"write-timeout",
-		time.Second*10,
+		c.WriteTimeout,
 		`
 The maximum duration before timing out writes of the response.`,
 	)
 	fs.DurationVar(
 		&c.IdleTimeout,
 		prefix+"idle-timeout",
-		time.Minute*5,
+		c.IdleTimeout,
 		`
 The maximum amount of time to wait for the next request when keep-alives are
 enabled.`,
@@ -152,7 +152,7 @@ enabled.`,
 	fs.IntVar(
 		&c.MaxHeaderBytes,
 		prefix+"max-header-bytes",
-		1<<20,
+		c.MaxHeaderBytes,
 		`
 The maximum number of bytes the server will read parsing the request header's
 keys and values, including the request line.`,
@@ -195,7 +195,7 @@ func (c *ProxyConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.BindAddr,
 		"proxy.bind-addr",
-		":8000",
+		c.BindAddr,
 		`
 The host/port to listen for incoming proxy connections.
 
@@ -206,7 +206,7 @@ If the host is unspecified it defaults to all listeners, such as
 	fs.StringVar(
 		&c.AdvertiseAddr,
 		"proxy.advertise-addr",
-		"",
+		c.AdvertiseAddr,
 		`
 Proxy to advertise to other nodes in the cluster. This is the
 address other nodes will used to forward proxy connections.
@@ -223,7 +223,7 @@ advertise address of '10.26.104.14:8000'.`,
 	fs.DurationVar(
 		&c.Timeout,
 		"proxy.timeout",
-		time.Second*30,
+		c.Timeout,
 		`
 Timeout when forwarding incoming requests to the upstream.`,
 	)
@@ -231,7 +231,7 @@ Timeout when forwarding incoming requests to the upstream.`,
 	fs.BoolVar(
 		&c.AccessLog,
 		"proxy.access-log",
-		true,
+		c.AccessLog,
 		`
 Whether to log all incoming connections and requests.`,
 	)
@@ -262,7 +262,7 @@ func (c *UpstreamConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.BindAddr,
 		"upstream.bind-addr",
-		":8001",
+		c.BindAddr,
 		`
 The host/port to listen for incoming upstream connections.
 
@@ -333,7 +333,7 @@ func (c *UsageConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.BoolVar(
 		&c.Disable,
 		"usage.disable",
-		false,
+		c.Disable,
 		`
 Whether to disable anonymous usage tracking.
 
@@ -350,9 +350,9 @@ type Config struct {
 
 	Upstream UpstreamConfig `json:"upstream" yaml:"upstream"`
 
-	Gossip gossip.Config `json:"gossip" yaml:"gossip"`
-
 	Admin AdminConfig `json:"admin" yaml:"admin"`
+
+	Gossip gossip.Config `json:"gossip" yaml:"gossip"`
 
 	Auth auth.Config `json:"auth" yaml:"auth"`
 
@@ -364,6 +364,41 @@ type Config struct {
 	// the grace period, listeners and idle connections are closed, then waits
 	// for active requests to complete and closes their connections.
 	GracePeriod time.Duration `json:"grace_period" yaml:"grace_period"`
+}
+
+func Default() *Config {
+	return &Config{
+		Cluster: ClusterConfig{
+			AbortIfJoinFails: true,
+		},
+		Proxy: ProxyConfig{
+			BindAddr:  ":8000",
+			Timeout:   time.Second * 30,
+			AccessLog: true,
+			HTTP: HTTPConfig{
+				ReadTimeout:       time.Second * 10,
+				ReadHeaderTimeout: time.Second * 10,
+				WriteTimeout:      time.Second * 10,
+				IdleTimeout:       time.Minute * 5,
+				MaxHeaderBytes:    1 << 20,
+			},
+		},
+		Upstream: UpstreamConfig{
+			BindAddr: ":8001",
+		},
+		Admin: AdminConfig{
+			BindAddr: "8002",
+		},
+		Gossip: gossip.Config{
+			BindAddr:      ":8003",
+			Interval:      time.Millisecond * 500,
+			MaxPacketSize: 1400,
+		},
+		Log: log.Config{
+			Level: "info",
+		},
+		GracePeriod: time.Minute,
+	}
 }
 
 func (c *Config) Validate() error {
@@ -379,12 +414,12 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("upstream: %w", err)
 	}
 
-	if err := c.Gossip.Validate(); err != nil {
-		return fmt.Errorf("gossip: %w", err)
-	}
-
 	if err := c.Admin.Validate(); err != nil {
 		return fmt.Errorf("admin: %w", err)
+	}
+
+	if err := c.Gossip.Validate(); err != nil {
+		return fmt.Errorf("gossip: %w", err)
 	}
 
 	if err := c.Log.Validate(); err != nil {
@@ -405,9 +440,9 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 
 	c.Upstream.RegisterFlags(fs)
 
-	c.Gossip.RegisterFlags(fs)
-
 	c.Admin.RegisterFlags(fs)
+
+	c.Gossip.RegisterFlags(fs)
 
 	c.Auth.RegisterFlags(fs)
 
@@ -418,7 +453,7 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	fs.DurationVar(
 		&c.GracePeriod,
 		"grace-period",
-		time.Minute,
+		c.GracePeriod,
 		`
 Maximum duration after a shutdown signal is received (SIGTERM or
 SIGINT) to gracefully shutdown the server node before terminating.

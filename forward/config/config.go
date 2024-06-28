@@ -68,7 +68,7 @@ func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
 	fs.StringVar(
 		&c.RootCAs,
 		prefix+"root-cas",
-		"",
+		c.RootCAs,
 		`
 A path to a certificate PEM file containing root certificiate authorities to
 validate the TLS connection to the Piko server.
@@ -125,7 +125,7 @@ func (c *ConnectConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
 		&c.URL,
 		"connect.url",
-		"http://localhost:8000",
+		c.URL,
 		`
 The Piko server URL to connect to. Note this must be configured to use the
 Piko server 'proxy' port.`,
@@ -134,7 +134,7 @@ Piko server 'proxy' port.`,
 	fs.DurationVar(
 		&c.Timeout,
 		"connect.timeout",
-		time.Second*30,
+		c.Timeout,
 		`
 Timeout attempting to connect to the Piko server.`,
 	)
@@ -148,6 +148,15 @@ type Config struct {
 	Connect ConnectConfig `json:"connect" yaml:"connect"`
 
 	Log log.Config `json:"log" yaml:"log"`
+}
+
+func Default() *Config {
+	return &Config{
+		Connect: ConnectConfig{
+			URL:     "http://localhost:8000",
+			Timeout: time.Second * 30,
+		},
+	}
 }
 
 func (c *Config) Validate() error {
