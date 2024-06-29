@@ -12,6 +12,7 @@ import (
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/workloadv2/cluster"
 	"github.com/andydunstall/piko/workloadv2/cluster/config"
+	"github.com/andydunstall/piko/workloadv2/cluster/proxy"
 	rungroup "github.com/oklog/run"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
@@ -113,6 +114,9 @@ func runCluster(
 	defer manager.Close()
 
 	manager.Update(conf)
+
+	loadBalancer := proxy.NewLoadBalancer(manager)
+	defer loadBalancer.Close()
 
 	var group rungroup.Group
 
