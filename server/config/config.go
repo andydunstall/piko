@@ -208,7 +208,7 @@ If the host is unspecified it defaults to all listeners, such as
 		"proxy.advertise-addr",
 		c.AdvertiseAddr,
 		`
-Proxy to advertise to other nodes in the cluster. This is the
+Address to advertise to other nodes in the cluster. This is the
 address other nodes will used to forward proxy connections.
 
 Such as if the listen address is ':8000', the advertised address may be
@@ -245,6 +245,9 @@ type UpstreamConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
 
+	// AdvertiseAddr is the address to advertise to other nodes.
+	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
+
 	TLS TLSConfig `json:"tls" yaml:"tls"`
 }
 
@@ -268,6 +271,22 @@ The host/port to listen for incoming upstream connections.
 
 If the host is unspecified it defaults to all listeners, such as
 '--upstream.bind-addr :8001' will listen on '0.0.0.0:8001'`,
+	)
+
+	fs.StringVar(
+		&c.AdvertiseAddr,
+		"upstream.advertise-addr",
+		c.AdvertiseAddr,
+		`
+Address to advertise to other nodes in the cluster.
+
+Such as if the listen address is ':8001', the advertised address may be
+'10.26.104.45:8001' or 'node1.cluster:8001'.
+
+By default, if the bind address includes an IP to bind to that will be used.
+If the bind address does not include an IP (such as ':8000') the nodes
+private IP will be used, such as a bind address of ':8000' may have an
+advertise address of '10.26.104.14:8000'.`,
 	)
 
 	c.TLS.RegisterFlags(fs, "upstream")

@@ -111,15 +111,15 @@ func NewNodeV2(opts ...Option) *NodeV2 {
 }
 
 func (n *NodeV2) ProxyAddr() string {
-	return n.server.ProxyAddr()
+	return n.server.Config().Proxy.AdvertiseAddr
 }
 
 func (n *NodeV2) UpstreamAddr() string {
-	return n.server.UpstreamAddr()
+	return n.server.Config().Upstream.AdvertiseAddr
 }
 
 func (n *NodeV2) AdminAddr() string {
-	return n.server.AdminAddr()
+	return n.server.Config().Admin.AdvertiseAddr
 }
 
 func (n *NodeV2) RootCAPool() *x509.CertPool {

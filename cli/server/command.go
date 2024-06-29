@@ -3,10 +3,8 @@ package server
 import (
 	"context"
 	"fmt"
-	"net"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 
 	"github.com/andydunstall/piko/cli/server/status"
@@ -15,7 +13,6 @@ import (
 	"github.com/andydunstall/piko/server"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/config"
-	"github.com/hashicorp/go-sockaddr"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 )
@@ -96,33 +93,6 @@ Examples:
 			fmt.Printf("failed to setup logger: %s\n", err.Error())
 			os.Exit(1)
 		}
-
-		if conf.Proxy.AdvertiseAddr == "" {
-			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Proxy.BindAddr)
-			if err != nil {
-				logger.Error("invalid configuration", zap.Error(err))
-				os.Exit(1)
-			}
-			conf.Proxy.AdvertiseAddr = advertiseAddr
-		}
-
-		if conf.Admin.AdvertiseAddr == "" {
-			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Admin.BindAddr)
-			if err != nil {
-				logger.Error("invalid configuration", zap.Error(err))
-				os.Exit(1)
-			}
-			conf.Admin.AdvertiseAddr = advertiseAddr
-		}
-
-		if conf.Gossip.AdvertiseAddr == "" {
-			advertiseAddr, err := advertiseAddrFromBindAddr(conf.Gossip.BindAddr)
-			if err != nil {
-				logger.Error("invalid configuration", zap.Error(err))
-				os.Exit(1)
-			}
-			conf.Gossip.AdvertiseAddr = advertiseAddr
-		}
 	}
 
 	cmd.Run = func(_ *cobra.Command, _ []string) {
@@ -155,27 +125,4 @@ func runServer(conf *config.Config, logger log.Logger) error {
 	logger.Info("shutdown complete")
 
 	return nil
-}
-
-func advertiseAddrFromBindAddr(bindAddr string) (string, error) {
-	if strings.HasPrefix(bindAddr, ":") {
-		bindAddr = "0.0.0.0" + bindAddr
-	}
-
-	host, port, err := net.SplitHostPort(bindAddr)
-	if err != nil {
-		return "", fmt.Errorf("invalid bind addr: %s: %w", bindAddr, err)
-	}
-
-	if host == "0.0.0.0" || host == "::" {
-		ip, err := sockaddr.GetPrivateIP()
-		if err != nil {
-			return "", fmt.Errorf("get interface addr: %w", err)
-		}
-		if ip == "" {
-			return "", fmt.Errorf("no private ip found")
-		}
-		return ip + ":" + port, nil
-	}
-	return bindAddr, nil
 }
