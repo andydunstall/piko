@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"strings"
 
 	"github.com/andydunstall/piko/pkg/build"
 	"github.com/andydunstall/piko/pkg/log"
@@ -16,6 +17,7 @@ import (
 	"github.com/andydunstall/piko/server/upstream"
 	"github.com/andydunstall/piko/server/usage"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/hashicorp/go-sockaddr"
 	rungroup "github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
@@ -94,6 +96,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("proxy listen: %s: %w", conf.Proxy.BindAddr, err)
 	}
+	if conf.Proxy.AdvertiseAddr == "" {
+		advertiseAddr, err := advertiseAddrFromBindAddr(proxyLn.Addr().String())
+		if err != nil {
+			// Should never happen.
+			panic("invalid listen address: " + err.Error())
+		}
+		conf.Proxy.AdvertiseAddr = advertiseAddr
+	}
+
 	proxyTLSConfig, err := conf.Proxy.TLS.Load()
 	if err != nil {
 		return nil, fmt.Errorf("proxy tls: %w", err)
@@ -112,6 +123,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("upstream listen: %s: %w", conf.Upstream.BindAddr, err)
 	}
+	if conf.Upstream.AdvertiseAddr == "" {
+		advertiseAddr, err := advertiseAddrFromBindAddr(upstreamLn.Addr().String())
+		if err != nil {
+			// Should never happen.
+			panic("invalid listen address: " + err.Error())
+		}
+		conf.Upstream.AdvertiseAddr = advertiseAddr
+	}
+
 	upstreamTLSConfig, err := conf.Upstream.TLS.Load()
 	if err != nil {
 		return nil, fmt.Errorf("upstream tls: %w", err)
@@ -129,6 +149,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	if err != nil {
 		return nil, fmt.Errorf("admin listen: %s: %w", conf.Admin.BindAddr, err)
 	}
+	if conf.Admin.AdvertiseAddr == "" {
+		advertiseAddr, err := advertiseAddrFromBindAddr(adminLn.Addr().String())
+		if err != nil {
+			// Should never happen.
+			panic("invalid listen address: " + err.Error())
+		}
+		conf.Admin.AdvertiseAddr = advertiseAddr
+	}
+
 	adminTLSConfig, err := conf.Admin.TLS.Load()
 	if err != nil {
 		return nil, fmt.Errorf("admin tls: %w", err)
@@ -155,6 +184,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	})
 	if err != nil {
 		return nil, fmt.Errorf("gossip listen: %s: %w", conf.Gossip.BindAddr, err)
+	}
+
+	if conf.Gossip.AdvertiseAddr == "" {
+		advertiseAddr, err := advertiseAddrFromBindAddr(gossipStreamLn.Addr().String())
+		if err != nil {
+			// Should never happen.
+			panic("invalid listen address: " + err.Error())
+		}
+		conf.Gossip.AdvertiseAddr = advertiseAddr
 	}
 
 	gossiper := gossip.NewGossip(
@@ -187,22 +225,8 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	}, nil
 }
 
-func (s *Server) ProxyAddr() string {
-	if s.conf.Proxy.AdvertiseAddr != "" {
-		return s.conf.Proxy.AdvertiseAddr
-	}
-	return s.proxyLn.Addr().String()
-}
-
-func (s *Server) UpstreamAddr() string {
-	return s.upstreamLn.Addr().String()
-}
-
-func (s *Server) AdminAddr() string {
-	if s.conf.Admin.AdvertiseAddr != "" {
-		return s.conf.Admin.AdvertiseAddr
-	}
-	return s.adminLn.Addr().String()
+func (s *Server) Config() *config.Config {
+	return s.conf
 }
 
 func (s *Server) Run(ctx context.Context) error {
@@ -368,4 +392,27 @@ func (s *Server) Run(ctx context.Context) error {
 	})
 
 	return group.Run()
+}
+
+func advertiseAddrFromBindAddr(bindAddr string) (string, error) {
+	if strings.HasPrefix(bindAddr, ":") {
+		bindAddr = "0.0.0.0" + bindAddr
+	}
+
+	host, port, err := net.SplitHostPort(bindAddr)
+	if err != nil {
+		return "", fmt.Errorf("invalid bind addr: %s: %w", bindAddr, err)
+	}
+
+	if host == "0.0.0.0" || host == "::" {
+		ip, err := sockaddr.GetPrivateIP()
+		if err != nil {
+			return "", fmt.Errorf("get interface addr: %w", err)
+		}
+		if ip == "" {
+			return "", fmt.Errorf("no private ip found")
+		}
+		return ip + ":" + port, nil
+	}
+	return bindAddr, nil
 }
