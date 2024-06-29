@@ -12,9 +12,16 @@ type Manager struct {
 	logger log.Logger
 }
 
-func NewManager(logger log.Logger) *Manager {
+func NewManager(opts ...Option) *Manager {
+	options := options{
+		logger: log.NewNopLogger(),
+	}
+	for _, o := range opts {
+		o.apply(&options)
+	}
+
 	return &Manager{
-		logger: logger.WithSubsystem("cluster.manager"),
+		logger: options.logger.WithSubsystem("cluster.manager"),
 	}
 }
 
@@ -54,7 +61,7 @@ func (m *Manager) addNode() {
 		gossipAddrs = append(gossipAddrs, node.GossipAddr())
 	}
 
-	node := NewNode(gossipAddrs, m.logger)
+	node := NewNode(WithJoin(gossipAddrs), WithLogger(m.logger))
 	node.Start()
 
 	m.nodes = append(m.nodes, node)

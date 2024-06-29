@@ -6,31 +6,23 @@ import (
 )
 
 type options struct {
-	nodes      int
+	join       []string
 	authConfig auth.Config
 	tls        bool
 	logger     log.Logger
 }
 
-type nodesOption int
-
-func (o nodesOption) apply(opts *options) {
-	opts.nodes = int(o)
+type joinOption struct {
+	Join []string
 }
 
-func WithNodes(nodes int) Option {
-	return nodesOption(nodes)
+func (o joinOption) apply(opts *options) {
+	opts.join = o.Join
 }
 
-type tlsOption bool
-
-func (o tlsOption) apply(opts *options) {
-	opts.tls = bool(o)
-}
-
-// WithTLS configures the node ports to use TLS.
-func WithTLS(tls bool) Option {
-	return tlsOption(tls)
+// WithJoin configures the nodes to join.
+func WithJoin(join []string) Option {
+	return joinOption{Join: join}
 }
 
 type authConfigOption struct {
@@ -44,6 +36,17 @@ func (o authConfigOption) apply(opts *options) {
 // WithAuthConfig configures the upstream authentication config.
 func WithAuthConfig(config auth.Config) Option {
 	return authConfigOption{AuthConfig: config}
+}
+
+type tlsOption bool
+
+func (o tlsOption) apply(opts *options) {
+	opts.tls = bool(o)
+}
+
+// WithTLS configures the node ports to use TLS.
+func WithTLS(tls bool) Option {
+	return tlsOption(tls)
 }
 
 type loggerOption struct {

@@ -11,21 +11,23 @@ import (
 	"testing"
 
 	"github.com/andydunstall/piko/agent/client"
-	"github.com/andydunstall/piko/workload/cluster"
+	"github.com/andydunstall/piko/workloadv2/cluster"
+	"github.com/andydunstall/piko/workloadv2/cluster/config"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // Tests proxying traffic across multiple Piko server nodes.
 func TestCluster_Proxy(t *testing.T) {
 	t.Run("http", func(t *testing.T) {
-		cluster, err := cluster.NewCluster()
-		require.NoError(t, err)
-		require.NoError(t, cluster.Start())
-		defer cluster.Stop()
+		manager := cluster.NewManager()
+		defer manager.Close()
 
-		remoteEndpointCh := make(chan string)
-		cluster.Nodes()[1].ClusterState().OnRemoteEndpointUpdate(
+		manager.Update(&config.Config{
+			Nodes: 3,
+		})
+
+		remoteEndpointCh := make(chan string, 1)
+		manager.Nodes()[1].ClusterState().OnRemoteEndpointUpdate(
 			func(_ string, endpointID string) {
 				remoteEndpointCh <- endpointID
 			},
@@ -33,7 +35,7 @@ func TestCluster_Proxy(t *testing.T) {
 
 		// Add upstream listener with a HTTP server returning 200.
 
-		upstreamURL := "http://" + cluster.Nodes()[0].UpstreamAddr()
+		upstreamURL := "http://" + manager.Nodes()[0].UpstreamAddr()
 		pikoClient := client.New(client.WithUpstreamURL(upstreamURL))
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
@@ -52,7 +54,7 @@ func TestCluster_Proxy(t *testing.T) {
 
 		req, _ := http.NewRequest(
 			http.MethodGet,
-			"http://"+cluster.Nodes()[1].ProxyAddr(),
+			"http://"+manager.Nodes()[1].ProxyAddr(),
 			nil,
 		)
 		req.Header.Add("x-piko-endpoint", "my-endpoint")
@@ -65,13 +67,15 @@ func TestCluster_Proxy(t *testing.T) {
 	})
 
 	t.Run("tcp", func(t *testing.T) {
-		cluster, err := cluster.NewCluster()
-		require.NoError(t, err)
-		require.NoError(t, cluster.Start())
-		defer cluster.Stop()
+		manager := cluster.NewManager()
+		defer manager.Close()
 
-		remoteEndpointCh := make(chan string)
-		cluster.Nodes()[1].ClusterState().OnRemoteEndpointUpdate(
+		manager.Update(&config.Config{
+			Nodes: 3,
+		})
+
+		remoteEndpointCh := make(chan string, 1)
+		manager.Nodes()[1].ClusterState().OnRemoteEndpointUpdate(
 			func(_ string, endpointID string) {
 				remoteEndpointCh <- endpointID
 			},
@@ -79,8 +83,8 @@ func TestCluster_Proxy(t *testing.T) {
 
 		// Create a client connecting to node 1 for the upstream listener and
 		// node 2 for the proxy connection.
-		proxyURL := "http://" + cluster.Nodes()[1].ProxyAddr()
-		upstreamURL := "http://" + cluster.Nodes()[0].UpstreamAddr()
+		proxyURL := "http://" + manager.Nodes()[1].ProxyAddr()
+		upstreamURL := "http://" + manager.Nodes()[0].UpstreamAddr()
 		pikoClient := client.New(
 			client.WithProxyURL(proxyURL),
 			client.WithUpstreamURL(upstreamURL),
