@@ -12,9 +12,6 @@ This tool can be used to run a cluster of Piko server nodes, register
 upstreams and generate traffic.
 
 Examples:
-  # Start a cluster of 5 nodes.
-  piko workload cluster --nodes 5
-
   # Register 1000 endpoints and upstream servers.
   piko workload upstreams --endpoints 1000
 
@@ -24,7 +21,6 @@ Examples:
 `,
 	}
 
-	cmd.AddCommand(newClusterCommand())
 	cmd.AddCommand(newUpstreamsCommand())
 	cmd.AddCommand(newRequestsCommand())
 

@@ -10,7 +10,7 @@ import (
 
 	"github.com/andydunstall/piko/agent/client"
 	"github.com/andydunstall/piko/server/auth"
-	"github.com/andydunstall/piko/workload/cluster"
+	"github.com/andydunstall/piko/workloadv2/cluster"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 )
@@ -38,7 +38,7 @@ func TestAuth_Upstream(t *testing.T) {
 	// Tests an upstream authenticating with a valid token.
 	t.Run("valid", func(t *testing.T) {
 		secretKey := generateTestHSKey()
-		node := cluster.NewNodeV2(cluster.WithAuthConfig(auth.Config{
+		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
 			TokenHMACSecretKey: string(secretKey),
 		}))
 		node.Start()
@@ -62,7 +62,7 @@ func TestAuth_Upstream(t *testing.T) {
 	// the wrong key).
 	t.Run("invalid", func(t *testing.T) {
 		secretKey := generateTestHSKey()
-		node := cluster.NewNodeV2(cluster.WithAuthConfig(auth.Config{
+		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
 			TokenHMACSecretKey: string(secretKey),
 		}))
 		node.Start()
@@ -83,7 +83,7 @@ func TestAuth_Upstream(t *testing.T) {
 
 	// Tests an unauthenticated upstream attempting to connect.
 	t.Run("unauthenticated", func(t *testing.T) {
-		node := cluster.NewNodeV2(cluster.WithAuthConfig(auth.Config{
+		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
 			TokenHMACSecretKey: string(generateTestHSKey()),
 		}))
 		node.Start()

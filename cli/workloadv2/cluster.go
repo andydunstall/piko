@@ -109,7 +109,7 @@ func runCluster(
 		logger.Info("shutdown complete")
 	}()
 
-	manager := cluster.NewManager(logger)
+	manager := cluster.NewManager(cluster.WithLogger(logger))
 	defer manager.Close()
 
 	manager.Update(conf)
