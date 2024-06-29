@@ -80,17 +80,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	registry := prometheus.NewRegistry()
 
-	clusterState := cluster.NewState(&cluster.Node{
-		ID:        conf.Cluster.NodeID,
-		ProxyAddr: conf.Proxy.AdvertiseAddr,
-		AdminAddr: conf.Admin.AdvertiseAddr,
-	}, logger)
-	clusterState.Metrics().Register(registry)
-
-	upstreams := upstream.NewLoadBalancedManager(clusterState)
-	upstreams.Metrics().Register(registry)
-
-	// Proxy server.
+	// Proxy listener.
 
 	proxyLn, err := net.Listen("tcp", conf.Proxy.BindAddr)
 	if err != nil {
@@ -105,19 +95,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		conf.Proxy.AdvertiseAddr = advertiseAddr
 	}
 
-	proxyTLSConfig, err := conf.Proxy.TLS.Load()
-	if err != nil {
-		return nil, fmt.Errorf("proxy tls: %w", err)
-	}
-	proxyServer := proxy.NewServer(
-		upstreams,
-		conf.Proxy,
-		registry,
-		proxyTLSConfig,
-		logger,
-	)
-
-	// Upstream server.
+	// Upstream listener.
 
 	upstreamLn, err := net.Listen("tcp", conf.Upstream.BindAddr)
 	if err != nil {
@@ -132,18 +110,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		conf.Upstream.AdvertiseAddr = advertiseAddr
 	}
 
-	upstreamTLSConfig, err := conf.Upstream.TLS.Load()
-	if err != nil {
-		return nil, fmt.Errorf("upstream tls: %w", err)
-	}
-	upstreamServer := upstream.NewServer(
-		upstreams,
-		verifier,
-		upstreamTLSConfig,
-		logger,
-	)
-
-	// Admin server.
+	// Admin listener.
 
 	adminLn, err := net.Listen("tcp", conf.Admin.BindAddr)
 	if err != nil {
@@ -158,20 +125,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		conf.Admin.AdvertiseAddr = advertiseAddr
 	}
 
-	adminTLSConfig, err := conf.Admin.TLS.Load()
-	if err != nil {
-		return nil, fmt.Errorf("admin tls: %w", err)
-	}
-	adminServer := admin.NewServer(
-		clusterState,
-		registry,
-		adminTLSConfig,
-		logger,
-	)
-	adminServer.AddStatus("/upstream", upstream.NewStatus(upstreams))
-	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
-
-	// Gossip.
+	// Gossip listener.
 
 	gossipStreamLn, err := net.Listen("tcp", conf.Gossip.BindAddr)
 	if err != nil {
@@ -194,6 +148,62 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		}
 		conf.Gossip.AdvertiseAddr = advertiseAddr
 	}
+
+	// Cluster.
+
+	clusterState := cluster.NewState(&cluster.Node{
+		ID:        conf.Cluster.NodeID,
+		ProxyAddr: conf.Proxy.AdvertiseAddr,
+		AdminAddr: conf.Admin.AdvertiseAddr,
+	}, logger)
+	clusterState.Metrics().Register(registry)
+
+	upstreams := upstream.NewLoadBalancedManager(clusterState)
+	upstreams.Metrics().Register(registry)
+
+	// Proxy server.
+
+	proxyTLSConfig, err := conf.Proxy.TLS.Load()
+	if err != nil {
+		return nil, fmt.Errorf("proxy tls: %w", err)
+	}
+	proxyServer := proxy.NewServer(
+		upstreams,
+		conf.Proxy,
+		registry,
+		proxyTLSConfig,
+		logger,
+	)
+
+	// Upstream server.
+
+	upstreamTLSConfig, err := conf.Upstream.TLS.Load()
+	if err != nil {
+		return nil, fmt.Errorf("upstream tls: %w", err)
+	}
+	upstreamServer := upstream.NewServer(
+		upstreams,
+		verifier,
+		upstreamTLSConfig,
+		logger,
+	)
+
+	// Admin server.
+
+	adminTLSConfig, err := conf.Admin.TLS.Load()
+	if err != nil {
+		return nil, fmt.Errorf("admin tls: %w", err)
+	}
+	adminServer := admin.NewServer(
+		clusterState,
+		registry,
+		adminTLSConfig,
+		logger,
+	)
+	adminServer.AddStatus("/upstream", upstream.NewStatus(upstreams))
+	adminServer.AddStatus("/cluster", cluster.NewStatus(clusterState))
+
+	// Gossip.
 
 	gossiper := gossip.NewGossip(
 		clusterState,
