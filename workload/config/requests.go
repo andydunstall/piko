@@ -33,6 +33,9 @@ func DefaultRequestsConfig() *RequestsConfig {
 		Server: ServerConfig{
 			URL: "http://localhost:8000",
 		},
+		Log: log.Config{
+			Level: "info",
+		},
 	}
 }
 

@@ -76,6 +76,9 @@ func DefaultUpstreamsConfig() *UpstreamsConfig {
 		Server: ServerConfig{
 			URL: "http://localhost:8001",
 		},
+		Log: log.Config{
+			Level: "info",
+		},
 	}
 }
 
