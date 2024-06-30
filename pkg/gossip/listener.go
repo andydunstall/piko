@@ -2,7 +2,6 @@ package gossip
 
 import (
 	"bufio"
-	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -260,50 +259,30 @@ func (l *packetListener) Close() error {
 }
 
 func (l *packetListener) handlePacket(b []byte) error {
-	r := bytes.NewBuffer(b)
-
-	firstByte, err := r.ReadByte()
-	if err != nil {
-		return fmt.Errorf("read: %w", err)
+	if len(b) < 2 {
+		return fmt.Errorf("packet too small: %d", len(b))
 	}
-	messageType := messageType(firstByte)
 
-	version, err := r.ReadByte()
-	if err != nil {
-		return fmt.Errorf("read: %w", err)
-	}
+	messageType := messageType(b[0])
+	version := b[1]
 	if version != supportedVersion {
 		return fmt.Errorf("unsupported version: %d", version)
 	}
 
 	switch messageType {
 	case messageTypeDigest:
-		return l.digest(r)
+		return l.digest(b)
 	case messageTypeDelta:
-		return l.delta(r)
+		return l.delta(b)
 	default:
 		return fmt.Errorf("unsupported message type: %d", version)
 	}
 }
 
-func (l *packetListener) digest(r *bytes.Buffer) error {
-	decoder := newDecoder(r)
-	var header digestHeader
-	if err := decoder.Decode(&header); err != nil {
+func (l *packetListener) digest(b []byte) error {
+	header, digest, err := decodeDigest(b)
+	if err != nil {
 		return fmt.Errorf("decode: %w", err)
-	}
-
-	var digest digest
-	for {
-		// Read digest entries until EOF.
-		var entry digestEntry
-		if err := decoder.Decode(&entry); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return fmt.Errorf("decode: %w", err)
-		}
-		digest = append(digest, entry)
 	}
 
 	// Discover any unknown nodes from the digest.
@@ -328,45 +307,13 @@ func (l *packetListener) digest(r *bytes.Buffer) error {
 	return nil
 }
 
-func (l *packetListener) delta(r *bytes.Buffer) error {
-	decoder := newDecoder(r)
-	var header deltaHeader
-	if err := decoder.Decode(&header); err != nil {
+func (l *packetListener) delta(b []byte) error {
+	header, delta, err := decodeDelta(b)
+	if err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
 
 	l.failureDetector.Report(header.NodeID)
-
-	var delta delta
-	for {
-		// Read delta entries until EOF.
-		var entryHeader deltaHeader
-		if err := decoder.Decode(&entryHeader); err != nil {
-			if errors.Is(err, io.EOF) {
-				break
-			}
-			return fmt.Errorf("decode: %w", err)
-		}
-
-		deltaEntry := deltaEntry{
-			ID:   entryHeader.NodeID,
-			Addr: entryHeader.Addr,
-		}
-
-		for {
-			var entry Entry
-			if err := decoder.Decode(&entry); err != nil {
-				if errors.Is(err, io.EOF) {
-					break
-				}
-				return fmt.Errorf("decode: %w", err)
-			}
-
-			deltaEntry.Entries = append(deltaEntry.Entries, entry)
-		}
-
-		delta = append(delta, deltaEntry)
-	}
 
 	l.state.ApplyDelta(delta)
 
@@ -375,68 +322,26 @@ func (l *packetListener) delta(r *bytes.Buffer) error {
 
 // sendDelta writes entries from the given delta upto the packet size limit.
 func (l *packetListener) sendDelta(delta delta, addr string) error {
-	var buf bytes.Buffer
-	_ = buf.WriteByte(uint8(messageTypeDelta))
-	_ = buf.WriteByte(supportedVersion)
-
-	encoder := newEncoder(&buf)
-
 	localMeta := l.state.LocalNodeMetadata()
-	header := &deltaHeader{
+
+	header := deltaHeader{
 		NodeID: localMeta.ID,
 		Addr:   localMeta.Addr,
 	}
-	if err := encoder.Encode(header); err != nil {
+	b, err := encodeDelta(header, delta, l.maxPacketSize)
+	if err != nil {
 		return fmt.Errorf("encode: %w", err)
-	}
-
-	if buf.Len() > l.maxPacketSize {
-		return fmt.Errorf(
-			"max packet size too small for header: %d < %d",
-			l.maxPacketSize, buf.Len(),
-		)
-	}
-
-	// Keep appending delta entries until we exceed the max packet size.
-	// bufLen contains the number of bytes to send (which may be less than
-	// buf.Len() if we exceed the packet limit).
-	bufLen := buf.Len()
-	entriesSent := 0
-	for _, deltaEntry := range delta {
-		if err := encoder.Encode(&deltaHeader{
-			NodeID: deltaEntry.ID,
-			Addr:   deltaEntry.Addr,
-		}); err != nil {
-			return fmt.Errorf("encode: %w", err)
-		}
-
-		if buf.Len() > l.maxPacketSize {
-			break
-		}
-		bufLen = buf.Len()
-
-		for _, entry := range deltaEntry.Entries {
-			if err := encoder.Encode(entry); err != nil {
-				return fmt.Errorf("encode: %w", err)
-			}
-
-			if buf.Len() > l.maxPacketSize {
-				break
-			}
-			bufLen = buf.Len()
-			entriesSent++
-		}
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return fmt.Errorf("resolve udp: %s: %w", addr, err)
 	}
-	if _, err = l.ln.WriteTo(buf.Bytes()[:bufLen], udpAddr); err != nil {
+	if _, err = l.ln.WriteTo(b, udpAddr); err != nil {
 		return fmt.Errorf("write packet: %s: %w", addr, err)
 	}
 
-	l.metrics.PacketBytesOutbound.Add(float64(bufLen))
+	l.metrics.PacketBytesOutbound.Add(float64(len(b)))
 
 	return nil
 }
@@ -446,60 +351,31 @@ func (l *packetListener) sendDigest(
 	addr string,
 	request bool,
 ) error {
-	var buf bytes.Buffer
-	_ = buf.WriteByte(uint8(messageTypeDigest))
-	_ = buf.WriteByte(supportedVersion)
-
-	encoder := newEncoder(&buf)
-
-	localMeta := l.state.LocalNodeMetadata()
-	header := &digestHeader{
-		NodeID:  localMeta.ID,
-		Addr:    localMeta.Addr,
-		Request: request,
-	}
-	if err := encoder.Encode(header); err != nil {
-		return fmt.Errorf("encode: %w", err)
-	}
-
-	if buf.Len() > l.maxPacketSize {
-		return fmt.Errorf(
-			"max packet size too small for header: %d < %d",
-			l.maxPacketSize, buf.Len(),
-		)
-	}
-
 	// Shuffle since we may not be able to send all digest entries.
 	rand.Shuffle(len(digest), func(i, j int) {
 		digest[i], digest[j] = digest[j], digest[i]
 	})
 
-	// Keep appending digest entries until we exceed the max packet size.
-	// bufLen contains the number of bytes to send (which may be less than
-	// buf.Len() if we exceed the packet limit).
-	bufLen := buf.Len()
-	entriesSent := 0
-	for _, entry := range digest {
-		if err := encoder.Encode(&entry); err != nil {
-			return fmt.Errorf("encode: %w", err)
-		}
-
-		if buf.Len() > l.maxPacketSize {
-			break
-		}
-		bufLen = buf.Len()
-		entriesSent++
+	localMeta := l.state.LocalNodeMetadata()
+	header := digestHeader{
+		NodeID:  localMeta.ID,
+		Addr:    localMeta.Addr,
+		Request: request,
+	}
+	b, err := encodeDigest(header, digest, l.maxPacketSize)
+	if err != nil {
+		return fmt.Errorf("encode: %w", err)
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", addr)
 	if err != nil {
 		return fmt.Errorf("resolve udp: %s: %w", addr, err)
 	}
-	if _, err = l.ln.WriteTo(buf.Bytes()[:bufLen], udpAddr); err != nil {
+	if _, err = l.ln.WriteTo(b, udpAddr); err != nil {
 		return fmt.Errorf("write packet: %s: %w", addr, err)
 	}
 
-	l.metrics.PacketBytesOutbound.Add(float64(bufLen))
+	l.metrics.PacketBytesOutbound.Add(float64(len(b)))
 
 	return nil
 }
