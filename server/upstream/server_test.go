@@ -68,6 +68,36 @@ func TestServer_Register(t *testing.T) {
 		removedUpstream := <-manager.removeConnCh
 		assert.Equal(t, "my-endpoint", removedUpstream.EndpointID())
 	})
+
+	// Tests the server closes upstream connections when it is shutdown.
+	t.Run("close on shutdown", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		manager := newFakeManager()
+
+		s := NewServer(manager, nil, nil, log.NewNopLogger())
+		go func() {
+			require.NoError(t, s.Serve(ln))
+		}()
+
+		url := fmt.Sprintf(
+			"ws://%s/piko/v1/upstream/my-endpoint",
+			ln.Addr().String(),
+		)
+		conn, err := websocket.Dial(context.TODO(), url)
+		require.NoError(t, err)
+		defer conn.Close()
+
+		addedUpstream := <-manager.addConnCh
+		assert.Equal(t, "my-endpoint", addedUpstream.EndpointID())
+
+		// Shutdown the server which should close the upstream connection.
+		s.Shutdown(context.TODO())
+
+		removedUpstream := <-manager.removeConnCh
+		assert.Equal(t, "my-endpoint", removedUpstream.EndpointID())
+	})
 }
 
 func TestServer_Authentication(t *testing.T) {

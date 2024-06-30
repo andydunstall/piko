@@ -26,6 +26,9 @@ type Server struct {
 
 	websocketUpgrader *websocket.Upgrader
 
+	ctx    context.Context
+	cancel func()
+
 	logger log.Logger
 }
 
@@ -38,6 +41,7 @@ func NewServer(
 	logger = logger.WithSubsystem("admin")
 
 	router := gin.New()
+	ctx, cancel := context.WithCancel(context.Background())
 	server := &Server{
 		upstreams: upstreams,
 		httpServer: &http.Server{
@@ -46,6 +50,8 @@ func NewServer(
 			ErrorLog:  logger.StdLogger(zapcore.WarnLevel),
 		},
 		websocketUpgrader: &websocket.Upgrader{},
+		ctx:               ctx,
+		cancel:            cancel,
 		logger:            logger,
 	}
 
@@ -84,7 +90,10 @@ func (s *Server) Serve(ln net.Listener) error {
 // Shutdown attempts to gracefully shutdown the server by waiting for pending
 // requests to complete.
 func (s *Server) Shutdown(ctx context.Context) error {
-	return s.httpServer.Shutdown(ctx)
+	err := s.httpServer.Shutdown(ctx)
+	// Close the context to close upstream connections.
+	s.cancel()
+	return err
 }
 
 // upstreamRoute handles WebSocket connections from upstream services.
@@ -128,7 +137,7 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 		zap.String("client-ip", c.ClientIP()),
 	)
 
-	ctx := context.Background()
+	ctx := s.ctx
 	if ok {
 		// If the token has an expiry, then we ensure we close the connection
 		// to the endpoint once the token expires.
@@ -160,6 +169,10 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 		// close or an error.
 		if _, err := sess.AcceptStreamWithContext(ctx); err != nil {
 			if errors.Is(err, net.ErrClosed) {
+				return
+			}
+			if errors.Is(err, context.Canceled) {
+				// Server shutdown.
 				return
 			}
 			if errors.Is(err, context.DeadlineExceeded) {
