@@ -58,7 +58,22 @@ func TestServer_AdminRoutes(t *testing.T) {
 
 	t.Run("ready", func(t *testing.T) {
 		url := fmt.Sprintf("http://%s/ready", ln.Addr().String())
+
+		// Not ready.
+
+		s.SetReady(false)
+
 		resp, err := http.Get(url)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusServiceUnavailable, resp.StatusCode)
+
+		// Ready.
+
+		s.SetReady(true)
+
+		resp, err = http.Get(url)
 		assert.NoError(t, err)
 		defer resp.Body.Close()
 

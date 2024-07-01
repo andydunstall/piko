@@ -118,11 +118,13 @@ func runServer(conf *config.Config, logger log.Logger) error {
 		return err
 	}
 
-	if err := server.Run(ctx); err != nil {
+	if err := server.Start(); err != nil {
 		return err
 	}
 
-	logger.Info("shutdown complete")
+	if !server.Wait(ctx) {
+		os.Exit(1)
+	}
 
 	return nil
 }

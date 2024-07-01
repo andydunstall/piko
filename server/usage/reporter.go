@@ -32,22 +32,37 @@ type Report struct {
 
 // Reporter sends a periodic usage report.
 type Reporter struct {
-	id     string
-	start  time.Time
-	usage  *upstream.Usage
+	id    string
+	start time.Time
+	usage *upstream.Usage
+
+	ctx    context.Context
+	cancel context.CancelFunc
+
 	logger log.Logger
 }
 
 func NewReporter(usage *upstream.Usage, logger log.Logger) *Reporter {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Reporter{
 		id:     uuid.New().String(),
 		start:  time.Now(),
 		usage:  usage,
+		ctx:    ctx,
+		cancel: cancel,
 		logger: logger.WithSubsystem("reporter"),
 	}
 }
 
-func (r *Reporter) Run(ctx context.Context) {
+func (r *Reporter) Start() {
+	r.run(r.ctx)
+}
+
+func (r *Reporter) Stop() {
+	r.cancel()
+}
+
+func (r *Reporter) run(ctx context.Context) {
 	// Report on startup.
 	r.report()
 

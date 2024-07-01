@@ -14,6 +14,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"go.uber.org/atomic"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -22,6 +23,8 @@ import (
 // and inspecting the node status.
 type Server struct {
 	clusterState *cluster.State
+
+	ready *atomic.Bool
 
 	registry *prometheus.Registry
 
@@ -45,6 +48,7 @@ func NewServer(
 	router := gin.New()
 	server := &Server{
 		clusterState: clusterState,
+		ready:        atomic.NewBool(false),
 		registry:     registry,
 		proxy:        NewReverseProxy(logger),
 		httpServer: &http.Server{
@@ -98,6 +102,10 @@ func (s *Server) AddStatus(route string, handler status.Handler) {
 	handler.Register(group)
 }
 
+func (s *Server) SetReady(ready bool) {
+	s.ready.Store(ready)
+}
+
 func (s *Server) registerRoutes(router *gin.Engine) {
 	router.GET("/health", s.healthRoute)
 	router.GET("/ready", s.readyRoute)
@@ -127,6 +135,10 @@ func (s *Server) healthRoute(c *gin.Context) {
 }
 
 func (s *Server) readyRoute(c *gin.Context) {
+	if !s.ready.Load() {
+		c.Status(http.StatusServiceUnavailable)
+		return
+	}
 	c.Status(http.StatusOK)
 }
 

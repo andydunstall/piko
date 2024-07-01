@@ -18,8 +18,12 @@ type ClusterConfig struct {
 	// the node ID to ensure uniqueness.
 	NodeIDPrefix string `json:"node_id_prefix" yaml:"node_id_prefix"`
 
-	// Join contians a list of addresses of members in the cluster to join.
+	// Join contains a list of addresses of members in the cluster to join.
 	Join []string `json:"join" yaml:"join"`
+
+	// JoinTimeout is the time to keep trying to join the cluster before
+	// failing.
+	JoinTimeout time.Duration `json:"join_timeout" yaml:"join_timeout"`
 
 	AbortIfJoinFails bool `json:"abort_if_join_fails" yaml:"abort_if_join_fails"`
 }
@@ -27,6 +31,9 @@ type ClusterConfig struct {
 func (c *ClusterConfig) Validate() error {
 	if c.NodeID == "" {
 		return fmt.Errorf("missing node id")
+	}
+	if c.JoinTimeout == 0 {
+		return fmt.Errorf("missing join timeout")
 	}
 
 	return nil
@@ -74,6 +81,15 @@ port is given, the gossip port of this node is used.
 
 Note each node propagates membership information to the other known nodes,
 so the initial set of configured members only needs to be a subset of nodes.`,
+	)
+
+	fs.DurationVar(
+		&c.JoinTimeout,
+		"cluster.join-timeout",
+		c.JoinTimeout,
+		`
+The timeout to attempt to join an existing cluster when 'cluster.join' is
+set.`,
 	)
 
 	fs.BoolVar(
@@ -388,6 +404,7 @@ type Config struct {
 func Default() *Config {
 	return &Config{
 		Cluster: ClusterConfig{
+			JoinTimeout:      time.Minute,
 			AbortIfJoinFails: true,
 		},
 		Proxy: ProxyConfig{

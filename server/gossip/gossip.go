@@ -72,16 +72,16 @@ func (g *Gossip) JoinOnStartup(ctx context.Context, addrs []string) ([]string, e
 	backoff := backoff.New(5, time.Second, time.Minute)
 	var lastErr error
 	for {
-		if !backoff.Wait(ctx) {
-			return nil, lastErr
-		}
-
 		nodeIDs, err := g.gossiper.Join(addrs)
 		if err == nil {
 			return nodeIDs, nil
 		}
 		g.logger.Warn("failed to join cluster", zap.Error(err))
 		lastErr = err
+
+		if !backoff.Wait(ctx) {
+			return nil, lastErr
+		}
 	}
 }
 
