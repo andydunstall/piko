@@ -428,7 +428,7 @@ func Default() *Config {
 		},
 		Gossip: gossip.Config{
 			BindAddr:      ":8003",
-			Interval:      time.Millisecond * 500,
+			Interval:      time.Millisecond * 100,
 			MaxPacketSize: 1400,
 		},
 		Log: log.Config{
