@@ -1,12 +1,10 @@
 package cluster
 
 import (
-	"context"
 	"crypto/rsa"
 	"crypto/x509"
 	"encoding/pem"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/andydunstall/piko/pkg/log"
@@ -21,11 +19,6 @@ type Node struct {
 	server *server.Server
 
 	rootCAPool *x509.CertPool
-
-	ctx    context.Context
-	cancel func()
-
-	wg sync.WaitGroup
 }
 
 func NewNode(opts ...Option) *Node {
@@ -108,12 +101,9 @@ func NewNode(opts ...Option) *Node {
 		panic("server: " + err.Error())
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
 	return &Node{
 		server:     server,
 		rootCAPool: rootCAPool,
-		ctx:        ctx,
-		cancel:     cancel,
 	}
 }
 
@@ -142,16 +132,11 @@ func (n *Node) RootCAPool() *x509.CertPool {
 }
 
 func (n *Node) Start() {
-	n.wg.Add(1)
-	go func() {
-		defer n.wg.Done()
-		if err := n.server.Run(n.ctx); err != nil {
-			panic("server: " + err.Error())
-		}
-	}()
+	if err := n.server.Start(); err != nil {
+		panic("start node: " + err.Error())
+	}
 }
 
 func (n *Node) Stop() {
-	n.cancel()
-	n.wg.Wait()
+	n.server.Shutdown()
 }
