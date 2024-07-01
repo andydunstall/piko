@@ -10,10 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/upstream"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/upstream"
 )
 
 type contextKey int

@@ -7,10 +7,11 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 func TestServer_AdminRoutes(t *testing.T) {

@@ -3,9 +3,10 @@ package gossip
 import (
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/cluster"
-	"github.com/stretchr/testify/assert"
 )
 
 type upsert struct {

@@ -8,11 +8,12 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/hashicorp/yamux"
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/backoff"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/websocket"
-	"github.com/hashicorp/yamux"
-	"go.uber.org/zap"
 )
 
 const (

@@ -1,12 +1,13 @@
 package cli
 
 import (
+	"github.com/spf13/cobra"
+
 	"github.com/andydunstall/piko/cli/agent"
 	"github.com/andydunstall/piko/cli/forward"
 	"github.com/andydunstall/piko/cli/server"
 	"github.com/andydunstall/piko/cli/workload"
 	workloadv2 "github.com/andydunstall/piko/cli/workloadv2"
-	"github.com/spf13/cobra"
 )
 
 func NewCommand() *cobra.Command {

@@ -9,8 +9,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"go.uber.org/zap"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 // streamListener listens for incoming stream connections and reads messages

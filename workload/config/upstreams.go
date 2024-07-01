@@ -5,8 +5,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 type ServerConfig struct {

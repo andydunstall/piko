@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/spf13/pflag"
+
 	"github.com/andydunstall/piko/pkg/gossip"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/auth"
-	"github.com/spf13/pflag"
 )
 
 type ClusterConfig struct {

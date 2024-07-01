@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/andydunstall/piko/forward/config"
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
+	"github.com/andydunstall/piko/forward/config"
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 func newStartCommand(conf *config.Config) *cobra.Command {

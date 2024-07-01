@@ -15,10 +15,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/andydunstall/piko/agent/client"
-	cluster "github.com/andydunstall/piko/workloadv2/cluster"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/andydunstall/piko/agent/client"
+	cluster "github.com/andydunstall/piko/workloadv2/cluster"
 )
 
 type errorMessage struct {

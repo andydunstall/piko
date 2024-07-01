@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 func TestGossip_Join(t *testing.T) {

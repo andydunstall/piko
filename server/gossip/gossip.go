@@ -5,11 +5,12 @@ import (
 	"net"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/backoff"
 	"github.com/andydunstall/piko/pkg/gossip"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/cluster"
-	"go.uber.org/zap"
 )
 
 // Gossip is responsible for maintaining this nodes local State

@@ -5,9 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 type loggedRequest struct {

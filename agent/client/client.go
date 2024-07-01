@@ -8,9 +8,10 @@ import (
 	"net/url"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/websocket"
-	"go.uber.org/zap"
 )
 
 const (

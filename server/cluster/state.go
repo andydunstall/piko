@@ -3,8 +3,9 @@ package cluster
 import (
 	"sync"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/prometheus/client_golang/prometheus"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 // State represents the known state of the cluster as seen by the local

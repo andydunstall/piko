@@ -8,14 +8,15 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/andydunstall/piko/pkg/log"
-	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
-	"github.com/andydunstall/piko/server/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/hashicorp/yamux"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/andydunstall/piko/pkg/log"
+	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
+	"github.com/andydunstall/piko/server/auth"
 )
 
 // Server accepts connections from upstream services.

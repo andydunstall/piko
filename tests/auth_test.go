@@ -8,11 +8,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/andydunstall/piko/agent/client"
 	"github.com/andydunstall/piko/server/auth"
 	"github.com/andydunstall/piko/workloadv2/cluster"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/stretchr/testify/assert"
 )
 
 type pikoEndpointClaims struct {

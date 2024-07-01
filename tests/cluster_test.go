@@ -10,10 +10,11 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/andydunstall/piko/agent/client"
 	"github.com/andydunstall/piko/workloadv2/cluster"
 	"github.com/andydunstall/piko/workloadv2/cluster/config"
-	"github.com/stretchr/testify/assert"
 )
 
 // Tests proxying traffic across multiple Piko server nodes.

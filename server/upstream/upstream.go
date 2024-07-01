@@ -3,8 +3,9 @@ package upstream
 import (
 	"net"
 
-	"github.com/andydunstall/piko/server/cluster"
 	"github.com/hashicorp/yamux"
+
+	"github.com/andydunstall/piko/server/cluster"
 )
 
 // Upstream represents an upstream for a given endpoint.

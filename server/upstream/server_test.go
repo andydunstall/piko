@@ -8,12 +8,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/pkg/websocket"
 	"github.com/andydunstall/piko/server/auth"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 type fakeManager struct {

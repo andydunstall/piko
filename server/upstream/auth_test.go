@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/auth"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/auth"
 )
 
 type fakeVerifier struct {

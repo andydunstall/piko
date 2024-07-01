@@ -36,6 +36,10 @@ lint:
 	go vet ./...
 	golangci-lint run
 
+.PHONY: import
+import:
+	goimports -w -local github.com/andydunstall/piko .
+
 .PHONY: coverage
 coverage:
 	go test ./... -coverprofile=coverage.out -tags integration

@@ -34,6 +34,9 @@ though isn't too strict.
 
 Format Piko with `make fmt` and run linters with `make lint`.
 
+Group imports using `goimports -w -local github.com/andydunstall/piko .`, or
+`make import`.
+
 ## Commits
 
 Piko uses rebase 'merge's, therefore please write well defined commits. Each

@@ -6,12 +6,13 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 // Server is an agent server to inspect the status of the agent.

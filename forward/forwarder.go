@@ -8,9 +8,10 @@ import (
 	"net"
 	"sync"
 
+	"go.uber.org/zap"
+
 	piko "github.com/andydunstall/piko/agent/client"
 	"github.com/andydunstall/piko/pkg/log"
-	"go.uber.org/zap"
 )
 
 type Forwarder struct {

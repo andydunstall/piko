@@ -10,9 +10,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 const (

@@ -10,8 +10,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 type ListenerProtocol string
