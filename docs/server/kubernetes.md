@@ -99,7 +99,7 @@ spec:
           - --config.path
           - /config/server.yaml
           - --config.expand-env
-       resources:
+        resources:
           limits:
             cpu: 250m
             ephemeral-storage: 1Gi
