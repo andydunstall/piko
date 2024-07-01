@@ -156,6 +156,9 @@ func Default() *Config {
 			URL:     "http://localhost:8000",
 			Timeout: time.Second * 30,
 		},
+		Log: log.Config{
+			Level: "info",
+		},
 	}
 }
 
