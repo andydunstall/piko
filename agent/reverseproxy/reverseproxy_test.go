@@ -10,9 +10,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/andydunstall/piko/agent/config"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestReverseProxy_Forward(t *testing.T) {

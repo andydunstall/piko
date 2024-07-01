@@ -6,8 +6,9 @@ import (
 	"net/http"
 	"testing"
 
-	cluster "github.com/andydunstall/piko/workloadv2/cluster"
 	"github.com/stretchr/testify/assert"
+
+	cluster "github.com/andydunstall/piko/workloadv2/cluster"
 )
 
 // Tests the admin server.

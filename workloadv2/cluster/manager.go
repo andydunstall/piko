@@ -3,9 +3,10 @@ package cluster
 import (
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/workloadv2/cluster/config"
-	"go.uber.org/zap"
 )
 
 type Manager struct {

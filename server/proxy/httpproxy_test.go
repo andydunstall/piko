@@ -11,9 +11,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/upstream"
-	"github.com/stretchr/testify/assert"
 )
 
 type fakeManager struct {

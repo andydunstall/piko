@@ -10,12 +10,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/workload/config"
-	"github.com/andydunstall/piko/workload/upstream"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/workload/config"
+	"github.com/andydunstall/piko/workload/upstream"
 )
 
 func newUpstreamsCommand() *cobra.Command {

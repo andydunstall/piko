@@ -7,12 +7,13 @@ import (
 	"os"
 	"time"
 
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/server"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/config"
-	"go.uber.org/zap"
 )
 
 type Node struct {

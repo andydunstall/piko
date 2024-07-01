@@ -3,9 +3,10 @@ package upstream
 import (
 	"sync"
 
-	"github.com/andydunstall/piko/server/cluster"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
+
+	"github.com/andydunstall/piko/server/cluster"
 )
 
 // Manager manages the upstream routes for each endpoint.

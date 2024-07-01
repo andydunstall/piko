@@ -10,11 +10,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/websocket"
 	"github.com/andydunstall/piko/server/config"
 	"github.com/andydunstall/piko/server/upstream"
-	"github.com/stretchr/testify/assert"
 )
 
 func echoListener(ln net.Listener) {

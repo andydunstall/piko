@@ -8,15 +8,16 @@ import (
 	"os/signal"
 	"syscall"
 
+	rungroup "github.com/oklog/run"
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/agent/client"
 	"github.com/andydunstall/piko/forward"
 	"github.com/andydunstall/piko/forward/config"
 	"github.com/andydunstall/piko/pkg/build"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
-	rungroup "github.com/oklog/run"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 func NewCommand() *cobra.Command {

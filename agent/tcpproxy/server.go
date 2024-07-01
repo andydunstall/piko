@@ -6,9 +6,10 @@ import (
 	"net"
 	"sync"
 
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/agent/config"
 	"github.com/andydunstall/piko/pkg/log"
-	"go.uber.org/zap"
 )
 
 type Server struct {

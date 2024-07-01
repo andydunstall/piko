@@ -9,11 +9,12 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/google/uuid"
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/build"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/upstream"
-	"github.com/google/uuid"
-	"go.uber.org/zap"
 )
 
 const (

@@ -4,8 +4,9 @@ import (
 	"sort"
 	"testing"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 func TestState_LocalNode(t *testing.T) {

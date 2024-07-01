@@ -5,10 +5,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/auth"
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
+
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/server/auth"
 )
 
 const (

@@ -9,14 +9,15 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/testutil"
-	"github.com/andydunstall/piko/server/cluster"
-	"github.com/andydunstall/piko/server/status"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/testutil"
+	"github.com/andydunstall/piko/server/cluster"
+	"github.com/andydunstall/piko/server/status"
 )
 
 type fakeStatus struct {

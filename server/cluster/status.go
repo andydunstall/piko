@@ -3,8 +3,9 @@ package cluster
 import (
 	"net/http"
 
-	"github.com/andydunstall/piko/server/status"
 	"github.com/gin-gonic/gin"
+
+	"github.com/andydunstall/piko/server/status"
 )
 
 type Status struct {

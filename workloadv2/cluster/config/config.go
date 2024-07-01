@@ -3,8 +3,9 @@ package config
 import (
 	"fmt"
 
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/pflag"
+
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 type Config struct {

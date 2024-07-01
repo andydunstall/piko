@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/andydunstall/piko/server/status/client"
 	yaml "github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
+
+	"github.com/andydunstall/piko/server/status/client"
 )
 
 func newUpstreamCommand(c *client.Client) *cobra.Command {

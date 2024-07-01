@@ -13,11 +13,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/workload/config"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/workload/config"
 )
 
 func newRequestsCommand() *cobra.Command {

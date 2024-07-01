@@ -7,6 +7,12 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/hashicorp/go-sockaddr"
+	"github.com/prometheus/client_golang/prometheus"
+	"go.uber.org/atomic"
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/build"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/admin"
@@ -17,11 +23,6 @@ import (
 	"github.com/andydunstall/piko/server/proxy"
 	"github.com/andydunstall/piko/server/upstream"
 	"github.com/andydunstall/piko/server/usage"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/hashicorp/go-sockaddr"
-	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/atomic"
-	"go.uber.org/zap"
 )
 
 // Server is a Piko server node.

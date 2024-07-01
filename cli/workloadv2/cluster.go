@@ -7,15 +7,16 @@ import (
 	"os/signal"
 	"syscall"
 
+	rungroup "github.com/oklog/run"
+	"github.com/spf13/cobra"
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/build"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/workloadv2/cluster"
 	"github.com/andydunstall/piko/workloadv2/cluster/config"
 	"github.com/andydunstall/piko/workloadv2/cluster/proxy"
-	rungroup "github.com/oklog/run"
-	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 )
 
 func newClusterCommand() *cobra.Command {

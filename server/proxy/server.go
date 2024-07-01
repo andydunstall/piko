@@ -7,14 +7,15 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/middleware"
-	"github.com/andydunstall/piko/server/config"
-	"github.com/andydunstall/piko/server/upstream"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+
+	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/middleware"
+	"github.com/andydunstall/piko/server/config"
+	"github.com/andydunstall/piko/server/upstream"
 )
 
 type Server struct {

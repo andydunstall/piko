@@ -6,11 +6,12 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/gorilla/websocket"
+	"go.uber.org/zap"
+
 	"github.com/andydunstall/piko/pkg/log"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
 	"github.com/andydunstall/piko/server/upstream"
-	"github.com/gorilla/websocket"
-	"go.uber.org/zap"
 )
 
 // TCPProxy proxies TCP traffic to upstream listeners.

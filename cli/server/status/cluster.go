@@ -5,10 +5,11 @@ import (
 	"os"
 	"sort"
 
-	"github.com/andydunstall/piko/server/cluster"
-	"github.com/andydunstall/piko/server/status/client"
 	yaml "github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
+
+	"github.com/andydunstall/piko/server/cluster"
+	"github.com/andydunstall/piko/server/status/client"
 )
 
 func newClusterCommand(c *client.Client) *cobra.Command {

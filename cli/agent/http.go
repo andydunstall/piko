@@ -5,10 +5,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/andydunstall/piko/agent/config"
-	"github.com/andydunstall/piko/pkg/log"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
+	"github.com/andydunstall/piko/agent/config"
+	"github.com/andydunstall/piko/pkg/log"
 )
 
 func newHTTPCommand(conf *config.Config) *cobra.Command {
