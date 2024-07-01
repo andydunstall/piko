@@ -7,6 +7,12 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// Tests the default configuration is valid.
+func TestConfig_Default(t *testing.T) {
+	conf := Default()
+	assert.NoError(t, conf.Validate())
+}
+
 func TestListenerConfig_URL(t *testing.T) {
 	tests := []struct {
 		addr string
