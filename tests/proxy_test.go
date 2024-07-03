@@ -12,13 +12,14 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/andydunstall/piko/agent/client"
+	"github.com/andydunstall/piko/client"
 	cluster "github.com/andydunstall/piko/workloadv2/cluster"
 )
 
@@ -35,8 +36,12 @@ func TestProxy_HTTP(t *testing.T) {
 
 		// Add upstream listener with a HTTP server returning 200.
 
-		upstreamURL := "http://" + node.UpstreamAddr()
-		pikoClient := client.New(client.WithUpstreamURL(upstreamURL))
+		pikoClient := client.Upstream{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   node.UpstreamAddr(),
+			},
+		}
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
@@ -89,11 +94,13 @@ func TestProxy_HTTP(t *testing.T) {
 
 		// Add upstream listener with a HTTP server returning 200.
 
-		upstreamURL := "https://" + node.UpstreamAddr()
-		pikoClient := client.New(
-			client.WithUpstreamURL(upstreamURL),
-			client.WithTLSConfig(clientTLSConfig),
-		)
+		pikoClient := client.Upstream{
+			URL: &url.URL{
+				Scheme: "https",
+				Host:   node.UpstreamAddr(),
+			},
+			TLSConfig: clientTLSConfig,
+		}
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
@@ -147,8 +154,12 @@ func TestProxy_HTTP(t *testing.T) {
 		// Add upstream listener with a WebSocket server that echos back the
 		// first message.
 
-		upstreamURL := "http://" + node.UpstreamAddr()
-		pikoClient := client.New(client.WithUpstreamURL(upstreamURL))
+		pikoClient := client.Upstream{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   node.UpstreamAddr(),
+			},
+		}
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
@@ -219,13 +230,13 @@ func TestProxy_TCP(t *testing.T) {
 		node.Start()
 		defer node.Stop()
 
-		proxyURL := "http://" + node.ProxyAddr()
-		upstreamURL := "http://" + node.UpstreamAddr()
-		pikoClient := client.New(
-			client.WithProxyURL(proxyURL),
-			client.WithUpstreamURL(upstreamURL),
-		)
-		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		upstream := client.Upstream{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   node.UpstreamAddr(),
+			},
+		}
+		ln, err := upstream.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
 		var wg sync.WaitGroup
@@ -248,7 +259,13 @@ func TestProxy_TCP(t *testing.T) {
 			}
 		}()
 
-		conn, err := pikoClient.Dial(context.TODO(), "my-endpoint")
+		dialer := client.Dialer{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   node.ProxyAddr(),
+			},
+		}
+		conn, err := dialer.Dial(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
 		// Test writing bytes to the upstream and waiting for them to be
