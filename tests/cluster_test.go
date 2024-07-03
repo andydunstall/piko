@@ -7,12 +7,13 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/andydunstall/piko/agent/client"
+	"github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/workloadv2/cluster"
 	"github.com/andydunstall/piko/workloadv2/cluster/config"
 )
@@ -36,8 +37,12 @@ func TestCluster_Proxy(t *testing.T) {
 
 		// Add upstream listener with a HTTP server returning 200.
 
-		upstreamURL := "http://" + manager.Nodes()[0].UpstreamAddr()
-		pikoClient := client.New(client.WithUpstreamURL(upstreamURL))
+		pikoClient := client.Upstream{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   manager.Nodes()[0].UpstreamAddr(),
+			},
+		}
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
@@ -84,13 +89,19 @@ func TestCluster_Proxy(t *testing.T) {
 
 		// Create a client connecting to node 1 for the upstream listener and
 		// node 2 for the proxy connection.
-		proxyURL := "http://" + manager.Nodes()[1].ProxyAddr()
-		upstreamURL := "http://" + manager.Nodes()[0].UpstreamAddr()
-		pikoClient := client.New(
-			client.WithProxyURL(proxyURL),
-			client.WithUpstreamURL(upstreamURL),
-		)
-		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		upstream := client.Upstream{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   manager.Nodes()[0].UpstreamAddr(),
+			},
+		}
+		dialer := client.Dialer{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   manager.Nodes()[1].ProxyAddr(),
+			},
+		}
+		ln, err := upstream.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
 		// Wait for node 2 to learn about the new upstream.
@@ -116,7 +127,7 @@ func TestCluster_Proxy(t *testing.T) {
 			}
 		}()
 
-		conn, err := pikoClient.Dial(context.TODO(), "my-endpoint")
+		conn, err := dialer.Dial(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
 		// Test writing bytes to the upstream and waiting for them to be

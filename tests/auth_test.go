@@ -5,13 +5,14 @@ package tests
 import (
 	"context"
 	"crypto/rand"
+	"net/url"
 	"testing"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/andydunstall/piko/agent/client"
+	"github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/server/auth"
 	"github.com/andydunstall/piko/workloadv2/cluster"
 )
@@ -49,11 +50,13 @@ func TestAuth_Upstream(t *testing.T) {
 		tokenString, err := token.SignedString([]byte(secretKey))
 		assert.NoError(t, err)
 
-		upstreamURL := "http://" + node.UpstreamAddr()
-		pikoClient := client.New(
-			client.WithUpstreamURL(upstreamURL),
-			client.WithToken(tokenString),
-		)
+		pikoClient := client.Upstream{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   node.UpstreamAddr(),
+			},
+			Token: tokenString,
+		}
 		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 		defer ln.Close()
@@ -73,11 +76,13 @@ func TestAuth_Upstream(t *testing.T) {
 		tokenString, err := token.SignedString([]byte("invalid-key"))
 		assert.NoError(t, err)
 
-		upstreamURL := "http://" + node.UpstreamAddr()
-		pikoClient := client.New(
-			client.WithUpstreamURL(upstreamURL),
-			client.WithToken(tokenString),
-		)
+		pikoClient := client.Upstream{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   node.UpstreamAddr(),
+			},
+			Token: tokenString,
+		}
 		_, err = pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.ErrorContains(t, err, "connect: 401: invalid token")
 	})
@@ -90,8 +95,12 @@ func TestAuth_Upstream(t *testing.T) {
 		node.Start()
 		defer node.Stop()
 
-		upstreamURL := "http://" + node.UpstreamAddr()
-		pikoClient := client.New(client.WithUpstreamURL(upstreamURL))
+		pikoClient := client.Upstream{
+			URL: &url.URL{
+				Scheme: "http",
+				Host:   node.UpstreamAddr(),
+			},
+		}
 		_, err := pikoClient.Listen(context.TODO(), "my-endpoint")
 		assert.ErrorContains(t, err, "connect: 401: missing authorization")
 	})
