@@ -15,6 +15,10 @@ import (
 	"github.com/andydunstall/piko/pkg/websocket"
 )
 
+var (
+	ErrClosed = errors.New("closed")
+)
+
 // Upstream manages listening on upstream endpoints.
 //
 // The client establishes an outbound-only connection to the Piko server for
@@ -66,12 +70,20 @@ func (u *Upstream) Listen(ctx context.Context, endpointID string) (Listener, err
 }
 
 // ListenAndForward listens for connections on the given endpoint and
-// forwards them to the given address.
+// forwards them to the upstream address.
 //
-// This will block until the context is canceled.
-func (u *Upstream) ListenAndForward(_ context.Context, _ string, _ string) error {
-	// TODO(andydunstall)
-	return nil
+// This synchronously connects to the Piko server and listens on the endpoint,
+// then starts a background 'forwarder'. The forwarder is returned and will
+// run in the background until either the context is canclled or the returned
+// forwarder is closed.
+func (u *Upstream) ListenAndForward(
+	ctx context.Context, endpointID string, addr string,
+) (*Forwarder, error) {
+	ln := newListener(endpointID, u, u.logger())
+	if err := ln.connect(ctx); err != nil {
+		return nil, fmt.Errorf("connect: %w", err)
+	}
+	return newForwarder(ctx, ln, addr, u.logger()), nil
 }
 
 func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Session, error) {
@@ -116,6 +128,11 @@ func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Sessi
 				panic("yamux client: " + err.Error())
 			}
 			return sess, nil
+		}
+
+		if ctx.Err() != nil {
+			// If cancelled return without logging or retrying.
+			return nil, ctx.Err()
 		}
 
 		var retryableError *websocket.RetryableError

@@ -19,7 +19,7 @@ integration-test:
 
 .PHONY: system-test
 system-test:
-	go test ./tests -tags system -v
+	go test ./tests -tags system -v -count 1
 
 .PHONY: test-all
 test-all:

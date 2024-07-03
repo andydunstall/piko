@@ -50,14 +50,14 @@ func TestAuth_Upstream(t *testing.T) {
 		tokenString, err := token.SignedString([]byte(secretKey))
 		assert.NoError(t, err)
 
-		pikoClient := client.Upstream{
+		upstream := client.Upstream{
 			URL: &url.URL{
 				Scheme: "http",
 				Host:   node.UpstreamAddr(),
 			},
 			Token: tokenString,
 		}
-		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		ln, err := upstream.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 		defer ln.Close()
 	})
@@ -76,14 +76,14 @@ func TestAuth_Upstream(t *testing.T) {
 		tokenString, err := token.SignedString([]byte("invalid-key"))
 		assert.NoError(t, err)
 
-		pikoClient := client.Upstream{
+		upstream := client.Upstream{
 			URL: &url.URL{
 				Scheme: "http",
 				Host:   node.UpstreamAddr(),
 			},
 			Token: tokenString,
 		}
-		_, err = pikoClient.Listen(context.TODO(), "my-endpoint")
+		_, err = upstream.Listen(context.TODO(), "my-endpoint")
 		assert.ErrorContains(t, err, "connect: 401: invalid token")
 	})
 
@@ -95,13 +95,13 @@ func TestAuth_Upstream(t *testing.T) {
 		node.Start()
 		defer node.Stop()
 
-		pikoClient := client.Upstream{
+		upstream := client.Upstream{
 			URL: &url.URL{
 				Scheme: "http",
 				Host:   node.UpstreamAddr(),
 			},
 		}
-		_, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		_, err := upstream.Listen(context.TODO(), "my-endpoint")
 		assert.ErrorContains(t, err, "connect: 401: missing authorization")
 	})
 }

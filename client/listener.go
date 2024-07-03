@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -62,15 +63,22 @@ func newListener(endpointID string, upstream *Upstream, logger Logger) *listener
 }
 
 func (l *listener) Accept() (net.Conn, error) {
+	return l.AcceptWithContext(context.Background())
+}
+
+func (l *listener) AcceptWithContext(ctx context.Context) (net.Conn, error) {
 	for {
-		conn, err := l.sess.Accept()
+		conn, err := l.sess.AcceptStreamWithContext(ctx)
 		if err == nil {
 			return conn, nil
 		}
 
-		if l.closeCtx.Err() != nil {
-			// If the listener was closed then returnreturn
-			return nil, err
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
+		if errors.Is(err, yamux.ErrSessionShutdown) {
+			return nil, ErrClosed
 		}
 
 		if err != io.EOF && !strings.Contains(err.Error(), "closed") && !strings.Contains(err.Error(), "reset by peer") {
