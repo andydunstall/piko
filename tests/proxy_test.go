@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -36,13 +37,13 @@ func TestProxy_HTTP(t *testing.T) {
 
 		// Add upstream listener with a HTTP server returning 200.
 
-		pikoClient := client.Upstream{
+		upstream := client.Upstream{
 			URL: &url.URL{
 				Scheme: "http",
 				Host:   node.UpstreamAddr(),
 			},
 		}
-		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		ln, err := upstream.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
 		server := httptest.NewUnstartedServer(http.HandlerFunc(
@@ -94,14 +95,14 @@ func TestProxy_HTTP(t *testing.T) {
 
 		// Add upstream listener with a HTTP server returning 200.
 
-		pikoClient := client.Upstream{
+		upstream := client.Upstream{
 			URL: &url.URL{
 				Scheme: "https",
 				Host:   node.UpstreamAddr(),
 			},
 			TLSConfig: clientTLSConfig,
 		}
-		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		ln, err := upstream.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
 		server := httptest.NewUnstartedServer(http.HandlerFunc(
@@ -154,13 +155,13 @@ func TestProxy_HTTP(t *testing.T) {
 		// Add upstream listener with a WebSocket server that echos back the
 		// first message.
 
-		pikoClient := client.Upstream{
+		upstream := client.Upstream{
 			URL: &url.URL{
 				Scheme: "http",
 				Host:   node.UpstreamAddr(),
 			},
 		}
-		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		ln, err := upstream.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
 		server := httptest.NewUnstartedServer(http.HandlerFunc(
@@ -242,20 +243,25 @@ func TestProxy_TCP(t *testing.T) {
 		var wg sync.WaitGroup
 		wg.Add(1)
 		go func() {
-			defer wg.Done()
-			conn, err := ln.Accept()
-			assert.NoError(t, err)
-
-			// Echo server.
-			buf := make([]byte, 512)
 			for {
-				n, err := conn.Read(buf)
-				if err == io.EOF {
+				defer wg.Done()
+				conn, err := ln.Accept()
+				if errors.Is(err, client.ErrClosed) {
 					return
 				}
 				assert.NoError(t, err)
-				_, err = conn.Write(buf[:n])
-				assert.NoError(t, err)
+
+				// Echo server.
+				buf := make([]byte, 512)
+				for {
+					n, err := conn.Read(buf)
+					if err == io.EOF {
+						return
+					}
+					assert.NoError(t, err)
+					_, err = conn.Write(buf[:n])
+					assert.NoError(t, err)
+				}
 			}
 		}()
 

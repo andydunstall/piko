@@ -37,13 +37,13 @@ func TestCluster_Proxy(t *testing.T) {
 
 		// Add upstream listener with a HTTP server returning 200.
 
-		pikoClient := client.Upstream{
+		upstream := client.Upstream{
 			URL: &url.URL{
 				Scheme: "http",
 				Host:   manager.Nodes()[0].UpstreamAddr(),
 			},
 		}
-		ln, err := pikoClient.Listen(context.TODO(), "my-endpoint")
+		ln, err := upstream.Listen(context.TODO(), "my-endpoint")
 		assert.NoError(t, err)
 
 		server := httptest.NewUnstartedServer(http.HandlerFunc(
