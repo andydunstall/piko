@@ -10,12 +10,12 @@ import (
 
 	"go.uber.org/zap"
 
-	piko "github.com/andydunstall/piko/agent/client"
+	piko "github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pkg/log"
 )
 
 type Forwarder struct {
-	client *piko.Client
+	dialer *piko.Dialer
 
 	endpointID string
 
@@ -24,9 +24,9 @@ type Forwarder struct {
 	logger log.Logger
 }
 
-func NewForwarder(endpointID string, client *piko.Client, logger log.Logger) *Forwarder {
+func NewForwarder(endpointID string, dialer *piko.Dialer, logger log.Logger) *Forwarder {
 	return &Forwarder{
-		client:     client,
+		dialer:     dialer,
 		endpointID: endpointID,
 		logger:     logger,
 	}
@@ -66,7 +66,7 @@ func (f *Forwarder) Close() error {
 func (f *Forwarder) forwardConn(conn net.Conn) {
 	defer conn.Close()
 
-	upstream, err := f.client.Dial(context.Background(), f.endpointID)
+	upstream, err := f.dialer.Dial(context.Background(), f.endpointID)
 	if err != nil {
 		f.logger.Error(
 			"failed to dial endpoint",

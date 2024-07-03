@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/agent/client"
+	"github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/forward"
 	"github.com/andydunstall/piko/forward/config"
 	"github.com/andydunstall/piko/pkg/build"
@@ -82,11 +83,15 @@ func runForward(conf *config.Config, logger log.Logger) error {
 
 	var group rungroup.Group
 
-	client := client.New(
-		client.WithProxyURL(conf.Connect.URL),
-		client.WithTLSConfig(connectTLSConfig),
-		client.WithLogger(logger.WithSubsystem("client")),
-	)
+	connectURL, err := url.Parse(conf.Connect.URL)
+	if err != nil {
+		// Already verified in conf.Validate() so this shouldn't happen.
+		return fmt.Errorf("connect url: %w", err)
+	}
+	dialer := &client.Dialer{
+		URL:       connectURL,
+		TLSConfig: connectTLSConfig,
+	}
 
 	for _, portConfig := range conf.Ports {
 		host, _ := portConfig.Host()
@@ -96,7 +101,7 @@ func runForward(conf *config.Config, logger log.Logger) error {
 		}
 
 		forwarder := forward.NewForwarder(
-			portConfig.EndpointID, client, logger.WithSubsystem("forwarder"),
+			portConfig.EndpointID, dialer, logger.WithSubsystem("forwarder"),
 		)
 
 		group.Add(func() error {
