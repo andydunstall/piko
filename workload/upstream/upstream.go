@@ -6,10 +6,11 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 
-	"github.com/andydunstall/piko/agent/client"
 	"github.com/andydunstall/piko/agent/config"
 	"github.com/andydunstall/piko/agent/reverseproxy"
+	"github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pkg/log"
 )
 
@@ -41,12 +42,12 @@ func (u *Upstream) Run(ctx context.Context) error {
 	}))
 	defer server.Close()
 
-	client := client.New(
-		client.WithUpstreamURL(u.serverURL),
-		client.WithLogger(u.logger),
-	)
-
-	ln, err := client.Listen(ctx, u.endpointID)
+	url, _ := url.Parse(u.serverURL)
+	upstream := client.Upstream{
+		URL:    url,
+		Logger: u.logger,
+	}
+	ln, err := upstream.Listen(ctx, u.endpointID)
 	if err != nil {
 		return fmt.Errorf("listen: %w", err)
 	}
