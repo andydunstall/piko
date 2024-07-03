@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,11 +14,11 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/agent/client"
 	"github.com/andydunstall/piko/agent/config"
 	"github.com/andydunstall/piko/agent/reverseproxy"
 	"github.com/andydunstall/piko/agent/server"
 	"github.com/andydunstall/piko/agent/tcpproxy"
+	"github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pkg/build"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
@@ -107,12 +108,17 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 		return fmt.Errorf("connect tls: %w", err)
 	}
 
-	client := client.New(
-		client.WithToken(conf.Connect.Token),
-		client.WithUpstreamURL(conf.Connect.URL),
-		client.WithTLSConfig(connectTLSConfig),
-		client.WithLogger(logger.WithSubsystem("client")),
-	)
+	connectURL, err := url.Parse(conf.Connect.URL)
+	if err != nil {
+		// Already verified in conf.Validate() so this shouldn't happen.
+		return fmt.Errorf("connect url: %w", err)
+	}
+	upstream := &client.Upstream{
+		URL:       connectURL,
+		Token:     conf.Connect.Token,
+		TLSConfig: connectTLSConfig,
+		Logger:    logger.WithSubsystem("client"),
+	}
 
 	registry := prometheus.NewRegistry()
 
@@ -125,7 +131,7 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 		)
 		defer connectCancel()
 
-		ln, err := client.Listen(connectCtx, listenerConfig.EndpointID)
+		ln, err := upstream.Listen(connectCtx, listenerConfig.EndpointID)
 		if err != nil {
 			return fmt.Errorf("listen: %s: %w", listenerConfig.EndpointID, err)
 		}
