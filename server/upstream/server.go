@@ -39,7 +39,7 @@ func NewServer(
 	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {
-	logger = logger.WithSubsystem("admin")
+	logger = logger.WithSubsystem("upstream")
 
 	router := gin.New()
 	ctx, cancel := context.WithCancel(context.Background())
