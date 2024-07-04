@@ -3,13 +3,13 @@ module github.com/andydunstall/piko
 go 1.22
 
 require (
+	github.com/andydunstall/yamux v0.1.3
 	github.com/gin-gonic/gin v1.10.0
 	github.com/goccy/go-yaml v1.11.3
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/hashicorp/go-sockaddr v1.0.6
-	github.com/hashicorp/yamux v0.1.2-0.20240510232814-6034404dc2ab
 	github.com/oklog/run v1.1.0
 	github.com/prometheus/client_golang v1.19.1
 	github.com/spf13/cobra v1.8.1
