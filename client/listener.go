@@ -8,7 +8,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/hashicorp/yamux"
+	"github.com/andydunstall/yamux"
 	"go.uber.org/zap"
 )
 

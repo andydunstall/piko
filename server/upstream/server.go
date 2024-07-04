@@ -8,9 +8,9 @@ import (
 	"net"
 	"net/http"
 
+	"github.com/andydunstall/yamux"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/hashicorp/yamux"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 

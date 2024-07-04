@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/hashicorp/yamux"
+	"github.com/andydunstall/yamux"
 	"go.uber.org/zap"
 
 	"github.com/andydunstall/piko/pkg/backoff"

@@ -3,7 +3,7 @@ package upstream
 import (
 	"net"
 
-	"github.com/hashicorp/yamux"
+	"github.com/andydunstall/yamux"
 
 	"github.com/andydunstall/piko/server/cluster"
 )
