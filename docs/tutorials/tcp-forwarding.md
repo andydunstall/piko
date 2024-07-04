@@ -49,15 +49,20 @@ running behind a firewall or NAT blocking all incoming traffic.
 Instead of using the Piko agent, you could also use the
 [Go SDK](../sdk/go-sdk.md):
 ```go
-var opts []piko.Option
-// ...
+upstream := &piko.Upstream{
+	// options...
+}
 
-client := piko.New(opts...)
-if err := client.ListenAndForward(
+forwarder, err := upstream.ListenAndForward(
     context.Background(),
     "my-redis-endpoint",
     "localhost:6379",
 );  err != nil {
+    panic("listen: " + err.Error())
+}
+defer forwarder.Close()
+
+if err := forwarder.Wait(); err != nil {
     panic("forward: " + err.Error())
 }
 ```
@@ -87,14 +92,13 @@ the Go SDK. The Piko client has a
 that returns a `net.Conn`. Such as connecting with the
 [Redis Go](https://github.com/redis/go-redis) client:
 ```go
-var opts []piko.Option
-// ...
-
-client := piko.New(opts...)
+pikoDialer := &piko.Dialer{
+	// options...
+}
 
 // Use a custom dialer that connects to the upstream endpoint via Piko.
 dialer := func(ctx context.Context, network, addr string) (net.Conn, error) {
-    return client.Dial(ctx, addr)
+    return pikoDialer.Dial(ctx, addr)
 }
 // github.com/redis/go-redis/v9
 rdb := redis.NewClient(&redis.Options{
