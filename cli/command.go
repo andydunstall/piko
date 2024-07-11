@@ -8,6 +8,7 @@ import (
 	"github.com/andydunstall/piko/cli/server"
 	"github.com/andydunstall/piko/cli/workload"
 	workloadv2 "github.com/andydunstall/piko/cli/workloadv2"
+	"github.com/andydunstall/piko/pkg/build"
 )
 
 func NewCommand() *cobra.Command {
@@ -57,6 +58,7 @@ to an upstream listener via Piko. Such as to forward port 3000 to endpoint
   $ piko forward tcp 3000 my-endpoint
 
 `,
+		Version: build.Version,
 	}
 
 	cmd.AddCommand(server.NewCommand())
