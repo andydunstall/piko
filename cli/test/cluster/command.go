@@ -1,4 +1,4 @@
-package workload
+package cluster
 
 import (
 	"context"
@@ -11,15 +11,15 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
+	"github.com/andydunstall/piko/pikotest/cluster"
+	"github.com/andydunstall/piko/pikotest/cluster/config"
+	"github.com/andydunstall/piko/pikotest/cluster/proxy"
 	"github.com/andydunstall/piko/pkg/build"
 	pikoconfig "github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/workloadv2/cluster"
-	"github.com/andydunstall/piko/workloadv2/cluster/config"
-	"github.com/andydunstall/piko/workloadv2/cluster/proxy"
 )
 
-func newClusterCommand() *cobra.Command {
+func NewCommand() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "cluster",
 		Short: "create a cluster of Piko nodes",
