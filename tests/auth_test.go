@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/andydunstall/piko/client"
+	"github.com/andydunstall/piko/pikotest/cluster"
 	"github.com/andydunstall/piko/server/auth"
-	"github.com/andydunstall/piko/workloadv2/cluster"
 )
 
 type pikoEndpointClaims struct {

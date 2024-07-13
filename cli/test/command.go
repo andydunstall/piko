@@ -3,6 +3,7 @@ package test
 import (
 	"github.com/spf13/cobra"
 
+	"github.com/andydunstall/piko/cli/test/cluster"
 	"github.com/andydunstall/piko/cli/test/workload"
 )
 
@@ -14,6 +15,7 @@ func NewCommand() *cobra.Command {
 	}
 
 	cmd.AddCommand(workload.NewCommand())
+	cmd.AddCommand(cluster.NewCommand())
 
 	return cmd
 }

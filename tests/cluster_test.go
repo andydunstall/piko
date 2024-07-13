@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/andydunstall/piko/client"
-	"github.com/andydunstall/piko/workloadv2/cluster"
-	"github.com/andydunstall/piko/workloadv2/cluster/config"
+	"github.com/andydunstall/piko/pikotest/cluster"
+	"github.com/andydunstall/piko/pikotest/cluster/config"
 )
 
 // Tests proxying traffic across multiple Piko server nodes.

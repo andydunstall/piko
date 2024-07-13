@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/andydunstall/piko/client"
-	cluster "github.com/andydunstall/piko/workloadv2/cluster"
+	"github.com/andydunstall/piko/pikotest/cluster"
 )
 
 // TestClient_ListenAndForward tests forwarding incoming connections to a local

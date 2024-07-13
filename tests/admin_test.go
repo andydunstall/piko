@@ -8,7 +8,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	cluster "github.com/andydunstall/piko/workloadv2/cluster"
+	cluster "github.com/andydunstall/piko/pikotest/cluster"
 )
 
 // Tests the admin server.
