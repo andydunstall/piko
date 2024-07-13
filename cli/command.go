@@ -6,7 +6,7 @@ import (
 	"github.com/andydunstall/piko/cli/agent"
 	"github.com/andydunstall/piko/cli/forward"
 	"github.com/andydunstall/piko/cli/server"
-	"github.com/andydunstall/piko/cli/workload"
+	"github.com/andydunstall/piko/cli/test"
 	workloadv2 "github.com/andydunstall/piko/cli/workloadv2"
 	"github.com/andydunstall/piko/pkg/build"
 )
@@ -64,7 +64,7 @@ to an upstream listener via Piko. Such as to forward port 3000 to endpoint
 	cmd.AddCommand(server.NewCommand())
 	cmd.AddCommand(agent.NewCommand())
 	cmd.AddCommand(forward.NewCommand())
-	cmd.AddCommand(workload.NewCommand())
+	cmd.AddCommand(test.NewCommand())
 	cmd.AddCommand(workloadv2.NewCommand())
 
 	return cmd
