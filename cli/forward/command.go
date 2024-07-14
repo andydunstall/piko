@@ -52,7 +52,7 @@ Examples:
 	loadConf.RegisterFlags(cmd.PersistentFlags())
 
 	cmd.PersistentPreRun = func(_ *cobra.Command, _ []string) {
-		if err := loadConf.Load(conf); err != nil {
+		if err := pikoconfig.Load(conf, loadConf.Path, loadConf.ExpandEnv); err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
 		}
