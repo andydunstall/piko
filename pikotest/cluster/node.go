@@ -38,7 +38,7 @@ func NewNode(opts ...Option) *Node {
 	conf.Admin.BindAddr = "127.0.0.1:0"
 	conf.Gossip.BindAddr = "127.0.0.1:0"
 	conf.Gossip.Interval = time.Millisecond * 10
-	conf.Auth = options.authConfig
+	conf.Upstream.Auth = options.authConfig
 
 	// If TLS is enabled, generate a certificate and root CA then write to a
 	// file.
