@@ -230,6 +230,28 @@ admin:
   # advertise address of '10.26.104.14:8002'.
   advertise_addr: ""
 
+  auth:
+    # Secret key to authenticate HMAC endpoint connection JWTs.
+    hmac_secret_key: ""
+
+    # Public key to authenticate RSA endpoint connection JWTs.
+    rsa_public_key: ""
+
+    # Public key to authenticate ECDSA endpoint connection JWTs.
+    ecdsa_public_key: ""
+
+    # Audience of endpoint connection JWT token to verify.
+    #
+    # If given the JWT 'aud' claim must match the given audience. Otherwise it
+    # is ignored.
+    audience: ""
+
+    # Issuer of endpoint connection JWT token to verify.
+    #
+    # If given the JWT 'iss' claim must match the given issuer. Otherwise it
+    # is ignored.
+    issuer: ""
+
   tls:
     # Whether to enable TLS on the listener.
     #

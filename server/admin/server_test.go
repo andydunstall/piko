@@ -8,12 +8,14 @@ import (
 	"net"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/server/cluster"
@@ -33,6 +35,16 @@ func (s *fakeStatus) fooRoute(c *gin.Context) {
 
 var _ status.Handler = &fakeStatus{}
 
+type fakeVerifier struct {
+	handler func(token string) (*auth.Token, error)
+}
+
+func (v *fakeVerifier) Verify(token string) (*auth.Token, error) {
+	return v.handler(token)
+}
+
+var _ auth.Verifier = &fakeVerifier{}
+
 func TestServer_AdminRoutes(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
@@ -40,6 +52,7 @@ func TestServer_AdminRoutes(t *testing.T) {
 	s := NewServer(
 		nil,
 		prometheus.NewRegistry(),
+		nil,
 		nil,
 		log.NewNopLogger(),
 	)
@@ -108,6 +121,7 @@ func TestServer_StatusRoutes(t *testing.T) {
 		nil,
 		prometheus.NewRegistry(),
 		nil,
+		nil,
 		log.NewNopLogger(),
 	)
 	s.AddStatus("/mystatus", &fakeStatus{})
@@ -156,6 +170,7 @@ func TestServer_Forward(t *testing.T) {
 		state1,
 		prometheus.NewRegistry(),
 		nil,
+		nil,
 		log.NewNopLogger(),
 	)
 	// Note only node 1 registers the status route.
@@ -181,6 +196,7 @@ func TestServer_Forward(t *testing.T) {
 	s2 := NewServer(
 		state2,
 		prometheus.NewRegistry(),
+		nil,
 		nil,
 		log.NewNopLogger(),
 	)
@@ -214,6 +230,80 @@ func TestServer_Forward(t *testing.T) {
 	})
 }
 
+func TestServer_Authentication(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		verifier := &fakeVerifier{
+			handler: func(token string) (*auth.Token, error) {
+				assert.Equal(t, "123", token)
+				return &auth.Token{
+					Expiry: time.Now().Add(time.Hour),
+				}, nil
+			},
+		}
+
+		s := NewServer(
+			nil,
+			prometheus.NewRegistry(),
+			verifier,
+			nil,
+			log.NewNopLogger(),
+		)
+		go func() {
+			require.NoError(t, s.Serve(ln))
+		}()
+		defer s.Shutdown(context.TODO())
+
+		url := fmt.Sprintf("http://%s/health", ln.Addr().String())
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		req.Header.Add("Authorization", "Bearer 123")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+	})
+
+	t.Run("unauthenticated", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		verifier := &fakeVerifier{
+			handler: func(token string) (*auth.Token, error) {
+				assert.Equal(t, "123", token)
+				return nil, auth.ErrInvalidToken
+			},
+		}
+
+		s := NewServer(
+			nil,
+			prometheus.NewRegistry(),
+			verifier,
+			nil,
+			log.NewNopLogger(),
+		)
+		go func() {
+			require.NoError(t, s.Serve(ln))
+		}()
+		defer s.Shutdown(context.TODO())
+
+		url := fmt.Sprintf("http://%s/health", ln.Addr().String())
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		req.Header.Add("Authorization", "Bearer 123")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+}
+
 func TestServer_TLS(t *testing.T) {
 	rootCAPool, cert, err := testutil.LocalTLSServerCert()
 	require.NoError(t, err)
@@ -227,6 +317,7 @@ func TestServer_TLS(t *testing.T) {
 	s := NewServer(
 		nil,
 		prometheus.NewRegistry(),
+		nil,
 		tlsConfig,
 		log.NewNopLogger(),
 	)

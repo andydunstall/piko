@@ -149,6 +149,14 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	// Admin server.
 
+	var adminVerifier auth.Verifier
+	if conf.Admin.Auth.Enabled() {
+		verifierConf, err := conf.Admin.Auth.Load()
+		if err != nil {
+			return nil, fmt.Errorf("admin: load auth: %w", err)
+		}
+		adminVerifier = auth.NewJWTVerifier(verifierConf)
+	}
 	adminTLSConfig, err := conf.Admin.TLS.Load()
 	if err != nil {
 		return nil, fmt.Errorf("admin tls: %w", err)
@@ -156,6 +164,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	s.adminServer = admin.NewServer(
 		s.clusterState,
 		registry,
+		adminVerifier,
 		adminTLSConfig,
 		logger,
 	)

@@ -71,6 +71,13 @@ admin:
   bind_addr: 10.15.104.25:8002
   advertise_addr: 1.2.3.4:8002
 
+  auth:
+    hmac_secret_key: hmac-secret-key
+    rsa_public_key: rsa-public-key
+    ecdsa_public_key: ecdsa-public-key
+    audience: my-audience
+    issuer: my-issuer
+
   tls:
     enabled: true
     cert: /piko/cert.pem
@@ -152,6 +159,13 @@ grace_period: 2m
 		Admin: AdminConfig{
 			BindAddr:      "10.15.104.25:8002",
 			AdvertiseAddr: "1.2.3.4:8002",
+			Auth: auth.Config{
+				HMACSecretKey:  "hmac-secret-key",
+				RSAPublicKey:   "rsa-public-key",
+				ECDSAPublicKey: "ecdsa-public-key",
+				Audience:       "my-audience",
+				Issuer:         "my-issuer",
+			},
 			TLS: TLSConfig{
 				Enabled: true,
 				Cert:    "/piko/cert.pem",
@@ -210,6 +224,11 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--upstream.tls.key", "/piko/key.pem",
 		"--admin.bind-addr", "10.15.104.25:8002",
 		"--admin.advertise-addr", "1.2.3.4:8002",
+		"--admin.auth.hmac-secret-key", "hmac-secret-key",
+		"--admin.auth.rsa-public-key", "rsa-public-key",
+		"--admin.auth.ecdsa-public-key", "ecdsa-public-key",
+		"--admin.auth.audience", "my-audience",
+		"--admin.auth.issuer", "my-issuer",
 		"--admin.tls.enabled",
 		"--admin.tls.cert", "/piko/cert.pem",
 		"--admin.tls.key", "/piko/key.pem",
@@ -278,6 +297,13 @@ func TestConfig_LoadFlags(t *testing.T) {
 		Admin: AdminConfig{
 			BindAddr:      "10.15.104.25:8002",
 			AdvertiseAddr: "1.2.3.4:8002",
+			Auth: auth.Config{
+				HMACSecretKey:  "hmac-secret-key",
+				RSAPublicKey:   "rsa-public-key",
+				ECDSAPublicKey: "ecdsa-public-key",
+				Audience:       "my-audience",
+				Issuer:         "my-issuer",
+			},
 			TLS: TLSConfig{
 				Enabled: true,
 				Cert:    "/piko/cert.pem",
