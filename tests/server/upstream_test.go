@@ -1,6 +1,6 @@
 //go:build system
 
-package tests
+package server
 
 import (
 	"context"
@@ -27,7 +27,7 @@ type endpointJWTClaims struct {
 }
 
 // Tests upstream authentication.
-func TestAuth_Upstream(t *testing.T) {
+func TestUpstream_Auth(t *testing.T) {
 	endpointClaims := endpointJWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),

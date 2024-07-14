@@ -15,11 +15,11 @@ inline-test:
 
 .PHONY: system-test
 system-test:
-	go test ./tests -tags system -v -count 1
+	go test ./tests/... -tags system -v -count 1
 
 .PHONY: system-test-short
 system-test-short:
-	go test ./tests -tags system -v -count 1 -test.short
+	go test ./tests/... -tags system -v -count 1 -test.short
 
 .PHONY: test
 test:

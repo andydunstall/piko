@@ -1,6 +1,6 @@
 //go:build system
 
-package tests
+package server
 
 import (
 	"context"
