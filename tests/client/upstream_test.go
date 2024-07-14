@@ -1,10 +1,11 @@
 //go:build system
 
-package tests
+package client
 
 import (
 	"bytes"
 	"context"
+	"crypto/rand"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,9 +19,9 @@ import (
 	"github.com/andydunstall/piko/pikotest/cluster"
 )
 
-// TestClient_ListenAndForward tests forwarding incoming connections to a local
-// HTTP server.
-func TestClient_ListenAndForward(t *testing.T) {
+// TestUpstream_ListenAndForward tests forwarding incoming connections to a
+// local HTTP server.
+func TestUpstream_ListenAndForward(t *testing.T) {
 	node := cluster.NewNode()
 	node.Start()
 	defer node.Stop()
@@ -78,4 +79,13 @@ func TestClient_ListenAndForward(t *testing.T) {
 
 	assert.NoError(t, forwarder.Close())
 	assert.NoError(t, forwarder.Wait())
+}
+
+func randomBytes(n int) []byte {
+	b := make([]byte, n)
+	_, err := rand.Read(b)
+	if err != nil {
+		panic("read rand: " + err.Error())
+	}
+	return b
 }
