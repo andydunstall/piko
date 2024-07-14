@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus"
@@ -122,6 +123,42 @@ func (s *Server) panicRoute(c *gin.Context, err any) {
 		zap.Any("err", err),
 	)
 	c.AbortWithStatus(http.StatusInternalServerError)
+}
+
+// EndpointIDFromRequest returns the endpoint ID from the HTTP request, or an
+// empty string if no endpoint ID is specified.
+//
+// This will check both the 'x-piko-endpoint' header and 'Host' header, where
+// x-piko-endpoint takes precedence.
+func EndpointIDFromRequest(r *http.Request) string {
+	endpointID := r.Header.Get("x-piko-endpoint")
+	if endpointID != "" {
+		return endpointID
+	}
+
+	// Strip the port if given.
+	host, _, err := net.SplitHostPort(r.Host)
+	if err != nil {
+		host = r.Host
+	}
+
+	if host == "" {
+		return ""
+	}
+	if net.ParseIP(host) != nil {
+		// Ignore IP addresses.
+		return ""
+	}
+	if strings.Contains(host, ".") {
+		// If a host is given and contains a separator, use the bottom-level
+		// domain as the endpoint ID.
+		//
+		// Such as if the domain is 'xyz.piko.example.com', then 'xyz' is the
+		// endpoint ID.
+		return strings.Split(host, ".")[0]
+	}
+
+	return ""
 }
 
 func init() {
