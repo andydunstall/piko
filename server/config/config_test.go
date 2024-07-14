@@ -75,11 +75,11 @@ gossip:
   max_packet_size: 1400
 
 auth:
-  token_hmac_secret_key: hmac-secret-key
-  token_rsa_public_key: rsa-public-key
-  token_ecdsa_public_key: ecdsa-public-key
-  token_audience: my-audience
-  token_issuer: my-issuer
+  hmac_secret_key: hmac-secret-key
+  rsa_public_key: rsa-public-key
+  ecdsa_public_key: ecdsa-public-key
+  audience: my-audience
+  issuer: my-issuer
 
 usage:
   disable: true
@@ -157,11 +157,11 @@ grace_period: 2m
 			MaxPacketSize: 1400,
 		},
 		Auth: auth.Config{
-			TokenHMACSecretKey:  "hmac-secret-key",
-			TokenRSAPublicKey:   "rsa-public-key",
-			TokenECDSAPublicKey: "ecdsa-public-key",
-			TokenAudience:       "my-audience",
-			TokenIssuer:         "my-issuer",
+			HMACSecretKey:  "hmac-secret-key",
+			RSAPublicKey:   "rsa-public-key",
+			ECDSAPublicKey: "ecdsa-public-key",
+			Audience:       "my-audience",
+			Issuer:         "my-issuer",
 		},
 		Usage: UsageConfig{
 			Disable: true,
@@ -211,11 +211,11 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--gossip.advertise-addr", "1.2.3.4:8003",
 		"--gossip.interval", "100ms",
 		"--gossip.max-packet-size", "1400",
-		"--auth.token-hmac-secret-key", "hmac-secret-key",
-		"--auth.token-rsa-public-key", "rsa-public-key",
-		"--auth.token-ecdsa-public-key", "ecdsa-public-key",
-		"--auth.token-audience", "my-audience",
-		"--auth.token-issuer", "my-issuer",
+		"--auth.hmac-secret-key", "hmac-secret-key",
+		"--auth.rsa-public-key", "rsa-public-key",
+		"--auth.ecdsa-public-key", "ecdsa-public-key",
+		"--auth.audience", "my-audience",
+		"--auth.issuer", "my-issuer",
 		"--usage.disable",
 		"--log.level", "info",
 		"--log.subsystems", "foo,bar",
@@ -283,11 +283,11 @@ func TestConfig_LoadFlags(t *testing.T) {
 			MaxPacketSize: 1400,
 		},
 		Auth: auth.Config{
-			TokenHMACSecretKey:  "hmac-secret-key",
-			TokenRSAPublicKey:   "rsa-public-key",
-			TokenECDSAPublicKey: "ecdsa-public-key",
-			TokenAudience:       "my-audience",
-			TokenIssuer:         "my-issuer",
+			HMACSecretKey:  "hmac-secret-key",
+			RSAPublicKey:   "rsa-public-key",
+			ECDSAPublicKey: "ecdsa-public-key",
+			Audience:       "my-audience",
+			Issuer:         "my-issuer",
 		},
 		Usage: UsageConfig{
 			Disable: true,

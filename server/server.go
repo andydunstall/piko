@@ -82,23 +82,23 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	var verifier auth.Verifier
 	if conf.Auth.AuthEnabled() {
 		verifierConf := auth.JWTVerifierConfig{
-			HMACSecretKey: []byte(conf.Auth.TokenHMACSecretKey),
-			Audience:      conf.Auth.TokenAudience,
-			Issuer:        conf.Auth.TokenIssuer,
+			HMACSecretKey: []byte(conf.Auth.HMACSecretKey),
+			Audience:      conf.Auth.Audience,
+			Issuer:        conf.Auth.Issuer,
 		}
 
-		if conf.Auth.TokenRSAPublicKey != "" {
+		if conf.Auth.RSAPublicKey != "" {
 			rsaPublicKey, err := jwt.ParseRSAPublicKeyFromPEM(
-				[]byte(conf.Auth.TokenRSAPublicKey),
+				[]byte(conf.Auth.RSAPublicKey),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("parse rsa public key: %w", err)
 			}
 			verifierConf.RSAPublicKey = rsaPublicKey
 		}
-		if conf.Auth.TokenECDSAPublicKey != "" {
+		if conf.Auth.ECDSAPublicKey != "" {
 			ecdsaPublicKey, err := jwt.ParseECPublicKeyFromPEM(
-				[]byte(conf.Auth.TokenECDSAPublicKey),
+				[]byte(conf.Auth.ECDSAPublicKey),
 			)
 			if err != nil {
 				return nil, fmt.Errorf("parse ecdsa public key: %w", err)

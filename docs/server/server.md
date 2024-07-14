@@ -222,25 +222,25 @@ admin:
 
 auth:
     # Secret key to authenticate HMAC endpoint connection JWTs.
-    token_hmac_secret_key: ""
+    hmac_secret_key: ""
 
     # Public key to authenticate RSA endpoint connection JWTs.
-    token_rsa_public_key: ""
+    rsa_public_key: ""
 
     # Public key to authenticate ECDSA endpoint connection JWTs.
-    token_ecdsa_public_key: ""
+    ecdsa_public_key: ""
 
     # Audience of endpoint connection JWT token to verify.
     #
     # If given the JWT 'aud' claim must match the given audience. Otherwise it
     # is ignored.
-    token_audience: ""
+    audience: ""
 
     # Issuer of endpoint connection JWT token to verify.
     #
     # If given the JWT 'iss' claim must match the given issuer. Otherwise it
     # is ignored.
-    token_issuer: ""
+    issuer: ""
 
 log:
     # Minimum log level to output.
@@ -294,9 +294,9 @@ HS512, RSA256, RSA384, RSA512, EC256, EC384, and EC512.
 
 The server has the following configuration options to pass a secret key or
 public key:
-- `auth.token_hmac_secret_key`: Add HMAC secret key
-- `auth.token_rsa_public_key`: Add RSA public key
-- `auth.token_ecdsa_public_key`: Add ECDSA public key
+- `auth.hmac_secret_key`: Add HMAC secret key
+- `auth.rsa_public_key`: Add RSA public key
+- `auth.ecdsa_public_key`: Add ECDSA public key
 
 If no keys secret or public keys are given, Piko will allow unauthenticated
 endpoint connections.
@@ -305,8 +305,8 @@ Piko will verify the `exp` (expiry) and `iat` (issued at) claims if given, and
 drop the connection to the upstream endpoint once its token expires.
 
 By default Piko will not verify the `aud` (audience) or `iss` (issuer) claims,
-though you can enable these checks with `auth.token_audience` and
-`auth.token_issuer` respectively.
+though you can enable these checks with `auth.audience` and
+`auth.issuer` respectively.
 
 You may also include Piko specific fields in your JWT. Piko supports the
 `piko.endpoints` claim which contains an array of endpoint IDs the token is
