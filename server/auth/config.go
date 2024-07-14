@@ -1,6 +1,9 @@
 package auth
 
 import (
+	"fmt"
+
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/pflag"
 )
 
@@ -30,6 +33,35 @@ type Config struct {
 
 func (c *Config) AuthEnabled() bool {
 	return c.HMACSecretKey != "" || c.RSAPublicKey != "" || c.ECDSAPublicKey != ""
+}
+
+func (c *Config) Load() (JWTVerifierConfig, error) {
+	verifierConf := JWTVerifierConfig{
+		HMACSecretKey: []byte(c.HMACSecretKey),
+		Audience:      c.Audience,
+		Issuer:        c.Issuer,
+	}
+
+	if c.RSAPublicKey != "" {
+		rsaPublicKey, err := jwt.ParseRSAPublicKeyFromPEM(
+			[]byte(c.RSAPublicKey),
+		)
+		if err != nil {
+			return JWTVerifierConfig{}, fmt.Errorf("parse rsa public key: %w", err)
+		}
+		verifierConf.RSAPublicKey = rsaPublicKey
+	}
+	if c.ECDSAPublicKey != "" {
+		ecdsaPublicKey, err := jwt.ParseECPublicKeyFromPEM(
+			[]byte(c.ECDSAPublicKey),
+		)
+		if err != nil {
+			return JWTVerifierConfig{}, fmt.Errorf("parse ecdsa public key: %w", err)
+		}
+		verifierConf.ECDSAPublicKey = ecdsaPublicKey
+	}
+
+	return verifierConf, nil
 }
 
 func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
