@@ -56,7 +56,7 @@ Examples:
 	var logger log.Logger
 
 	loadConfig := func() error {
-		if err := loadConf.Load(conf); err != nil {
+		if err := pikoconfig.Load(conf, loadConf.Path, loadConf.ExpandEnv); err != nil {
 			return fmt.Errorf("load: %w", err)
 		}
 
