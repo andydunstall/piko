@@ -12,10 +12,10 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/build"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/admin"
-	"github.com/andydunstall/piko/server/auth"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/config"
 	"github.com/andydunstall/piko/server/gossip"
@@ -129,7 +129,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	// Upstream server.
 
 	var upstreamVerifier auth.Verifier
-	if conf.Upstream.Auth.AuthEnabled() {
+	if conf.Upstream.Auth.Enabled() {
 		verifierConf, err := conf.Upstream.Auth.Load()
 		if err != nil {
 			return nil, fmt.Errorf("upstream: load auth: %w", err)

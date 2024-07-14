@@ -11,10 +11,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/pkg/websocket"
-	"github.com/andydunstall/piko/server/auth"
 )
 
 type fakeManager struct {
@@ -40,6 +40,16 @@ func (m *fakeManager) AddConn(u Upstream) {
 func (m *fakeManager) RemoveConn(u Upstream) {
 	m.removeConnCh <- u
 }
+
+type fakeVerifier struct {
+	handler func(token string) (*auth.Token, error)
+}
+
+func (v *fakeVerifier) Verify(token string) (*auth.Token, error) {
+	return v.handler(token)
+}
+
+var _ auth.Verifier = &fakeVerifier{}
 
 func TestServer_Register(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
@@ -109,9 +119,9 @@ func TestServer_Authentication(t *testing.T) {
 		manager := newFakeManager()
 
 		verifier := &fakeVerifier{
-			handler: func(token string) (auth.EndpointToken, error) {
+			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return auth.EndpointToken{
+				return &auth.Token{
 					Expiry:    time.Now().Add(time.Hour),
 					Endpoints: []string{"my-endpoint"},
 				}, nil
@@ -147,9 +157,9 @@ func TestServer_Authentication(t *testing.T) {
 		manager := newFakeManager()
 
 		verifier := &fakeVerifier{
-			handler: func(token string) (auth.EndpointToken, error) {
+			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return auth.EndpointToken{
+				return &auth.Token{
 					// Set a short expiry as we wait for the token to expire.
 					Expiry:    time.Now().Add(time.Millisecond * 10),
 					Endpoints: []string{"my-endpoint"},
@@ -187,9 +197,9 @@ func TestServer_Authentication(t *testing.T) {
 		manager := newFakeManager()
 
 		verifier := &fakeVerifier{
-			handler: func(token string) (auth.EndpointToken, error) {
+			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return auth.EndpointToken{
+				return &auth.Token{
 					Expiry:    time.Now().Add(time.Hour),
 					Endpoints: []string{"foo"},
 				}, nil
@@ -217,9 +227,9 @@ func TestServer_Authentication(t *testing.T) {
 		manager := newFakeManager()
 
 		verifier := &fakeVerifier{
-			handler: func(token string) (auth.EndpointToken, error) {
+			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return auth.EndpointToken{}, auth.ErrInvalidToken
+				return &auth.Token{}, auth.ErrInvalidToken
 			},
 		}
 

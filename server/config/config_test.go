@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/pflag"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/gossip"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/auth"
 )
 
 // Tests the default configuration is valid (not including node ID).
