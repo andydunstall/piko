@@ -161,8 +161,20 @@ func EndpointIDFromRequest(r *http.Request) string {
 		return endpointID
 	}
 
-	host := r.Host
-	if host != "" && strings.Contains(host, ".") {
+	// Strip the port if given.
+	host, _, err := net.SplitHostPort(r.Host)
+	if err != nil {
+		host = r.Host
+	}
+
+	if host == "" {
+		return ""
+	}
+	if net.ParseIP(host) != nil {
+		// Ignore IP addresses.
+		return ""
+	}
+	if strings.Contains(host, ".") {
 		// If a host is given and contains a separator, use the bottom-level
 		// domain as the endpoint ID.
 		//

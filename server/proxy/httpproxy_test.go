@@ -272,9 +272,23 @@ func TestEndpointIDFromRequest(t *testing.T) {
 		assert.Equal(t, "my-endpoint", endpointID)
 	})
 
-	t.Run("no endpoint", func(t *testing.T) {
+	t.Run("ip address", func(t *testing.T) {
+		endpointID := EndpointIDFromRequest(&http.Request{
+			Host: "127.0.0.1:9000",
+		})
+		assert.Equal(t, "", endpointID)
+	})
+
+	t.Run("no separator", func(t *testing.T) {
 		endpointID := EndpointIDFromRequest(&http.Request{
 			Host: "localhost:9000",
+		})
+		assert.Equal(t, "", endpointID)
+	})
+
+	t.Run("empty host", func(t *testing.T) {
+		endpointID := EndpointIDFromRequest(&http.Request{
+			Host: "",
 		})
 		assert.Equal(t, "", endpointID)
 	})
