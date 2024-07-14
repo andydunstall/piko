@@ -15,7 +15,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/middleware"
 	"github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/status"
 )
@@ -41,6 +43,7 @@ type Server struct {
 func NewServer(
 	clusterState *cluster.State,
 	registry *prometheus.Registry,
+	verifier auth.Verifier,
 	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {
@@ -63,6 +66,11 @@ func NewServer(
 
 	// Recover from panics.
 	router.Use(gin.CustomRecoveryWithWriter(nil, server.panicRoute))
+
+	if verifier != nil {
+		authMiddleware := middleware.NewAuth(verifier, logger)
+		router.Use(authMiddleware.Verify)
+	}
 
 	if clusterState != nil {
 		router.Use(server.forwardInterceptor)

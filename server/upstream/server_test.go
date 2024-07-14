@@ -229,7 +229,7 @@ func TestServer_Authentication(t *testing.T) {
 		verifier := &fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return &auth.Token{}, auth.ErrInvalidToken
+				return nil, auth.ErrInvalidToken
 			},
 		}
 

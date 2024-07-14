@@ -320,6 +320,8 @@ type AdminConfig struct {
 	// AdvertiseAddr is the address to advertise to other nodes.
 	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
 
+	Auth auth.Config `json:"auth" yaml:"auth"`
+
 	TLS TLSConfig `json:"tls" yaml:"tls"`
 }
 
@@ -361,6 +363,8 @@ If the bind address does not include an IP (such as ':8002') the nodes
 private IP will be used, such as a bind address of ':8002' may have an
 advertise address of '10.26.104.14:8002'.`,
 	)
+
+	c.Auth.RegisterFlags(fs, "admin")
 
 	c.TLS.RegisterFlags(fs, "admin")
 }
