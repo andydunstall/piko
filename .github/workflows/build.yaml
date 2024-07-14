@@ -32,6 +32,9 @@ jobs:
         with:
           go-version: '1.22'
 
+      - name: Build
+        run: go build ./...
+
       - name: Unit Tests
         run: go test ./... -v
 
