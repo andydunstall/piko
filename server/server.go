@@ -7,7 +7,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
@@ -81,29 +80,9 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	var verifier auth.Verifier
 	if conf.Auth.AuthEnabled() {
-		verifierConf := auth.JWTVerifierConfig{
-			HMACSecretKey: []byte(conf.Auth.HMACSecretKey),
-			Audience:      conf.Auth.Audience,
-			Issuer:        conf.Auth.Issuer,
-		}
-
-		if conf.Auth.RSAPublicKey != "" {
-			rsaPublicKey, err := jwt.ParseRSAPublicKeyFromPEM(
-				[]byte(conf.Auth.RSAPublicKey),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("parse rsa public key: %w", err)
-			}
-			verifierConf.RSAPublicKey = rsaPublicKey
-		}
-		if conf.Auth.ECDSAPublicKey != "" {
-			ecdsaPublicKey, err := jwt.ParseECPublicKeyFromPEM(
-				[]byte(conf.Auth.ECDSAPublicKey),
-			)
-			if err != nil {
-				return nil, fmt.Errorf("parse ecdsa public key: %w", err)
-			}
-			verifierConf.ECDSAPublicKey = ecdsaPublicKey
+		verifierConf, err := conf.Auth.Load()
+		if err != nil {
+			return nil, fmt.Errorf("load auth config: %w", err)
 		}
 		verifier = auth.NewJWTVerifier(verifierConf)
 	}

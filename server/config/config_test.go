@@ -5,12 +5,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/spf13/pflag"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/andydunstall/piko/pkg/config"
 	"github.com/andydunstall/piko/pkg/gossip"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/server/auth"
-	"github.com/spf13/pflag"
-	"github.com/stretchr/testify/assert"
 )
 
 // Tests the default configuration is valid (not including node ID).
