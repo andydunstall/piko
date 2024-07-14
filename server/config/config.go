@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/pflag"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/gossip"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/auth"
 )
 
 type ClusterConfig struct {
@@ -361,6 +361,7 @@ If the bind address does not include an IP (such as ':8002') the nodes
 private IP will be used, such as a bind address of ':8002' may have an
 advertise address of '10.26.104.14:8002'.`,
 	)
+
 	c.TLS.RegisterFlags(fs, "admin")
 }
 

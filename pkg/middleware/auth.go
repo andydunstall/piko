@@ -1,4 +1,4 @@
-package upstream
+package middleware
 
 import (
 	"errors"
@@ -8,38 +8,37 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/auth"
 )
 
 const (
 	TokenContextKey = "_piko_token"
 )
 
-// AuthMiddleware verifies the request token.
-type AuthMiddleware struct {
+// Auth is middleware to verify token requests.
+type Auth struct {
 	verifier auth.Verifier
 	logger   log.Logger
 }
 
-func NewAuthMiddleware(verifier auth.Verifier, logger log.Logger) *AuthMiddleware {
-	return &AuthMiddleware{
+func NewAuth(verifier auth.Verifier, logger log.Logger) *Auth {
+	return &Auth{
 		verifier: verifier,
 		logger:   logger,
 	}
 }
 
-// VerifyEndpointToken verifies the request endpoint token and adds to the
-// context.
+// Verify verifies the request endpoint token and adds to the context.
 //
 // If the token is invalid, returns 401 to the client.
-func (m *AuthMiddleware) VerifyEndpointToken(c *gin.Context) {
+func (m *Auth) Verify(c *gin.Context) {
 	tokenString, ok := m.parseToken(c)
 	if !ok {
 		return
 	}
 
-	token, err := m.verifier.VerifyEndpointToken(tokenString)
+	token, err := m.verifier.Verify(tokenString)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidToken) {
 			m.logger.Warn(
@@ -72,11 +71,11 @@ func (m *AuthMiddleware) VerifyEndpointToken(c *gin.Context) {
 		return
 	}
 
-	c.Set(TokenContextKey, &token)
+	c.Set(TokenContextKey, token)
 	c.Next()
 }
 
-func (m *AuthMiddleware) parseToken(c *gin.Context) (string, bool) {
+func (m *Auth) parseToken(c *gin.Context) (string, bool) {
 	authorization := c.Request.Header.Get("Authorization")
 	authType, tokenString, ok := strings.Cut(authorization, " ")
 	if !ok {

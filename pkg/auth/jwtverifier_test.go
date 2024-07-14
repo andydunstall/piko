@@ -16,11 +16,11 @@ import (
 func TestJWTVerifier_HS(t *testing.T) {
 	secretKey := generateTestHSKey(t)
 
-	endpointClaims := endpointJWTClaims{
+	endpointClaims := JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
-		Piko: pikoEndpointClaims{
+		Piko: PikoClaims{
 			Endpoints: []string{"my-endpoint"},
 		},
 	}
@@ -37,10 +37,10 @@ func TestJWTVerifier_HS(t *testing.T) {
 				tokenString, err := token.SignedString([]byte(secretKey))
 				assert.NoError(t, err)
 
-				verifier := NewJWTVerifier(JWTVerifierConfig{
+				verifier := NewJWTVerifier(&LoadedConfig{
 					HMACSecretKey: secretKey,
 				})
-				parsedToken, err := verifier.VerifyEndpointToken(tokenString)
+				parsedToken, err := verifier.Verify(tokenString)
 				assert.NoError(t, err)
 
 				assert.Equal(t, []string{"my-endpoint"}, parsedToken.Endpoints)
@@ -54,21 +54,21 @@ func TestJWTVerifier_HS(t *testing.T) {
 		tokenString, err := token.SignedString([]byte(secretKey))
 		assert.NoError(t, err)
 
-		verifier := NewJWTVerifier(JWTVerifierConfig{
+		verifier := NewJWTVerifier(&LoadedConfig{
 			HMACSecretKey: []byte("invalid key"),
 		})
 		assert.NoError(t, err)
-		_, err = verifier.VerifyEndpointToken(tokenString)
+		_, err = verifier.Verify(tokenString)
 		assert.Equal(t, ErrInvalidToken, err)
 	})
 }
 
 func TestJWTVerifier_RS(t *testing.T) {
-	endpointClaims := endpointJWTClaims{
+	endpointClaims := JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
-		Piko: pikoEndpointClaims{
+		Piko: PikoClaims{
 			Endpoints: []string{"my-endpoint"},
 		},
 	}
@@ -86,10 +86,10 @@ func TestJWTVerifier_RS(t *testing.T) {
 				tokenString, err := token.SignedString(privateKey)
 				assert.NoError(t, err)
 
-				verifier := NewJWTVerifier(JWTVerifierConfig{
+				verifier := NewJWTVerifier(&LoadedConfig{
 					RSAPublicKey: publicKey,
 				})
-				parsedToken, err := verifier.VerifyEndpointToken(tokenString)
+				parsedToken, err := verifier.Verify(tokenString)
 				assert.NoError(t, err)
 
 				assert.Equal(t, []string{"my-endpoint"}, parsedToken.Endpoints)
@@ -105,21 +105,21 @@ func TestJWTVerifier_RS(t *testing.T) {
 		tokenString, err := token.SignedString(invalidPrivateKey)
 		assert.NoError(t, err)
 
-		verifier := NewJWTVerifier(JWTVerifierConfig{
+		verifier := NewJWTVerifier(&LoadedConfig{
 			RSAPublicKey: publicKey,
 		})
 		assert.NoError(t, err)
-		_, err = verifier.VerifyEndpointToken(tokenString)
+		_, err = verifier.Verify(tokenString)
 		assert.Equal(t, ErrInvalidToken, err)
 	})
 }
 
 func TestJWTVerifier_EC(t *testing.T) {
-	endpointClaims := endpointJWTClaims{
+	endpointClaims := JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
-		Piko: pikoEndpointClaims{
+		Piko: PikoClaims{
 			Endpoints: []string{"my-endpoint"},
 		},
 	}
@@ -150,10 +150,10 @@ func TestJWTVerifier_EC(t *testing.T) {
 				tokenString, err := token.SignedString(privateKey)
 				assert.NoError(t, err)
 
-				verifier := NewJWTVerifier(JWTVerifierConfig{
+				verifier := NewJWTVerifier(&LoadedConfig{
 					ECDSAPublicKey: publicKey,
 				})
-				parsedToken, err := verifier.VerifyEndpointToken(tokenString)
+				parsedToken, err := verifier.Verify(tokenString)
 				assert.NoError(t, err)
 
 				assert.Equal(t, []string{"my-endpoint"}, parsedToken.Endpoints)
@@ -170,11 +170,11 @@ func TestJWTVerifier_EC(t *testing.T) {
 		tokenString, err := token.SignedString(invalidPrivateKey)
 		assert.NoError(t, err)
 
-		verifier := NewJWTVerifier(JWTVerifierConfig{
+		verifier := NewJWTVerifier(&LoadedConfig{
 			ECDSAPublicKey: publicKey,
 		})
 		assert.NoError(t, err)
-		_, err = verifier.VerifyEndpointToken(tokenString)
+		_, err = verifier.Verify(tokenString)
 		assert.Equal(t, ErrInvalidToken, err)
 	})
 }
@@ -183,12 +183,12 @@ func TestJWTVerifier_Invalid(t *testing.T) {
 	t.Run("expired", func(t *testing.T) {
 		secretKey := generateTestHSKey(t)
 
-		endpointClaims := endpointJWTClaims{
+		endpointClaims := JWTClaims{
 			RegisteredClaims: jwt.RegisteredClaims{
 				// Expires in the past.
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(-time.Hour)),
 			},
-			Piko: pikoEndpointClaims{
+			Piko: PikoClaims{
 				Endpoints: []string{"my-endpoint"},
 			},
 		}
@@ -197,22 +197,22 @@ func TestJWTVerifier_Invalid(t *testing.T) {
 		tokenString, err := token.SignedString([]byte(secretKey))
 		assert.NoError(t, err)
 
-		verifier := NewJWTVerifier(JWTVerifierConfig{
+		verifier := NewJWTVerifier(&LoadedConfig{
 			HMACSecretKey: secretKey,
 		})
-		_, err = verifier.VerifyEndpointToken(tokenString)
+		_, err = verifier.Verify(tokenString)
 		assert.Error(t, err)
 	})
 
 	t.Run("audience", func(t *testing.T) {
 		secretKey := generateTestHSKey(t)
 
-		endpointClaims := endpointJWTClaims{
+		endpointClaims := JWTClaims{
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 				Audience:  jwt.ClaimStrings([]string{"bar"}),
 			},
-			Piko: pikoEndpointClaims{
+			Piko: PikoClaims{
 				Endpoints: []string{"my-endpoint"},
 			},
 		}
@@ -221,23 +221,23 @@ func TestJWTVerifier_Invalid(t *testing.T) {
 		tokenString, err := token.SignedString([]byte(secretKey))
 		assert.NoError(t, err)
 
-		verifier := NewJWTVerifier(JWTVerifierConfig{
+		verifier := NewJWTVerifier(&LoadedConfig{
 			HMACSecretKey: secretKey,
 			Audience:      "foo",
 		})
-		_, err = verifier.VerifyEndpointToken(tokenString)
+		_, err = verifier.Verify(tokenString)
 		assert.Error(t, err)
 	})
 
 	t.Run("issuer", func(t *testing.T) {
 		secretKey := generateTestHSKey(t)
 
-		endpointClaims := endpointJWTClaims{
+		endpointClaims := JWTClaims{
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 				Issuer:    "bar",
 			},
-			Piko: pikoEndpointClaims{
+			Piko: PikoClaims{
 				Endpoints: []string{"my-endpoint"},
 			},
 		}
@@ -246,11 +246,11 @@ func TestJWTVerifier_Invalid(t *testing.T) {
 		tokenString, err := token.SignedString([]byte(secretKey))
 		assert.NoError(t, err)
 
-		verifier := NewJWTVerifier(JWTVerifierConfig{
+		verifier := NewJWTVerifier(&LoadedConfig{
 			HMACSecretKey: secretKey,
 			Issuer:        "foo",
 		})
-		_, err = verifier.VerifyEndpointToken(tokenString)
+		_, err = verifier.Verify(tokenString)
 		assert.Error(t, err)
 	})
 }

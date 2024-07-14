@@ -1,4 +1,4 @@
-package upstream
+package middleware
 
 import (
 	"encoding/json"
@@ -11,15 +11,15 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/auth"
 )
 
 type fakeVerifier struct {
-	handler func(token string) (auth.EndpointToken, error)
+	handler func(token string) (*auth.Token, error)
 }
 
-func (v *fakeVerifier) VerifyEndpointToken(token string) (auth.EndpointToken, error) {
+func (v *fakeVerifier) Verify(token string) (*auth.Token, error) {
 	return v.handler(token)
 }
 
@@ -29,25 +29,25 @@ type errorMessage struct {
 	Error string `json:"error"`
 }
 
-func TestAuthMiddleware(t *testing.T) {
+func TestAuth(t *testing.T) {
 	t.Run("ok", func(t *testing.T) {
 		verifier := &fakeVerifier{
-			handler: func(token string) (auth.EndpointToken, error) {
+			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return auth.EndpointToken{
+				return &auth.Token{
 					Expiry:    time.Now().Add(time.Hour),
 					Endpoints: []string{"e1", "e2", "e3"},
 				}, nil
 			},
 		}
-		m := NewAuthMiddleware(verifier, log.NewNopLogger())
+		m := NewAuth(verifier, log.NewNopLogger())
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "http://example.com/foo", nil)
 		c.Request.Header.Add("Authorization", "Bearer 123")
 
-		m.VerifyEndpointToken(c)
+		m.Verify(c)
 
 		resp := w.Result()
 		assert.Equal(t, http.StatusOK, resp.StatusCode)
@@ -55,24 +55,24 @@ func TestAuthMiddleware(t *testing.T) {
 		// Verify the token was added to context.
 		token, ok := c.Get(TokenContextKey)
 		assert.True(t, ok)
-		assert.Equal(t, []string{"e1", "e2", "e3"}, token.(*auth.EndpointToken).Endpoints)
+		assert.Equal(t, []string{"e1", "e2", "e3"}, token.(*auth.Token).Endpoints)
 	})
 
 	t.Run("invalid token", func(t *testing.T) {
 		verifier := &fakeVerifier{
-			handler: func(token string) (auth.EndpointToken, error) {
+			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return auth.EndpointToken{}, fmt.Errorf("foo: %w", auth.ErrInvalidToken)
+				return &auth.Token{}, fmt.Errorf("foo: %w", auth.ErrInvalidToken)
 			},
 		}
-		m := NewAuthMiddleware(verifier, log.NewNopLogger())
+		m := NewAuth(verifier, log.NewNopLogger())
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "http://example.com/foo", nil)
 		c.Request.Header.Add("Authorization", "Bearer 123")
 
-		m.VerifyEndpointToken(c)
+		m.Verify(c)
 
 		resp := w.Result()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -84,19 +84,19 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("expired token", func(t *testing.T) {
 		verifier := &fakeVerifier{
-			handler: func(token string) (auth.EndpointToken, error) {
+			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return auth.EndpointToken{}, fmt.Errorf("foo: %w", auth.ErrExpiredToken)
+				return &auth.Token{}, fmt.Errorf("foo: %w", auth.ErrExpiredToken)
 			},
 		}
-		m := NewAuthMiddleware(verifier, log.NewNopLogger())
+		m := NewAuth(verifier, log.NewNopLogger())
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "http://example.com/foo", nil)
 		c.Request.Header.Add("Authorization", "Bearer 123")
 
-		m.VerifyEndpointToken(c)
+		m.Verify(c)
 
 		resp := w.Result()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -108,33 +108,33 @@ func TestAuthMiddleware(t *testing.T) {
 
 	t.Run("unknown error", func(t *testing.T) {
 		verifier := &fakeVerifier{
-			handler: func(token string) (auth.EndpointToken, error) {
+			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
-				return auth.EndpointToken{}, fmt.Errorf("unknown")
+				return &auth.Token{}, fmt.Errorf("unknown")
 			},
 		}
-		m := NewAuthMiddleware(verifier, log.NewNopLogger())
+		m := NewAuth(verifier, log.NewNopLogger())
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "http://example.com/foo", nil)
 		c.Request.Header.Add("Authorization", "Bearer 123")
 
-		m.VerifyEndpointToken(c)
+		m.Verify(c)
 
 		resp := w.Result()
 		assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 	})
 
 	t.Run("unsupported auth type", func(t *testing.T) {
-		m := NewAuthMiddleware(nil, log.NewNopLogger())
+		m := NewAuth(nil, log.NewNopLogger())
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "http://example.com/foo", nil)
 		c.Request.Header.Add("Authorization", "Basic RpY2F0aW9uLgo=")
 
-		m.VerifyEndpointToken(c)
+		m.Verify(c)
 
 		resp := w.Result()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
@@ -145,13 +145,13 @@ func TestAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("missing authorization header", func(t *testing.T) {
-		m := NewAuthMiddleware(nil, log.NewNopLogger())
+		m := NewAuth(nil, log.NewNopLogger())
 
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "http://example.com/foo", nil)
 
-		m.VerifyEndpointToken(c)
+		m.Verify(c)
 
 		resp := w.Result()
 		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)

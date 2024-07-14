@@ -1,8 +1,8 @@
 package cluster
 
 import (
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/auth"
 )
 
 type options struct {

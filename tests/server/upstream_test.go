@@ -14,25 +14,16 @@ import (
 
 	"github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pikotest/cluster"
-	"github.com/andydunstall/piko/server/auth"
+	"github.com/andydunstall/piko/pkg/auth"
 )
-
-type pikoEndpointClaims struct {
-	Endpoints []string `json:"endpoints"`
-}
-
-type endpointJWTClaims struct {
-	jwt.RegisteredClaims
-	Piko pikoEndpointClaims `json:"piko"`
-}
 
 // Tests upstream authentication.
 func TestUpstream_Auth(t *testing.T) {
-	endpointClaims := endpointJWTClaims{
+	endpointClaims := auth.JWTClaims{
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
-		Piko: pikoEndpointClaims{
+		Piko: auth.PikoClaims{
 			Endpoints: []string{"my-endpoint"},
 		},
 	}

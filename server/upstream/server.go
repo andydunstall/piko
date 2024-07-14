@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"slices"
 
 	"github.com/andydunstall/yamux"
 	"github.com/gin-gonic/gin"
@@ -14,9 +15,10 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
+	"github.com/andydunstall/piko/pkg/middleware"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
-	"github.com/andydunstall/piko/server/auth"
 )
 
 // Server accepts connections from upstream services.
@@ -60,8 +62,8 @@ func NewServer(
 	router.Use(gin.CustomRecoveryWithWriter(nil, server.panicRoute))
 
 	if verifier != nil {
-		authMiddleware := NewAuthMiddleware(verifier, logger)
-		router.Use(authMiddleware.VerifyEndpointToken)
+		authMiddleware := middleware.NewAuth(verifier, logger)
+		router.Use(authMiddleware.Verify)
 	}
 
 	server.registerRoutes(router)
@@ -101,10 +103,10 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) upstreamRoute(c *gin.Context) {
 	endpointID := c.Param("endpointID")
 
-	token, ok := c.Get(TokenContextKey)
+	token, ok := c.Get(middleware.TokenContextKey)
 	if ok {
-		endpointToken := token.(*auth.EndpointToken)
-		if !endpointToken.EndpointPermitted(endpointID) {
+		endpointToken := token.(*auth.Token)
+		if !slices.Contains(endpointToken.Endpoints, endpointID) {
 			s.logger.Warn(
 				"endpoint not permitted",
 				zap.Strings("token-endpoints", endpointToken.Endpoints),
@@ -142,7 +144,7 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 	if ok {
 		// If the token has an expiry, then we ensure we close the connection
 		// to the endpoint once the token expires.
-		endpointToken := token.(*auth.EndpointToken)
+		endpointToken := token.(*auth.Token)
 		if !endpointToken.Expiry.IsZero() {
 			var cancel func()
 			ctx, cancel = context.WithDeadline(ctx, endpointToken.Expiry)

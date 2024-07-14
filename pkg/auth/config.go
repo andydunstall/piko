@@ -1,12 +1,15 @@
 package auth
 
 import (
+	"crypto/ecdsa"
+	"crypto/rsa"
 	"fmt"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/spf13/pflag"
 )
 
+// Config configures how to verify client JWT tokens.
 type Config struct {
 	// HMACSecretKey is the secret key to authenticate HMAC endpoint
 	// connection JWTs.
@@ -31,12 +34,24 @@ type Config struct {
 	Issuer string `json:"issuer" yaml:"issuer"`
 }
 
-func (c *Config) AuthEnabled() bool {
+// LoadedConfig is the same as Config except it parses the RSA and ECDSA keys.
+type LoadedConfig struct {
+	HMACSecretKey  []byte
+	RSAPublicKey   *rsa.PublicKey
+	ECDSAPublicKey *ecdsa.PublicKey
+	Audience       string
+	Issuer         string
+}
+
+// Enabled returns whether authentication is enabled.
+//
+// It is enabled when at least one verification key is configured.
+func (c *Config) Enabled() bool {
 	return c.HMACSecretKey != "" || c.RSAPublicKey != "" || c.ECDSAPublicKey != ""
 }
 
-func (c *Config) Load() (JWTVerifierConfig, error) {
-	verifierConf := JWTVerifierConfig{
+func (c *Config) Load() (*LoadedConfig, error) {
+	config := LoadedConfig{
 		HMACSecretKey: []byte(c.HMACSecretKey),
 		Audience:      c.Audience,
 		Issuer:        c.Issuer,
@@ -47,21 +62,21 @@ func (c *Config) Load() (JWTVerifierConfig, error) {
 			[]byte(c.RSAPublicKey),
 		)
 		if err != nil {
-			return JWTVerifierConfig{}, fmt.Errorf("parse rsa public key: %w", err)
+			return nil, fmt.Errorf("parse rsa public key: %w", err)
 		}
-		verifierConf.RSAPublicKey = rsaPublicKey
+		config.RSAPublicKey = rsaPublicKey
 	}
 	if c.ECDSAPublicKey != "" {
 		ecdsaPublicKey, err := jwt.ParseECPublicKeyFromPEM(
 			[]byte(c.ECDSAPublicKey),
 		)
 		if err != nil {
-			return JWTVerifierConfig{}, fmt.Errorf("parse ecdsa public key: %w", err)
+			return nil, fmt.Errorf("parse ecdsa public key: %w", err)
 		}
-		verifierConf.ECDSAPublicKey = ecdsaPublicKey
+		config.ECDSAPublicKey = ecdsaPublicKey
 	}
 
-	return verifierConf, nil
+	return &config, nil
 }
 
 func (c *Config) RegisterFlags(fs *pflag.FlagSet, prefix string) {

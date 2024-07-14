@@ -10,23 +10,16 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 )
 
-type pikoEndpointClaims struct {
+type PikoClaims struct {
 	Endpoints []string `json:"endpoints"`
 }
 
-type endpointJWTClaims struct {
+type JWTClaims struct {
 	jwt.RegisteredClaims
-	Piko pikoEndpointClaims `json:"piko"`
+	Piko PikoClaims `json:"piko"`
 }
 
-type JWTVerifierConfig struct {
-	HMACSecretKey  []byte
-	RSAPublicKey   *rsa.PublicKey
-	ECDSAPublicKey *ecdsa.PublicKey
-	Audience       string
-	Issuer         string
-}
-
+// JWTVerifier verifies client JWT tokens.
 type JWTVerifier struct {
 	hmacSecretKey  []byte
 	rsaPublicKey   *rsa.PublicKey
@@ -35,11 +28,12 @@ type JWTVerifier struct {
 	audience string
 	issuer   string
 
-	// methods contains the valid JWT methods.
+	// methods contains the valid JWT methods, which depends on the
+	// verification keys configured.
 	methods []string
 }
 
-func NewJWTVerifier(conf JWTVerifierConfig) *JWTVerifier {
+func NewJWTVerifier(conf *LoadedConfig) *JWTVerifier {
 	v := &JWTVerifier{
 		audience: conf.Audience,
 		issuer:   conf.Issuer,
@@ -60,8 +54,8 @@ func NewJWTVerifier(conf JWTVerifierConfig) *JWTVerifier {
 	return v
 }
 
-func (v *JWTVerifier) VerifyEndpointToken(tokenString string) (EndpointToken, error) {
-	claims := &endpointJWTClaims{}
+func (v *JWTVerifier) Verify(tokenString string) (*Token, error) {
+	claims := &JWTClaims{}
 
 	opts := []jwt.ParserOption{
 		jwt.WithValidMethods(v.methods),
@@ -103,19 +97,19 @@ func (v *JWTVerifier) VerifyEndpointToken(tokenString string) (EndpointToken, er
 	)
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
-			return EndpointToken{}, ErrExpiredToken
+			return nil, ErrExpiredToken
 		}
-		return EndpointToken{}, ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 	if !token.Valid {
-		return EndpointToken{}, ErrInvalidToken
+		return nil, ErrInvalidToken
 	}
 
 	var expiry time.Time
 	if claims.ExpiresAt != nil {
 		expiry = claims.ExpiresAt.Time
 	}
-	return EndpointToken{
+	return &Token{
 		Expiry:    expiry,
 		Endpoints: claims.Piko.Endpoints,
 	}, nil
