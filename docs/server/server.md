@@ -147,6 +147,28 @@ upstream:
   # '--upstream.bind-addr :8001' will listen on '0.0.0.0:8001'.
   bind_addr: ":8001"
 
+  auth:
+    # Secret key to authenticate HMAC endpoint connection JWTs.
+    hmac_secret_key: ""
+
+    # Public key to authenticate RSA endpoint connection JWTs.
+    rsa_public_key: ""
+
+    # Public key to authenticate ECDSA endpoint connection JWTs.
+    ecdsa_public_key: ""
+
+    # Audience of endpoint connection JWT token to verify.
+    #
+    # If given the JWT 'aud' claim must match the given audience. Otherwise it
+    # is ignored.
+    audience: ""
+
+    # Issuer of endpoint connection JWT token to verify.
+    #
+    # If given the JWT 'iss' claim must match the given issuer. Otherwise it
+    # is ignored.
+    issuer: ""
+
   tls:
     # Whether to enable TLS on the listener.
     #
@@ -220,28 +242,6 @@ admin:
     # Path to the PEM encoded key file.
     key: ""
 
-auth:
-    # Secret key to authenticate HMAC endpoint connection JWTs.
-    hmac_secret_key: ""
-
-    # Public key to authenticate RSA endpoint connection JWTs.
-    rsa_public_key: ""
-
-    # Public key to authenticate ECDSA endpoint connection JWTs.
-    ecdsa_public_key: ""
-
-    # Audience of endpoint connection JWT token to verify.
-    #
-    # If given the JWT 'aud' claim must match the given audience. Otherwise it
-    # is ignored.
-    audience: ""
-
-    # Issuer of endpoint connection JWT token to verify.
-    #
-    # If given the JWT 'iss' claim must match the given issuer. Otherwise it
-    # is ignored.
-    issuer: ""
-
 log:
     # Minimum log level to output.
     #
@@ -294,9 +294,9 @@ HS512, RSA256, RSA384, RSA512, EC256, EC384, and EC512.
 
 The server has the following configuration options to pass a secret key or
 public key:
-- `auth.hmac_secret_key`: Add HMAC secret key
-- `auth.rsa_public_key`: Add RSA public key
-- `auth.ecdsa_public_key`: Add ECDSA public key
+- `upstream.auth.hmac_secret_key`: Add HMAC secret key
+- `upstream.auth.rsa_public_key`: Add RSA public key
+- `upstream.auth.ecdsa_public_key`: Add ECDSA public key
 
 If no keys secret or public keys are given, Piko will allow unauthenticated
 endpoint connections.
@@ -305,8 +305,8 @@ Piko will verify the `exp` (expiry) and `iat` (issued at) claims if given, and
 drop the connection to the upstream endpoint once its token expires.
 
 By default Piko will not verify the `aud` (audience) or `iss` (issuer) claims,
-though you can enable these checks with `auth.audience` and
-`auth.issuer` respectively.
+though you can enable these checks with `upstream.auth.audience` and
+`upstream.auth.issuer` respectively.
 
 You may also include Piko specific fields in your JWT. Piko supports the
 `piko.endpoints` claim which contains an array of endpoint IDs the token is
@@ -315,7 +315,7 @@ permitted to register. Such as if the JWT includes claim
 endpoint ID `endpoint-123` but not `endpoint-xyz`.
 
 Note Piko does (yet) not authenticate proxy requests as proxy clients will
-typically be deployed to the same network as the Pcio server. Your upstream
+typically be deployed to the same network as the Piko server. Your upstream
 services may then authenticate incoming requests if needed after they've been
 forwarded by Piko.
 

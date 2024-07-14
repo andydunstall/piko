@@ -55,6 +55,13 @@ upstream:
   bind_addr: 10.15.104.25:8001
   advertise_addr: 1.2.3.4:8001
 
+  auth:
+    hmac_secret_key: hmac-secret-key
+    rsa_public_key: rsa-public-key
+    ecdsa_public_key: ecdsa-public-key
+    audience: my-audience
+    issuer: my-issuer
+
   tls:
     enabled: true
     cert: /piko/cert.pem
@@ -74,13 +81,6 @@ gossip:
   advertise_addr: 1.2.3.4:8003
   interval: 100ms
   max_packet_size: 1400
-
-auth:
-  hmac_secret_key: hmac-secret-key
-  rsa_public_key: rsa-public-key
-  ecdsa_public_key: ecdsa-public-key
-  audience: my-audience
-  issuer: my-issuer
 
 usage:
   disable: true
@@ -136,6 +136,13 @@ grace_period: 2m
 		Upstream: UpstreamConfig{
 			BindAddr:      "10.15.104.25:8001",
 			AdvertiseAddr: "1.2.3.4:8001",
+			Auth: auth.Config{
+				HMACSecretKey:  "hmac-secret-key",
+				RSAPublicKey:   "rsa-public-key",
+				ECDSAPublicKey: "ecdsa-public-key",
+				Audience:       "my-audience",
+				Issuer:         "my-issuer",
+			},
 			TLS: TLSConfig{
 				Enabled: true,
 				Cert:    "/piko/cert.pem",
@@ -156,13 +163,6 @@ grace_period: 2m
 			AdvertiseAddr: "1.2.3.4:8003",
 			Interval:      time.Millisecond * 100,
 			MaxPacketSize: 1400,
-		},
-		Auth: auth.Config{
-			HMACSecretKey:  "hmac-secret-key",
-			RSAPublicKey:   "rsa-public-key",
-			ECDSAPublicKey: "ecdsa-public-key",
-			Audience:       "my-audience",
-			Issuer:         "my-issuer",
 		},
 		Usage: UsageConfig{
 			Disable: true,
@@ -200,6 +200,11 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--proxy.tls.key", "/piko/key.pem",
 		"--upstream.bind-addr", "10.15.104.25:8001",
 		"--upstream.advertise-addr", "1.2.3.4:8001",
+		"--upstream.auth.hmac-secret-key", "hmac-secret-key",
+		"--upstream.auth.rsa-public-key", "rsa-public-key",
+		"--upstream.auth.ecdsa-public-key", "ecdsa-public-key",
+		"--upstream.auth.audience", "my-audience",
+		"--upstream.auth.issuer", "my-issuer",
 		"--upstream.tls.enabled",
 		"--upstream.tls.cert", "/piko/cert.pem",
 		"--upstream.tls.key", "/piko/key.pem",
@@ -212,11 +217,6 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--gossip.advertise-addr", "1.2.3.4:8003",
 		"--gossip.interval", "100ms",
 		"--gossip.max-packet-size", "1400",
-		"--auth.hmac-secret-key", "hmac-secret-key",
-		"--auth.rsa-public-key", "rsa-public-key",
-		"--auth.ecdsa-public-key", "ecdsa-public-key",
-		"--auth.audience", "my-audience",
-		"--auth.issuer", "my-issuer",
 		"--usage.disable",
 		"--log.level", "info",
 		"--log.subsystems", "foo,bar",
@@ -262,6 +262,13 @@ func TestConfig_LoadFlags(t *testing.T) {
 		Upstream: UpstreamConfig{
 			BindAddr:      "10.15.104.25:8001",
 			AdvertiseAddr: "1.2.3.4:8001",
+			Auth: auth.Config{
+				HMACSecretKey:  "hmac-secret-key",
+				RSAPublicKey:   "rsa-public-key",
+				ECDSAPublicKey: "ecdsa-public-key",
+				Audience:       "my-audience",
+				Issuer:         "my-issuer",
+			},
 			TLS: TLSConfig{
 				Enabled: true,
 				Cert:    "/piko/cert.pem",
@@ -282,13 +289,6 @@ func TestConfig_LoadFlags(t *testing.T) {
 			AdvertiseAddr: "1.2.3.4:8003",
 			Interval:      time.Millisecond * 100,
 			MaxPacketSize: 1400,
-		},
-		Auth: auth.Config{
-			HMACSecretKey:  "hmac-secret-key",
-			RSAPublicKey:   "rsa-public-key",
-			ECDSAPublicKey: "ecdsa-public-key",
-			Audience:       "my-audience",
-			Issuer:         "my-issuer",
 		},
 		Usage: UsageConfig{
 			Disable: true,

@@ -265,6 +265,8 @@ type UpstreamConfig struct {
 	// AdvertiseAddr is the address to advertise to other nodes.
 	AdvertiseAddr string `json:"advertise_addr" yaml:"advertise_addr"`
 
+	Auth auth.Config `json:"auth" yaml:"auth"`
+
 	TLS TLSConfig `json:"tls" yaml:"tls"`
 }
 
@@ -305,6 +307,8 @@ If the bind address does not include an IP (such as ':8000') the nodes
 private IP will be used, such as a bind address of ':8000' may have an
 advertise address of '10.26.104.14:8000'.`,
 	)
+
+	c.Auth.RegisterFlags(fs, "upstream")
 
 	c.TLS.RegisterFlags(fs, "upstream")
 }
@@ -389,8 +393,6 @@ type Config struct {
 	Admin AdminConfig `json:"admin" yaml:"admin"`
 
 	Gossip gossip.Config `json:"gossip" yaml:"gossip"`
-
-	Auth auth.Config `json:"auth" yaml:"auth"`
 
 	Usage UsageConfig `json:"usage" yaml:"usage"`
 
@@ -480,8 +482,6 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	c.Admin.RegisterFlags(fs)
 
 	c.Gossip.RegisterFlags(fs)
-
-	c.Auth.RegisterFlags(fs)
 
 	c.Usage.RegisterFlags(fs)
 

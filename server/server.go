@@ -76,17 +76,6 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		logger:   logger,
 	}
 
-	// Auth config.
-
-	var verifier auth.Verifier
-	if conf.Auth.AuthEnabled() {
-		verifierConf, err := conf.Auth.Load()
-		if err != nil {
-			return nil, fmt.Errorf("load auth config: %w", err)
-		}
-		verifier = auth.NewJWTVerifier(verifierConf)
-	}
-
 	// Proxy listener.
 
 	proxyLn, err := s.proxyListen()
@@ -139,13 +128,21 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	// Upstream server.
 
+	var upstreamVerifier auth.Verifier
+	if conf.Upstream.Auth.AuthEnabled() {
+		verifierConf, err := conf.Upstream.Auth.Load()
+		if err != nil {
+			return nil, fmt.Errorf("upstream: load auth: %w", err)
+		}
+		upstreamVerifier = auth.NewJWTVerifier(verifierConf)
+	}
 	upstreamTLSConfig, err := conf.Upstream.TLS.Load()
 	if err != nil {
 		return nil, fmt.Errorf("upstream: load tls: %w", err)
 	}
 	s.upstreamServer = upstream.NewServer(
 		upstreams,
-		verifier,
+		upstreamVerifier,
 		upstreamTLSConfig,
 		logger,
 	)

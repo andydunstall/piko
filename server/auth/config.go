@@ -64,31 +64,33 @@ func (c *Config) Load() (JWTVerifierConfig, error) {
 	return verifierConf, nil
 }
 
-func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
+func (c *Config) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	prefix += ".auth."
+
 	fs.StringVar(
 		&c.HMACSecretKey,
-		"auth.hmac-secret-key",
+		prefix+"hmac-secret-key",
 		c.HMACSecretKey,
 		`
 Secret key to authenticate HMAC endpoint connection JWTs.`,
 	)
 	fs.StringVar(
 		&c.RSAPublicKey,
-		"auth.rsa-public-key",
+		prefix+"rsa-public-key",
 		c.RSAPublicKey,
 		`
 Public key to authenticate RSA endpoint connection JWTs.`,
 	)
 	fs.StringVar(
 		&c.ECDSAPublicKey,
-		"auth.ecdsa-public-key",
+		prefix+"ecdsa-public-key",
 		c.ECDSAPublicKey,
 		`
 Public key to authenticate ECDSA endpoint connection JWTs.`,
 	)
 	fs.StringVar(
 		&c.Audience,
-		"auth.audience",
+		prefix+"audience",
 		c.Audience,
 		`
 Audience of endpoint connection JWT  to verify.
@@ -98,7 +100,7 @@ is ignored.`,
 	)
 	fs.StringVar(
 		&c.Issuer,
-		"auth.issuer",
+		prefix+"issuer",
 		c.Issuer,
 		`
 Issuer of endpoint connection JWT  to verify.
