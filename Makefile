@@ -9,22 +9,21 @@ piko:
 	mkdir -p bin
 	go build -ldflags="-X github.com/andydunstall/piko/pkg/build.Version=$(VERSION)" -o bin/piko main.go
 
-.PHONY: unit-test
-unit-test:
+.PHONY: inline-test
+inline-test:
 	go test ./... -v
-
-.PHONY: integration-test
-integration-test:
-	go test ./... -tags integration -v
 
 .PHONY: system-test
 system-test:
 	go test ./tests -tags system -v -count 1
 
-.PHONY: test-all
-test-all:
-	$(MAKE) unit-test
-	$(MAKE) integration-test
+.PHONY: system-test-short
+system-test-short:
+	go test ./tests -tags system -v -count 1 -test.short
+
+.PHONY: test
+test:
+	$(MAKE) inline-test
 	$(MAKE) system-test
 
 .PHONY: fmt
@@ -42,7 +41,7 @@ import:
 
 .PHONY: coverage
 coverage:
-	go test ./... -coverprofile=coverage.out -tags integration
+	go test ./... -coverprofile=coverage.out
 	go tool cover -html=coverage.out
 
 .PHONY: image
