@@ -59,6 +59,18 @@ sub:
 		assert.Equal(t, 5, conf.Sub.Car)
 	})
 
+	t.Run("unknown key", func(t *testing.T) {
+		f, err := os.CreateTemp("", "piko")
+		assert.NoError(t, err)
+
+		_, err = f.WriteString(`unknown: xyz`)
+		assert.NoError(t, err)
+
+		var conf fakeConfig
+
+		assert.Error(t, Load(&conf, f.Name(), false))
+	})
+
 	t.Run("invalid yaml", func(t *testing.T) {
 		f, err := os.CreateTemp("", "piko")
 		assert.NoError(t, err)
