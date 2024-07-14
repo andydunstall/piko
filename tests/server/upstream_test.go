@@ -41,7 +41,7 @@ func TestUpstream_Auth(t *testing.T) {
 	t.Run("valid", func(t *testing.T) {
 		secretKey := generateTestHSKey()
 		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
-			TokenHMACSecretKey: string(secretKey),
+			HMACSecretKey: string(secretKey),
 		}))
 		node.Start()
 		defer node.Stop()
@@ -67,7 +67,7 @@ func TestUpstream_Auth(t *testing.T) {
 	t.Run("invalid", func(t *testing.T) {
 		secretKey := generateTestHSKey()
 		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
-			TokenHMACSecretKey: string(secretKey),
+			HMACSecretKey: string(secretKey),
 		}))
 		node.Start()
 		defer node.Stop()
@@ -90,7 +90,7 @@ func TestUpstream_Auth(t *testing.T) {
 	// Tests an unauthenticated upstream attempting to connect.
 	t.Run("unauthenticated", func(t *testing.T) {
 		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
-			TokenHMACSecretKey: string(generateTestHSKey()),
+			HMACSecretKey: string(generateTestHSKey()),
 		}))
 		node.Start()
 		defer node.Stop()
