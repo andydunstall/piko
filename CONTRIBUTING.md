@@ -9,23 +9,41 @@ Requires Go 1.22.
 
 ## Testing
 
-Piko has three categories of tests:
-* Unit: Test a fairly narrow scope with no IO or blocking
-* Integration: Again testing a fairly narrow scope but may use IO
-* System: Spin up a Piko cluster to test against
+Piko has two types of tests:
 
-Unit tests should cover as much of the code as possible.
+#### Inline
 
-Integration and system tests verify all components are integrated and
-configured properly. They don't aim for complete coverage but test a few key
-operations.
+Inline tests cover a relatively narrow scope and must run quickly (in under a
+millisecond). These usually invoke the code being tested directly with
+function/method calls, though may also use `localhost` to test a server
+interface.
 
-Unit and integration tests live along side the code under `foo_test.go` and
-`foo_integration_test.go` respectively. System tests live in `tests/`.
-Integration and system tests use Go build tags that must be enabled.
+The tests live alongside the code being tested, such as to test `foo.go`
+you may have `foo_test.go`.
 
-Run unit, integration and system tests with `make unit-test`,
-`make integration-test` and `make system-test` respectively.
+Piko aims for as much code coverage as possible with inline tests.
+
+Run with `go test ./...` or `make inline-test`.
+
+#### System
+
+System tests spin up a Piko cluster to test against.
+
+These tests are used to verify all components and integrated and configured
+properly, and cover more complex scenarios like chaos testing and load testing
+of Piko.
+
+The system tests are split into "short" and "long" tests (using the
+`-test.short` flag).
+
+Short tests are typically functional tests that run quickly, whereas long tests
+are often load tests or more complex scenarios that take longer to run.
+
+Most system tests spin up a Piko cluster within the same process as the test
+runner, though others run Piko as an external process.
+
+System tests are kept in `tests/` and can be run with `make system-test` and
+`make system-test-short`.
 
 ## Style
 
