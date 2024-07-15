@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"slices"
 	"time"
 )
 
@@ -20,6 +21,17 @@ type Token struct {
 	// to access (either connect to or listen on). If empty then all endpoints
 	// are allowed.
 	Endpoints []string
+}
+
+// EndpointPermitted returns whether the token it permitted to access the
+// endpoint with the given ID.
+//
+// If the token doesn't include any endpoints, it can access all endpoints.
+func (t *Token) EndpointPermitted(endpointID string) bool {
+	if len(t.Endpoints) == 0 {
+		return true
+	}
+	return slices.Contains(t.Endpoints, endpointID)
 }
 
 // Verifier verifies client tokens.

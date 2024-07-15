@@ -220,6 +220,45 @@ func TestServer_Authentication(t *testing.T) {
 		require.ErrorContains(t, err, "401: endpoint not permitted")
 	})
 
+	// Tests authenticating with a token that doesn't contain any endpoints
+	// (meaning the client can access ALL endpoints).
+	t.Run("token missing endpoints", func(t *testing.T) {
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		manager := newFakeManager()
+
+		verifier := &fakeVerifier{
+			handler: func(token string) (*auth.Token, error) {
+				assert.Equal(t, "123", token)
+				return &auth.Token{
+					Expiry: time.Now().Add(time.Hour),
+				}, nil
+			},
+		}
+
+		s := NewServer(manager, verifier, nil, log.NewNopLogger())
+		go func() {
+			require.NoError(t, s.Serve(ln))
+		}()
+		defer s.Shutdown(context.TODO())
+
+		url := fmt.Sprintf(
+			"ws://%s/piko/v1/upstream/my-endpoint",
+			ln.Addr().String(),
+		)
+		conn, err := websocket.Dial(context.TODO(), url, websocket.WithToken("123"))
+		require.NoError(t, err)
+
+		addedUpstream := <-manager.addConnCh
+		assert.Equal(t, "my-endpoint", addedUpstream.EndpointID())
+
+		conn.Close()
+
+		removedUpstream := <-manager.removeConnCh
+		assert.Equal(t, "my-endpoint", removedUpstream.EndpointID())
+	})
+
 	t.Run("unauthenticated", func(t *testing.T) {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	"slices"
 
 	"github.com/andydunstall/yamux"
 	"github.com/gin-gonic/gin"
@@ -105,8 +104,12 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 
 	token, ok := c.Get(middleware.TokenContextKey)
 	if ok {
+		// If the token contains a set of permitted endpoints, verify the
+		// target endpoint matches one of those endpoints. Otherwise if the
+		// token doesn't contain any endpoints the client can access any
+		// endpoint.
 		endpointToken := token.(*auth.Token)
-		if !slices.Contains(endpointToken.Endpoints, endpointID) {
+		if !endpointToken.EndpointPermitted(endpointID) {
 			s.logger.Warn(
 				"endpoint not permitted",
 				zap.Strings("token-endpoints", endpointToken.Endpoints),
