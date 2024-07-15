@@ -16,12 +16,15 @@ import (
 	"net/url"
 	"sync"
 	"testing"
+	"time"
 
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/andydunstall/piko/client"
 	"github.com/andydunstall/piko/pikotest/cluster"
+	"github.com/andydunstall/piko/pkg/auth"
 )
 
 type errorMessage struct {
@@ -291,6 +294,99 @@ func TestProxy_TCP(t *testing.T) {
 		// to the upstream.
 		conn.Close()
 		wg.Wait()
+	})
+}
+
+// Tests proxy authentication.
+func TestProxy_Auth(t *testing.T) {
+	endpointClaims := auth.JWTClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+		Piko: auth.PikoClaims{
+			Endpoints: []string{"my-endpoint"},
+		},
+	}
+
+	// Tests a client authenticating with a valid token.
+	t.Run("valid", func(t *testing.T) {
+		secretKey := generateTestHSKey()
+		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
+			HMACSecretKey: string(secretKey),
+		}))
+		node.Start()
+		defer node.Stop()
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS512, endpointClaims)
+		tokenString, err := token.SignedString([]byte(secretKey))
+		assert.NoError(t, err)
+
+		req, _ := http.NewRequest(
+			http.MethodGet,
+			"http://"+node.ProxyAddr(),
+			nil,
+		)
+		req.Header.Add("x-piko-endpoint", "my-endpoint")
+		req.Header.Add("Authorization", "Bearer "+tokenString)
+		httpClient := &http.Client{}
+		resp, err := httpClient.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		// We still haven't added any upstreams so expecte to get a 502 rather
+		// than a 200.
+		assert.Equal(t, http.StatusBadGateway, resp.StatusCode)
+	})
+
+	// Tests an client authenticating with an invalid token (signed by
+	// the wrong key).
+	t.Run("invalid", func(t *testing.T) {
+		secretKey := generateTestHSKey()
+		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
+			HMACSecretKey: string(secretKey),
+		}))
+		node.Start()
+		defer node.Stop()
+
+		token := jwt.NewWithClaims(jwt.SigningMethodHS512, endpointClaims)
+		tokenString, err := token.SignedString([]byte("invalid-key"))
+		assert.NoError(t, err)
+
+		req, _ := http.NewRequest(
+			http.MethodGet,
+			"http://"+node.ProxyAddr(),
+			nil,
+		)
+		req.Header.Add("x-piko-endpoint", "my-endpoint")
+		req.Header.Add("Authorization", "Bearer "+tokenString)
+		httpClient := &http.Client{}
+		resp, err := httpClient.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	// Tests an unauthenticated upstream attempting to connect.
+	t.Run("unauthenticated", func(t *testing.T) {
+		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
+			HMACSecretKey: string(generateTestHSKey()),
+		}))
+		node.Start()
+		defer node.Stop()
+
+		req, _ := http.NewRequest(
+			http.MethodGet,
+			"http://"+node.ProxyAddr(),
+			nil,
+		)
+		req.Header.Add("x-piko-endpoint", "my-endpoint")
+		httpClient := &http.Client{}
+		resp, err := httpClient.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 }
 

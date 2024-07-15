@@ -13,6 +13,7 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/middleware"
 	"github.com/andydunstall/piko/server/config"
@@ -32,6 +33,7 @@ func NewServer(
 	upstreams upstream.Manager,
 	proxyConfig config.ProxyConfig,
 	registry *prometheus.Registry,
+	verifier auth.Verifier,
 	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {
@@ -58,6 +60,11 @@ func NewServer(
 
 	// Recover from panics.
 	router.Use(gin.CustomRecoveryWithWriter(nil, s.panicRoute))
+
+	if verifier != nil {
+		authMiddleware := middleware.NewAuth(verifier, logger)
+		router.Use(authMiddleware.Verify)
+	}
 
 	router.Use(middleware.NewLogger(proxyConfig.AccessLog, logger))
 
@@ -108,11 +115,66 @@ func (s *Server) registerRoutes(router *gin.Engine) {
 }
 
 func (s *Server) proxyHTTPRoute(c *gin.Context) {
-	s.httpProxy.ServeHTTP(c.Writer, c.Request)
+	endpointID := EndpointIDFromRequest(c.Request)
+	if endpointID == "" {
+		s.logger.Warn("request missing endpoint id")
+		c.JSON(
+			http.StatusBadRequest,
+			gin.H{"error": "missing endpoint id"},
+		)
+		return
+	}
+
+	// Verify the token is permitted to access the target endpoint.
+	token, ok := c.Get(middleware.TokenContextKey)
+	if ok {
+		// If the token contains a set of permitted endpoints, verify the
+		// target endpoint matches one of those endpoints. Otherwise if the
+		// token doesn't contain any endpoints the client can access any
+		// endpoint.
+		endpointToken := token.(*auth.Token)
+		if !endpointToken.EndpointPermitted(endpointID) {
+			s.logger.Warn(
+				"endpoint not permitted",
+				zap.Strings("token-endpoints", endpointToken.Endpoints),
+				zap.String("endpoint-id", endpointID),
+			)
+			c.JSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "endpoint not permitted"},
+			)
+			return
+		}
+	}
+
+	s.httpProxy.ServeHTTP(c.Writer, c.Request, endpointID)
 }
 
 func (s *Server) proxyTCPRoute(c *gin.Context) {
 	endpointID := c.Param("endpointID")
+
+	// Verify the token is permitted to access the target endpoint.
+	token, ok := c.Get(middleware.TokenContextKey)
+	if ok {
+		// If the token contains a set of permitted endpoints, verify the
+		// target endpoint matches one of those endpoints. Otherwise if the
+		// token doesn't contain any endpoints the client can access any
+		// endpoint.
+		endpointToken := token.(*auth.Token)
+		if !endpointToken.EndpointPermitted(endpointID) {
+			s.logger.Warn(
+				"endpoint not permitted",
+				zap.Strings("token-endpoints", endpointToken.Endpoints),
+				zap.String("endpoint-id", endpointID),
+			)
+			c.JSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "endpoint not permitted"},
+			)
+			return
+		}
+	}
+
 	s.tcpProxy.ServeHTTP(c.Writer, c.Request, endpointID)
 }
 

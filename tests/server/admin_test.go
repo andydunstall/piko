@@ -95,7 +95,7 @@ func TestAdmin_Auth(t *testing.T) {
 
 	// Tests an upstream authenticating with an invalid token (signed by
 	// the wrong key).
-	t.Run("valid", func(t *testing.T) {
+	t.Run("invalid", func(t *testing.T) {
 		secretKey := generateTestHSKey()
 		node := cluster.NewNode(cluster.WithAuthConfig(auth.Config{
 			HMACSecretKey: string(secretKey),

@@ -128,6 +128,28 @@ proxy:
     # keys and values, including the request line.
     max_header_bytes: 1048576
 
+  auth:
+    # Secret key to authenticate HMAC endpoint connection JWTs.
+    hmac_secret_key: ""
+
+    # Public key to authenticate RSA endpoint connection JWTs.
+    rsa_public_key: ""
+
+    # Public key to authenticate ECDSA endpoint connection JWTs.
+    ecdsa_public_key: ""
+
+    # Audience of endpoint connection JWT token to verify.
+    #
+    # If given the JWT 'aud' claim must match the given audience. Otherwise it
+    # is ignored.
+    audience: ""
+
+    # Issuer of endpoint connection JWT token to verify.
+    #
+    # If given the JWT 'iss' claim must match the given issuer. Otherwise it
+    # is ignored.
+    issuer: ""
+
   tls:
     # Whether to enable TLS on the listener.
     #
@@ -304,42 +326,39 @@ details on hosting Piko on Kubernetes.
 
 ## Authentication
 
-To authenticate upstream endpoint connections, Piko can use a
+To authenticate Piko endpoints, Piko can use a
 [JSON Web Token (JWT)](https://jwt.io/) provided by your application.
 
-You configure Piko with the secret key or public key to verify the JWT, then
-configure the upstream endpoint with the JWT. Piko will then verify endpoints
-connection token.
+Each port (proxy, upstream and admin) has separate authentication
+configuration. You configure the port with the secret key or public key to
+verify the JWT.
 
 Piko supports HMAC, RSA, and ECDSA JWT algorithms, specifically HS256, HS384,
 HS512, RSA256, RSA384, RSA512, EC256, EC384, and EC512.
 
 The server has the following configuration options to pass a secret key or
 public key:
-- `upstream.auth.hmac_secret_key`: Add HMAC secret key
-- `upstream.auth.rsa_public_key`: Add RSA public key
-- `upstream.auth.ecdsa_public_key`: Add ECDSA public key
+- `auth.hmac_secret_key`: Add HMAC secret key
+- `auth.rsa_public_key`: Add RSA public key
+- `auth.ecdsa_public_key`: Add ECDSA public key
+
+Such as to configure the 'upstream' port, you could configure
+`upstream.auth.rsa_public_key`.
 
 If no keys secret or public keys are given, Piko will allow unauthenticated
 endpoint connections.
 
-Piko will verify the `exp` (expiry) and `iat` (issued at) claims if given, and
-drop the connection to the upstream endpoint once its token expires.
+Piko will verify the `exp` (expiry) and `iat` (issued at) claims if given.
 
 By default Piko will not verify the `aud` (audience) or `iss` (issuer) claims,
-though you can enable these checks with `upstream.auth.audience` and
-`upstream.auth.issuer` respectively.
+though you can enable these checks with `auth.audience` and
+`auth.issuer` respectively.
 
 You may also include Piko specific fields in your JWT. Piko supports the
 `piko.endpoints` claim which contains an array of endpoint IDs the token is
-permitted to register. Such as if the JWT includes claim
-`"piko": {"endpoints": ["endpoint-123"]}`, it will be permitted to register
+permitted to access. Such as if the JWT includes claim
+`"piko": {"endpoints": ["endpoint-123"]}`, it will be permitted to access
 endpoint ID `endpoint-123` but not `endpoint-xyz`.
-
-Note Piko does (yet) not authenticate proxy requests as proxy clients will
-typically be deployed to the same network as the Piko server. Your upstream
-services may then authenticate incoming requests if needed after they've been
-forwarded by Piko.
 
 ## Observability
 
