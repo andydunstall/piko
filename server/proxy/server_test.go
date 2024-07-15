@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/andydunstall/piko/pkg/auth"
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/websocket"
 	"github.com/andydunstall/piko/server/config"
@@ -78,6 +79,16 @@ func echoListener(ln net.Listener) {
 	}
 }
 
+type fakeVerifier struct {
+	handler func(token string) (*auth.Token, error)
+}
+
+func (v *fakeVerifier) Verify(token string) (*auth.Token, error) {
+	return v.handler(token)
+}
+
+var _ auth.Verifier = &fakeVerifier{}
+
 // TestServer_HTTP tests proxying HTTP traffic to upstreams.
 func TestServer_HTTP(t *testing.T) {
 	// Tests proxying a request to the upstream.
@@ -113,6 +124,7 @@ func TestServer_HTTP(t *testing.T) {
 				},
 			},
 			config.Default().Proxy,
+			nil,
 			nil,
 			nil,
 			log.NewNopLogger(),
@@ -169,6 +181,7 @@ func TestServer_HTTP(t *testing.T) {
 			conf,
 			nil,
 			nil,
+			nil,
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -211,6 +224,7 @@ func TestServer_HTTP(t *testing.T) {
 			config.Default().Proxy,
 			nil,
 			nil,
+			nil,
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -251,6 +265,7 @@ func TestServer_HTTP(t *testing.T) {
 			config.Default().Proxy,
 			nil,
 			nil,
+			nil,
 			log.NewNopLogger(),
 		)
 		go func() {
@@ -283,6 +298,7 @@ func TestServer_HTTP(t *testing.T) {
 		s := NewServer(
 			nil,
 			config.Default().Proxy,
+			nil,
 			nil,
 			nil,
 			log.NewNopLogger(),
@@ -330,6 +346,7 @@ func TestServer_TCP(t *testing.T) {
 			config.Default().Proxy,
 			nil,
 			nil,
+			nil,
 			log.NewNopLogger(),
 		)
 
@@ -375,6 +392,7 @@ func TestServer_TCP(t *testing.T) {
 			config.Default().Proxy,
 			nil,
 			nil,
+			nil,
 			log.NewNopLogger(),
 		)
 
@@ -390,6 +408,228 @@ func TestServer_TCP(t *testing.T) {
 			"ws://"+ln.Addr().String()+"/_piko/v1/tcp/my-endpoint",
 		)
 		assert.ErrorContains(t, err, "502: upstream unreachable")
+	})
+}
+
+func TestServer_Authentication(t *testing.T) {
+	t.Run("ok", func(t *testing.T) {
+		// Add an upstream HTTP server.
+		upstreamServer := httptest.NewServer(http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/foo/bar", r.URL.Path)
+				assert.Equal(t, "a=b", r.URL.RawQuery)
+
+				buf := new(strings.Builder)
+				// nolint
+				io.Copy(buf, r.Body)
+				assert.Equal(t, "foo", buf.String())
+
+				// nolint
+				w.Write([]byte("bar"))
+			},
+		))
+		defer upstreamServer.Close()
+
+		verifier := &fakeVerifier{
+			handler: func(token string) (*auth.Token, error) {
+				assert.Equal(t, "123", token)
+				return &auth.Token{
+					Expiry:    time.Now().Add(time.Hour),
+					Endpoints: []string{"my-endpoint"},
+				}, nil
+			},
+		}
+
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		s := NewServer(
+			&fakeManager{
+				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
+					assert.Equal(t, "my-endpoint", endpointID)
+					assert.True(t, allowForward)
+					return &tcpUpstream{
+						addr: upstreamServer.Listener.Addr().String(),
+					}, true
+				},
+			},
+			config.Default().Proxy,
+			nil,
+			verifier,
+			nil,
+			log.NewNopLogger(),
+		)
+		go func() {
+			require.NoError(t, s.Serve(ln))
+		}()
+		defer s.Shutdown(context.TODO())
+
+		b := bytes.NewReader([]byte("foo"))
+		url := fmt.Sprintf("http://%s/foo/bar?a=b", ln.Addr().String())
+		req, _ := http.NewRequest(http.MethodGet, url, b)
+		req.Header.Add("x-piko-endpoint", "my-endpoint")
+		req.Header.Add("Authorization", "Bearer 123")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		buf := new(strings.Builder)
+		// nolint
+		io.Copy(buf, resp.Body)
+		assert.Equal(t, "bar", buf.String())
+	})
+
+	t.Run("endpoint not permitted", func(t *testing.T) {
+		verifier := &fakeVerifier{
+			handler: func(token string) (*auth.Token, error) {
+				assert.Equal(t, "123", token)
+				return &auth.Token{
+					Expiry:    time.Now().Add(time.Hour),
+					Endpoints: []string{"my-endpoint"},
+				}, nil
+			},
+		}
+
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		s := NewServer(
+			nil,
+			config.Default().Proxy,
+			nil,
+			verifier,
+			nil,
+			log.NewNopLogger(),
+		)
+		go func() {
+			require.NoError(t, s.Serve(ln))
+		}()
+		defer s.Shutdown(context.TODO())
+
+		url := fmt.Sprintf("http://%s/foo", ln.Addr().String())
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		// Add an unauthorized endpoint ID.
+		req.Header.Add("x-piko-endpoint", "unauthorized-endpoint")
+		req.Header.Add("Authorization", "Bearer 123")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
+	})
+
+	// Tests authenticating with a token that doesn't contain any endpoints
+	// (meaning the client can access ALL endpoints).
+	t.Run("token missing endpoints", func(t *testing.T) {
+		// Add an upstream HTTP server.
+		upstreamServer := httptest.NewServer(http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				assert.Equal(t, "/foo/bar", r.URL.Path)
+				assert.Equal(t, "a=b", r.URL.RawQuery)
+
+				buf := new(strings.Builder)
+				// nolint
+				io.Copy(buf, r.Body)
+				assert.Equal(t, "foo", buf.String())
+
+				// nolint
+				w.Write([]byte("bar"))
+			},
+		))
+		defer upstreamServer.Close()
+
+		verifier := &fakeVerifier{
+			handler: func(token string) (*auth.Token, error) {
+				assert.Equal(t, "123", token)
+				return &auth.Token{
+					Expiry: time.Now().Add(time.Hour),
+				}, nil
+			},
+		}
+
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		s := NewServer(
+			&fakeManager{
+				handler: func(endpointID string, allowForward bool) (upstream.Upstream, bool) {
+					assert.Equal(t, "my-endpoint", endpointID)
+					assert.True(t, allowForward)
+					return &tcpUpstream{
+						addr: upstreamServer.Listener.Addr().String(),
+					}, true
+				},
+			},
+			config.Default().Proxy,
+			nil,
+			verifier,
+			nil,
+			log.NewNopLogger(),
+		)
+		go func() {
+			require.NoError(t, s.Serve(ln))
+		}()
+		defer s.Shutdown(context.TODO())
+
+		b := bytes.NewReader([]byte("foo"))
+		url := fmt.Sprintf("http://%s/foo/bar?a=b", ln.Addr().String())
+		req, _ := http.NewRequest(http.MethodGet, url, b)
+		req.Header.Add("x-piko-endpoint", "my-endpoint")
+		req.Header.Add("Authorization", "Bearer 123")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		buf := new(strings.Builder)
+		// nolint
+		io.Copy(buf, resp.Body)
+		assert.Equal(t, "bar", buf.String())
+	})
+
+	t.Run("unauthenticated", func(t *testing.T) {
+		verifier := &fakeVerifier{
+			handler: func(token string) (*auth.Token, error) {
+				assert.Equal(t, "123", token)
+				return nil, auth.ErrInvalidToken
+			},
+		}
+
+		ln, err := net.Listen("tcp", "127.0.0.1:0")
+		require.NoError(t, err)
+
+		s := NewServer(
+			nil,
+			config.Default().Proxy,
+			nil,
+			verifier,
+			nil,
+			log.NewNopLogger(),
+		)
+		go func() {
+			require.NoError(t, s.Serve(ln))
+		}()
+		defer s.Shutdown(context.TODO())
+
+		url := fmt.Sprintf("http://%s/foo/bar", ln.Addr().String())
+		req, _ := http.NewRequest(http.MethodGet, url, nil)
+		req.Header.Add("x-piko-endpoint", "my-endpoint")
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		assert.NoError(t, err)
+		defer resp.Body.Close()
+
+		assert.Equal(t, http.StatusUnauthorized, resp.StatusCode)
 	})
 }
 

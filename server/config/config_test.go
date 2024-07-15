@@ -46,6 +46,13 @@ proxy:
     idle_timeout: 2s
     max_header_bytes: 2097152
 
+  auth:
+    hmac_secret_key: hmac-secret-key
+    rsa_public_key: rsa-public-key
+    ecdsa_public_key: ecdsa-public-key
+    audience: my-audience
+    issuer: my-issuer
+
   tls:
     enabled: true
     cert: /piko/cert.pem
@@ -134,6 +141,13 @@ grace_period: 2m
 				IdleTimeout:       time.Second * 2,
 				MaxHeaderBytes:    2097152,
 			},
+			Auth: auth.Config{
+				HMACSecretKey:  "hmac-secret-key",
+				RSAPublicKey:   "rsa-public-key",
+				ECDSAPublicKey: "ecdsa-public-key",
+				Audience:       "my-audience",
+				Issuer:         "my-issuer",
+			},
 			TLS: TLSConfig{
 				Enabled: true,
 				Cert:    "/piko/cert.pem",
@@ -209,6 +223,11 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--proxy.http.write-timeout", "5s",
 		"--proxy.http.idle-timeout", "2s",
 		"--proxy.http.max-header-bytes", "2097152",
+		"--proxy.auth.hmac-secret-key", "hmac-secret-key",
+		"--proxy.auth.rsa-public-key", "rsa-public-key",
+		"--proxy.auth.ecdsa-public-key", "ecdsa-public-key",
+		"--proxy.auth.audience", "my-audience",
+		"--proxy.auth.issuer", "my-issuer",
 		"--proxy.tls.enabled",
 		"--proxy.tls.cert", "/piko/cert.pem",
 		"--proxy.tls.key", "/piko/key.pem",
@@ -271,6 +290,13 @@ func TestConfig_LoadFlags(t *testing.T) {
 				WriteTimeout:      time.Second * 5,
 				IdleTimeout:       time.Second * 2,
 				MaxHeaderBytes:    2097152,
+			},
+			Auth: auth.Config{
+				HMACSecretKey:  "hmac-secret-key",
+				RSAPublicKey:   "rsa-public-key",
+				ECDSAPublicKey: "ecdsa-public-key",
+				Audience:       "my-audience",
+				Issuer:         "my-issuer",
 			},
 			TLS: TLSConfig{
 				Enabled: true,

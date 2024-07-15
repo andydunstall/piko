@@ -114,6 +114,14 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	// Proxy server.
 
+	var proxyVerifier auth.Verifier
+	if conf.Proxy.Auth.Enabled() {
+		verifierConf, err := conf.Proxy.Auth.Load()
+		if err != nil {
+			return nil, fmt.Errorf("proxy: load auth: %w", err)
+		}
+		proxyVerifier = auth.NewJWTVerifier(verifierConf)
+	}
 	proxyTLSConfig, err := conf.Proxy.TLS.Load()
 	if err != nil {
 		return nil, fmt.Errorf("proxy tls: %w", err)
@@ -122,6 +130,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		upstreams,
 		conf.Proxy,
 		registry,
+		proxyVerifier,
 		proxyTLSConfig,
 		logger,
 	)

@@ -64,15 +64,7 @@ func NewHTTPProxy(
 	return rp
 }
 
-func (p *HTTPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	endpointID := EndpointIDFromRequest(r)
-	if endpointID == "" {
-		p.logger.Warn("request missing endpoint id")
-
-		_ = errorResponse(w, http.StatusBadRequest, "missing endpoint id")
-		return
-	}
-
+func (p *HTTPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request, endpointID string) {
 	// Whether the request was forwarded from another Piko node.
 	forwarded := r.Header.Get("x-piko-forward") == "true"
 

@@ -190,6 +190,8 @@ type ProxyConfig struct {
 	// requests.
 	AccessLog bool `json:"access_log" yaml:"access_log"`
 
+	Auth auth.Config `json:"auth" yaml:"auth"`
+
 	HTTP HTTPConfig `json:"http" yaml:"http"`
 
 	TLS TLSConfig `json:"tls" yaml:"tls"`
@@ -254,6 +256,8 @@ Whether to log all incoming connections and requests.`,
 	)
 
 	c.HTTP.RegisterFlags(fs, "proxy")
+
+	c.Auth.RegisterFlags(fs, "proxy")
 
 	c.TLS.RegisterFlags(fs, "proxy")
 }
