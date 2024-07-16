@@ -103,6 +103,9 @@ type ConnectConfig struct {
 	// URL is the Piko server URL to connect to.
 	URL string
 
+	// Token is a token to authenticate with the Piko server.
+	Token string
+
 	// Timeout is the timeout attempting to connect to the Piko server.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 
@@ -130,6 +133,14 @@ func (c *ConnectConfig) RegisterFlags(fs *pflag.FlagSet) {
 		`
 The Piko server URL to connect to. Note this must be configured to use the
 Piko server 'proxy' port.`,
+	)
+
+	fs.StringVar(
+		&c.Token,
+		"connect.token",
+		c.Token,
+		`
+Token is a token to authenticate with the Piko server.`,
 	)
 
 	fs.DurationVar(

@@ -90,6 +90,7 @@ func runForward(conf *config.Config, logger log.Logger) error {
 	}
 	dialer := &client.Dialer{
 		URL:       connectURL,
+		Token:     conf.Connect.Token,
 		TLSConfig: connectTLSConfig,
 	}
 
