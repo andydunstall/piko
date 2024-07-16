@@ -22,6 +22,12 @@ type Dialer struct {
 	// 'http://localhost:8000'.
 	URL *url.URL
 
+	// Token configures the API key token to authenticate the listener with the
+	// Piko server.
+	//
+	// Defaults to no authentication.
+	Token string
+
 	// TLSConfig specifies the TLS configuration to use with the Piko server.
 	//
 	// If nil, the default configuration is used.
@@ -33,7 +39,11 @@ type Dialer struct {
 func (d *Dialer) Dial(ctx context.Context, endpointID string) (net.Conn, error) {
 	// Dialing is simply opening a WebSocket connection to the target endpoint,
 	// then wrapping the WebSocket in a net.Conn.
-	return websocket.Dial(ctx, d.dialURL(endpointID))
+	return websocket.Dial(
+		ctx,
+		d.dialURL(endpointID),
+		websocket.WithToken(d.Token),
+	)
 }
 
 func (d *Dialer) dialURL(endpointID string) string {
