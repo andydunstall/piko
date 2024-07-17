@@ -31,13 +31,13 @@ func NewNode(opts ...Option) *Node {
 	}
 
 	conf := config.Default()
-	conf.Cluster.NodeID = cluster.GenerateNodeID()
-	conf.Cluster.Join = options.join
 	conf.Proxy.BindAddr = "127.0.0.1:0"
 	conf.Upstream.BindAddr = "127.0.0.1:0"
 	conf.Admin.BindAddr = "127.0.0.1:0"
-	conf.Gossip.BindAddr = "127.0.0.1:0"
-	conf.Gossip.Interval = time.Millisecond * 10
+	conf.Cluster.NodeID = cluster.GenerateNodeID()
+	conf.Cluster.Join = options.join
+	conf.Cluster.Gossip.BindAddr = "127.0.0.1:0"
+	conf.Cluster.Gossip.Interval = time.Millisecond * 10
 	conf.Proxy.Auth = options.authConfig
 	conf.Upstream.Auth = options.authConfig
 	conf.Admin.Auth = options.authConfig
@@ -123,7 +123,7 @@ func (n *Node) AdminAddr() string {
 }
 
 func (n *Node) GossipAddr() string {
-	return n.server.Config().Gossip.AdvertiseAddr
+	return n.server.Config().Cluster.Gossip.AdvertiseAddr
 }
 
 func (n *Node) ClusterState() *cluster.State {
