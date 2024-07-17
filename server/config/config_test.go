@@ -24,15 +24,6 @@ func TestConfig_Default(t *testing.T) {
 // Tests loading the server configuration from YAML.
 func TestConfig_LoadYAML(t *testing.T) {
 	yaml := `
-cluster:
-  node_id: "my-node"
-  join:
-    - 10.26.104.12:8003
-    - 10.26.104.73:8003
-    - 10.26.104.28:8003
-  join_timeout: 2m
-  abort_if_join_fails: true
-
 proxy:
   bind_addr: 10.15.104.25:8000
   advertise_addr: 1.2.3.4:8000
@@ -90,11 +81,20 @@ admin:
     cert: /piko/cert.pem
     key: /piko/key.pem
 
-gossip:
-  bind_addr: 10.15.104.25:8003
-  advertise_addr: 1.2.3.4:8003
-  interval: 100ms
-  max_packet_size: 1400
+cluster:
+  node_id: "my-node"
+  join:
+    - 10.26.104.12:8003
+    - 10.26.104.73:8003
+    - 10.26.104.28:8003
+  join_timeout: 2m
+  abort_if_join_fails: true
+
+  gossip:
+    bind_addr: 10.15.104.25:8003
+    advertise_addr: 1.2.3.4:8003
+    interval: 100ms
+    max_packet_size: 1400
 
 usage:
   disable: true
@@ -119,16 +119,6 @@ grace_period: 2m
 	assert.NoError(t, config.Load(&loadedConf, f.Name(), false))
 
 	expectedConf := Config{
-		Cluster: ClusterConfig{
-			NodeID: "my-node",
-			Join: []string{
-				"10.26.104.12:8003",
-				"10.26.104.73:8003",
-				"10.26.104.28:8003",
-			},
-			JoinTimeout:      2 * time.Minute,
-			AbortIfJoinFails: true,
-		},
 		Proxy: ProxyConfig{
 			BindAddr:      "10.15.104.25:8000",
 			AdvertiseAddr: "1.2.3.4:8000",
@@ -186,11 +176,21 @@ grace_period: 2m
 				Key:     "/piko/key.pem",
 			},
 		},
-		Gossip: gossip.Config{
-			BindAddr:      "10.15.104.25:8003",
-			AdvertiseAddr: "1.2.3.4:8003",
-			Interval:      time.Millisecond * 100,
-			MaxPacketSize: 1400,
+		Cluster: ClusterConfig{
+			NodeID: "my-node",
+			Join: []string{
+				"10.26.104.12:8003",
+				"10.26.104.73:8003",
+				"10.26.104.28:8003",
+			},
+			JoinTimeout:      2 * time.Minute,
+			AbortIfJoinFails: true,
+			Gossip: gossip.Config{
+				BindAddr:      "10.15.104.25:8003",
+				AdvertiseAddr: "1.2.3.4:8003",
+				Interval:      time.Millisecond * 100,
+				MaxPacketSize: 1400,
+			},
 		},
 		Usage: UsageConfig{
 			Disable: true,
@@ -210,10 +210,6 @@ grace_period: 2m
 // Tests loading the server configuration from flags.
 func TestConfig_LoadFlags(t *testing.T) {
 	args := []string{
-		"--cluster.node-id", "my-node",
-		"--cluster.join", "10.26.104.12:8003,10.26.104.73:8003,10.26.104.28:8003",
-		"--cluster.join-timeout", "2m",
-		"--cluster.abort-if-join-fails",
 		"--proxy.bind-addr", "10.15.104.25:8000",
 		"--proxy.advertise-addr", "1.2.3.4:8000",
 		"--proxy.timeout", "20s",
@@ -251,10 +247,14 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--admin.tls.enabled",
 		"--admin.tls.cert", "/piko/cert.pem",
 		"--admin.tls.key", "/piko/key.pem",
-		"--gossip.bind-addr", "10.15.104.25:8003",
-		"--gossip.advertise-addr", "1.2.3.4:8003",
-		"--gossip.interval", "100ms",
-		"--gossip.max-packet-size", "1400",
+		"--cluster.node-id", "my-node",
+		"--cluster.join", "10.26.104.12:8003,10.26.104.73:8003,10.26.104.28:8003",
+		"--cluster.join-timeout", "2m",
+		"--cluster.abort-if-join-fails",
+		"--cluster.gossip.bind-addr", "10.15.104.25:8003",
+		"--cluster.gossip.advertise-addr", "1.2.3.4:8003",
+		"--cluster.gossip.interval", "100ms",
+		"--cluster.gossip.max-packet-size", "1400",
 		"--usage.disable",
 		"--log.level", "info",
 		"--log.subsystems", "foo,bar",
@@ -269,16 +269,6 @@ func TestConfig_LoadFlags(t *testing.T) {
 	assert.NoError(t, fs.Parse(args))
 
 	expectedConf := Config{
-		Cluster: ClusterConfig{
-			NodeID: "my-node",
-			Join: []string{
-				"10.26.104.12:8003",
-				"10.26.104.73:8003",
-				"10.26.104.28:8003",
-			},
-			JoinTimeout:      2 * time.Minute,
-			AbortIfJoinFails: true,
-		},
 		Proxy: ProxyConfig{
 			BindAddr:      "10.15.104.25:8000",
 			AdvertiseAddr: "1.2.3.4:8000",
@@ -336,11 +326,21 @@ func TestConfig_LoadFlags(t *testing.T) {
 				Key:     "/piko/key.pem",
 			},
 		},
-		Gossip: gossip.Config{
-			BindAddr:      "10.15.104.25:8003",
-			AdvertiseAddr: "1.2.3.4:8003",
-			Interval:      time.Millisecond * 100,
-			MaxPacketSize: 1400,
+		Cluster: ClusterConfig{
+			NodeID: "my-node",
+			Join: []string{
+				"10.26.104.12:8003",
+				"10.26.104.73:8003",
+				"10.26.104.28:8003",
+			},
+			JoinTimeout:      2 * time.Minute,
+			AbortIfJoinFails: true,
+			Gossip: gossip.Config{
+				BindAddr:      "10.15.104.25:8003",
+				AdvertiseAddr: "1.2.3.4:8003",
+				Interval:      time.Millisecond * 100,
+				MaxPacketSize: 1400,
+			},
 		},
 		Usage: UsageConfig{
 			Disable: true,

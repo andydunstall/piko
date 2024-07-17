@@ -338,9 +338,9 @@ func (s *Server) Wait(ctx context.Context) bool {
 }
 
 func (s *Server) startGossip() error {
-	gossipStreamLn, err := net.Listen("tcp", s.conf.Gossip.BindAddr)
+	gossipStreamLn, err := net.Listen("tcp", s.conf.Cluster.Gossip.BindAddr)
 	if err != nil {
-		return fmt.Errorf("listen: %s: %w", s.conf.Gossip.BindAddr, err)
+		return fmt.Errorf("listen: %s: %w", s.conf.Cluster.Gossip.BindAddr, err)
 	}
 
 	gossipPacketLn, err := net.ListenUDP("udp", &net.UDPAddr{
@@ -348,10 +348,10 @@ func (s *Server) startGossip() error {
 		Port: gossipStreamLn.Addr().(*net.TCPAddr).Port,
 	})
 	if err != nil {
-		return fmt.Errorf("listen: %s: %w", s.conf.Gossip.BindAddr, err)
+		return fmt.Errorf("listen: %s: %w", s.conf.Cluster.Gossip.BindAddr, err)
 	}
 
-	if s.conf.Gossip.AdvertiseAddr == "" {
+	if s.conf.Cluster.Gossip.AdvertiseAddr == "" {
 		advertiseAddr, err := advertiseAddrFromListenAddr(
 			gossipStreamLn.Addr().String(),
 		)
@@ -359,14 +359,14 @@ func (s *Server) startGossip() error {
 			// Should never happen.
 			panic("invalid listen address: " + err.Error())
 		}
-		s.conf.Gossip.AdvertiseAddr = advertiseAddr
+		s.conf.Cluster.Gossip.AdvertiseAddr = advertiseAddr
 	}
 
 	s.gossiper = gossip.NewGossip(
 		s.clusterState,
 		gossipStreamLn,
 		gossipPacketLn,
-		&s.conf.Gossip,
+		&s.conf.Cluster.Gossip,
 		s.logger,
 	)
 	s.gossiper.Metrics().Register(s.registry)

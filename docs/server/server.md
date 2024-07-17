@@ -50,39 +50,6 @@ The server supports the following YAML configuration (where most parameters
 have corresponding command line flags):
 
 ```
-cluster:
-  # A unique identifier for the node in the cluster.
-  #
-  # By default a random ID will be generated for the node.
-  node_id: ""
-
-  # A prefix for the node ID.
-  #
-  # Piko will generate a unique random identifier for the node and append it to
-  # the given prefix.
-  #
-  # Such as you could use the node or pod  name as a prefix, then add a unique
-  # identifier to ensure the node ID is unique across restarts.
-  node_id_prefix: ""
-
-  # A list of addresses of members in the cluster to join.
-  #
-  # This may be either addresses of specific nodes, such as
-  # '--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
-  # the addresses of the nodes in the cluster (e.g. a Kubernetes headless
-  # service), such as '--cluster.join piko.prod-piko-ns'.
-  #
-  # Each address must include the host, and may optionally include a port. If no
-  # port is given, the gossip port of this node is used.
-  #
-  # Note each node propagates membership information to the other known nodes,
-  # so the initial set of configured members only needs to be a subset of nodes.
-  join: []
-
-  # Whether the server node should abort if it is configured with more than one
-  # node to join (excluding itself) but fails to join any members.
-  abort_if_join_fails: true
-
 proxy:
   # The host/port to listen for incoming proxy connections.
   #
@@ -203,35 +170,68 @@ upstream:
     # Path to the PEM encoded key file.
     key: ""
 
-gossip:
-  # The host/port to listen for inter-node gossip traffic.
+cluster:
+  # A unique identifier for the node in the cluster.
   #
-  # If the host is unspecified it defaults to all listeners, such as
-  # '--gossip.bind-addr :8003' will listen on '0.0.0.0:8003'.
-  bind_addr: ":8003"
+  # By default a random ID will be generated for the node.
+  node_id: ""
 
-  # Gossip listen address to advertise to other nodes in the cluster. This is the
-  # address other nodes will used to gossip with the node.
+  # A prefix for the node ID.
   #
-  # Such as if the listen address is ':8003', the advertised address may be
-  # '10.26.104.45:8003' or 'node1.cluster:8003'.
+  # Piko will generate a unique random identifier for the node and append it to
+  # the given prefix.
   #
-  # By default, if the bind address includes an IP to bind to that will be used.
-  # If the bind address does not include an IP (such as ':8003') the nodes
-  # private IP will be used, such as a bind address of ':8003' may have an
-  # advertise address of '10.26.104.14:8003'.
-  advertise_addr: ""
+  # Such as you could use the node or pod  name as a prefix, then add a unique
+  # identifier to ensure the node ID is unique across restarts.
+  node_id_prefix: ""
 
-  # The interval to initiate rounds of gossip.
+  # A list of addresses of members in the cluster to join.
   #
-  # Each gossip round selects another known node to synchronize with.`,
-  interval: 500ms
+  # This may be either addresses of specific nodes, such as
+  # '--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
+  # the addresses of the nodes in the cluster (e.g. a Kubernetes headless
+  # service), such as '--cluster.join piko.prod-piko-ns'.
+  #
+  # Each address must include the host, and may optionally include a port. If no
+  # port is given, the gossip port of this node is used.
+  #
+  # Note each node propagates membership information to the other known nodes,
+  # so the initial set of configured members only needs to be a subset of nodes.
+  join: []
 
-  # The maximum size of any packet sent.
-  #
-  # Depending on your networks MTU you may be able to increase to include more data
-  # in each packet.
-  max_packet_size: 1400
+  # Whether the server node should abort if it is configured with more than one
+  # node to join (excluding itself) but fails to join any members.
+  abort_if_join_fails: true
+
+  gossip:
+    # The host/port to listen for inter-node gossip traffic.
+    #
+    # If the host is unspecified it defaults to all listeners, such as
+    # a bind address of ':8003' will listen on '0.0.0.0:8003'.
+    bind_addr: ":8003"
+
+    # Gossip listen address to advertise to other nodes in the cluster. This is the
+    # address other nodes will used to gossip with the node.
+    #
+    # Such as if the listen address is ':8003', the advertised address may be
+    # '10.26.104.45:8003' or 'node1.cluster:8003'.
+    #
+    # By default, if the bind address includes an IP to bind to that will be used.
+    # If the bind address does not include an IP (such as ':8003') the nodes
+    # private IP will be used, such as a bind address of ':8003' may have an
+    # advertise address of '10.26.104.14:8003'.
+    advertise_addr: ""
+
+    # The interval to initiate rounds of gossip.
+    #
+    # Each gossip round selects another known node to synchronize with.`,
+    interval: 100ms
+
+    # The maximum size of any packet sent.
+    #
+    # Depending on your networks MTU you may be able to increase to include more data
+    # in each packet.
+    max_packet_size: 1400
 
 admin:
   # The host/port to listen for incoming admin connections.

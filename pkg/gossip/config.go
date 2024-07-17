@@ -34,21 +34,23 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
+func (c *Config) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	prefix = prefix + ".gossip."
+
 	fs.StringVar(
 		&c.BindAddr,
-		"gossip.bind-addr",
+		prefix+"bind-addr",
 		c.BindAddr,
 		`
 The host/port to listen for inter-node gossip traffic.
 
 If the host is unspecified it defaults to all listeners, such as
-'--gossip.bind-addr :8003' will listen on '0.0.0.0:8003'`,
+a bind address ':8003' will listen on '0.0.0.0:8003'`,
 	)
 
 	fs.StringVar(
 		&c.AdvertiseAddr,
-		"gossip.advertise-addr",
+		prefix+"advertise-addr",
 		c.AdvertiseAddr,
 		`
 Gossip listen address to advertise to other nodes in the cluster. This is the
@@ -65,7 +67,7 @@ advertise address of '10.26.104.14:8003'.`,
 
 	fs.DurationVar(
 		&c.Interval,
-		"gossip.interval",
+		prefix+"interval",
 		c.Interval,
 		`
 The interval to initiate rounds of gossip.
@@ -75,7 +77,7 @@ Each gossip round selects another known node to synchronize with.`,
 
 	fs.IntVar(
 		&c.MaxPacketSize,
-		"gossip.max-packet-size",
+		prefix+"max-packet-size",
 		c.MaxPacketSize,
 		`
 The maximum size of any packet sent.

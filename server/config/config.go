@@ -11,98 +11,6 @@ import (
 	"github.com/andydunstall/piko/pkg/log"
 )
 
-type ClusterConfig struct {
-	// NodeID is a unique identifier for this node in the cluster.
-	NodeID string `json:"node_id" yaml:"node_id"`
-
-	// NodeIDPrefix is a node ID prefix, where Piko will generate the rest of
-	// the node ID to ensure uniqueness.
-	NodeIDPrefix string `json:"node_id_prefix" yaml:"node_id_prefix"`
-
-	// Join contains a list of addresses of members in the cluster to join.
-	Join []string `json:"join" yaml:"join"`
-
-	// JoinTimeout is the time to keep trying to join the cluster before
-	// failing.
-	JoinTimeout time.Duration `json:"join_timeout" yaml:"join_timeout"`
-
-	AbortIfJoinFails bool `json:"abort_if_join_fails" yaml:"abort_if_join_fails"`
-}
-
-func (c *ClusterConfig) Validate() error {
-	if c.NodeID == "" {
-		return fmt.Errorf("missing node id")
-	}
-	if c.JoinTimeout == 0 {
-		return fmt.Errorf("missing join timeout")
-	}
-
-	return nil
-}
-
-func (c *ClusterConfig) RegisterFlags(fs *pflag.FlagSet) {
-	fs.StringVar(
-		&c.NodeID,
-		"cluster.node-id",
-		c.NodeID,
-		`
-A unique identifier for the node in the cluster.
-
-By default a random ID will be generated for the node.`,
-	)
-
-	fs.StringVar(
-		&c.NodeIDPrefix,
-		"cluster.node-id-prefix",
-		c.NodeIDPrefix,
-		`
-A prefix for the node ID.
-
-Piko will generate a unique random identifier for the node and append it to
-the given prefix.
-
-Such as you could use the node or pod  name as a prefix, then add a unique
-identifier to ensure the node ID is unique across restarts.`,
-	)
-
-	fs.StringSliceVar(
-		&c.Join,
-		"cluster.join",
-		c.Join,
-		`
-A list of addresses of members in the cluster to join.
-
-This may be either addresses of specific nodes, such as
-'--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
-the addresses of the nodes in the cluster (e.g. a Kubernetes headless
-service), such as '--cluster.join piko.prod-piko-ns'.
-
-Each address must include the host, and may optionally include a port. If no
-port is given, the gossip port of this node is used.
-
-Note each node propagates membership information to the other known nodes,
-so the initial set of configured members only needs to be a subset of nodes.`,
-	)
-
-	fs.DurationVar(
-		&c.JoinTimeout,
-		"cluster.join-timeout",
-		c.JoinTimeout,
-		`
-The timeout to attempt to join an existing cluster when 'cluster.join' is
-set.`,
-	)
-
-	fs.BoolVar(
-		&c.AbortIfJoinFails,
-		"cluster.abort-if-join-fails",
-		c.AbortIfJoinFails,
-		`
-Whether the server node should abort if it is configured with more than one
-node to join (excluding itself) but fails to join any members.`,
-	)
-}
-
 // HTTPConfig contains generic configuration for the HTTP servers.
 type HTTPConfig struct {
 	// ReadTimeout is the maximum duration for reading the entire
@@ -373,6 +281,106 @@ advertise address of '10.26.104.14:8002'.`,
 	c.TLS.RegisterFlags(fs, "admin")
 }
 
+type ClusterConfig struct {
+	// NodeID is a unique identifier for this node in the cluster.
+	NodeID string `json:"node_id" yaml:"node_id"`
+
+	// NodeIDPrefix is a node ID prefix, where Piko will generate the rest of
+	// the node ID to ensure uniqueness.
+	NodeIDPrefix string `json:"node_id_prefix" yaml:"node_id_prefix"`
+
+	// Join contains a list of addresses of members in the cluster to join.
+	Join []string `json:"join" yaml:"join"`
+
+	// JoinTimeout is the time to keep trying to join the cluster before
+	// failing.
+	JoinTimeout time.Duration `json:"join_timeout" yaml:"join_timeout"`
+
+	AbortIfJoinFails bool `json:"abort_if_join_fails" yaml:"abort_if_join_fails"`
+
+	Gossip gossip.Config `json:"gossip" yaml:"gossip"`
+}
+
+func (c *ClusterConfig) Validate() error {
+	if c.NodeID == "" {
+		return fmt.Errorf("missing node id")
+	}
+	if c.JoinTimeout == 0 {
+		return fmt.Errorf("missing join timeout")
+	}
+
+	if err := c.Gossip.Validate(); err != nil {
+		return fmt.Errorf("gossip: %w", err)
+	}
+
+	return nil
+}
+
+func (c *ClusterConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.StringVar(
+		&c.NodeID,
+		"cluster.node-id",
+		c.NodeID,
+		`
+A unique identifier for the node in the cluster.
+
+By default a random ID will be generated for the node.`,
+	)
+
+	fs.StringVar(
+		&c.NodeIDPrefix,
+		"cluster.node-id-prefix",
+		c.NodeIDPrefix,
+		`
+A prefix for the node ID.
+
+Piko will generate a unique random identifier for the node and append it to
+the given prefix.
+
+Such as you could use the node or pod  name as a prefix, then add a unique
+identifier to ensure the node ID is unique across restarts.`,
+	)
+
+	fs.StringSliceVar(
+		&c.Join,
+		"cluster.join",
+		c.Join,
+		`
+A list of addresses of members in the cluster to join.
+
+This may be either addresses of specific nodes, such as
+'--cluster.join 10.26.104.14,10.26.104.75', or a domain that resolves to
+the addresses of the nodes in the cluster (e.g. a Kubernetes headless
+service), such as '--cluster.join piko.prod-piko-ns'.
+
+Each address must include the host, and may optionally include a port. If no
+port is given, the gossip port of this node is used.
+
+Note each node propagates membership information to the other known nodes,
+so the initial set of configured members only needs to be a subset of nodes.`,
+	)
+
+	fs.DurationVar(
+		&c.JoinTimeout,
+		"cluster.join-timeout",
+		c.JoinTimeout,
+		`
+The timeout to attempt to join an existing cluster when 'cluster.join' is
+set.`,
+	)
+
+	fs.BoolVar(
+		&c.AbortIfJoinFails,
+		"cluster.abort-if-join-fails",
+		c.AbortIfJoinFails,
+		`
+Whether the server node should abort if it is configured with more than one
+node to join (excluding itself) but fails to join any members.`,
+	)
+
+	c.Gossip.RegisterFlags(fs, "cluster")
+}
+
 type UsageConfig struct {
 	// Disable indicates whether to disable anonymous usage collection.
 	Disable bool `json:"disable" yaml:"disable"`
@@ -393,15 +401,13 @@ architecture, requests processed and upstreams registered.`,
 }
 
 type Config struct {
-	Cluster ClusterConfig `json:"cluster" yaml:"cluster"`
-
 	Proxy ProxyConfig `json:"proxy" yaml:"proxy"`
 
 	Upstream UpstreamConfig `json:"upstream" yaml:"upstream"`
 
 	Admin AdminConfig `json:"admin" yaml:"admin"`
 
-	Gossip gossip.Config `json:"gossip" yaml:"gossip"`
+	Cluster ClusterConfig `json:"cluster" yaml:"cluster"`
 
 	Usage UsageConfig `json:"usage" yaml:"usage"`
 
@@ -415,10 +421,6 @@ type Config struct {
 
 func Default() *Config {
 	return &Config{
-		Cluster: ClusterConfig{
-			JoinTimeout:      time.Minute,
-			AbortIfJoinFails: true,
-		},
 		Proxy: ProxyConfig{
 			BindAddr:  ":8000",
 			Timeout:   time.Second * 30,
@@ -437,10 +439,14 @@ func Default() *Config {
 		Admin: AdminConfig{
 			BindAddr: ":8002",
 		},
-		Gossip: gossip.Config{
-			BindAddr:      ":8003",
-			Interval:      time.Millisecond * 100,
-			MaxPacketSize: 1400,
+		Cluster: ClusterConfig{
+			JoinTimeout:      time.Minute,
+			AbortIfJoinFails: true,
+			Gossip: gossip.Config{
+				BindAddr:      ":8003",
+				Interval:      time.Millisecond * 100,
+				MaxPacketSize: 1400,
+			},
 		},
 		Log: log.Config{
 			Level: "info",
@@ -466,10 +472,6 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("admin: %w", err)
 	}
 
-	if err := c.Gossip.Validate(); err != nil {
-		return fmt.Errorf("gossip: %w", err)
-	}
-
 	if err := c.Log.Validate(); err != nil {
 		return fmt.Errorf("log: %w", err)
 	}
@@ -489,8 +491,6 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	c.Upstream.RegisterFlags(fs)
 
 	c.Admin.RegisterFlags(fs)
-
-	c.Gossip.RegisterFlags(fs)
 
 	c.Usage.RegisterFlags(fs)
 
