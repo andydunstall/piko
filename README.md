@@ -43,9 +43,9 @@ upstream services must be discoverable and have an exposed port that's
 accessible from the proxy.
 
 Whereas with Piko, your upstreams open outbound-only connections to the
-[Piko server](./docs/server/server.md) and specify what endpoint they are
-listening on. Piko then forwards incoming traffic to the correct upstream via
-its outbound connection.
+[Piko server](https://github.com/andydunstall/piko/wiki/Server) and specify
+what endpoint they are listening on. Piko then forwards incoming traffic to the
+correct upstream via its outbound connection.
 
 Therefore your services may run anywhere without requiring a public route, as
 long as they can open a connection to the Piko server.
@@ -61,9 +61,9 @@ No static configuration is required to configure endpoints, upstreams can
 listen on any endpoint they choose.
 
 You can open an upstream listener using the
-[Piko agent](./docs/agent/agent.md), which supports both HTTP and TCP
-upstreams. Such as to listen on endpoint `my-endpoint` and forward traffic to
-`localhost:3000`:
+[Piko agent](https://github.com/andydunstall/piko/wiki/Agent), which supports
+both HTTP and TCP upstreams. Such as to listen on endpoint `my-endpoint` and
+forward traffic to `localhost:3000`:
 ```
 # HTTP listener.
 $ piko agent http my-endpoint 3000
@@ -72,8 +72,8 @@ $ piko agent http my-endpoint 3000
 $ piko agent tcp my-endpoint 3000
 ```
 
-You can also use the [Go SDK](./docs/sdk/go-sdk.md) to listen directly from
-your application using a standard `net.Listener`.
+You can also use the [Go SDK](https://github.com/andydunstall/piko/wiki/Go-SDK)
+to listen directly from your application using a standard `net.Listener`.
 
 <p align="center">
   <img src="assets/images/overview.png" alt="overview" width="80%"/>
@@ -98,15 +98,16 @@ can send requests to endpoint `foo` using header `x-piko-endpoint: foo`.
 ### TCP
 
 Piko supports proxying TCP traffic, though unlike HTTP it requires using either
-[Piko forward](./docs/forward/forward.md) or the
-[Go SDK](./docs/sdk/go-sdk.md) to map the desired local TCP port to the target
-endpoint (as there's no way to identify the target endpoint using raw TCP).
+[Piko forward](https://github.com/andydunstall/piko/wiki/Forward) or the
+[Go SDK](https://github.com/andydunstall/piko/wiki/Go-SDK) to map the desired
+local TCP port to the target endpoint (as there's no way to identify the target
+endpoint using raw TCP).
 
-[Piko forward](./docs/forward/forward.md) is basically the opposite of
-[Piko agent](./docs/agent/agent.md). Instead of listening on an endpoint and
-forwarding to a local port on the upstream, Piko forward runs on the client and
-listens on a TCP port then forwards connections to the configured upstream
-endpoint.
+[Piko forward](https://github.com/andydunstall/piko/wiki/Forward) is basically
+the opposite of [Piko agent](https://github.com/andydunstall/piko/wiki/Agent).
+Instead of listening on an endpoint and forwarding to a local port on the
+upstream, Piko forward runs on the client and listens on a TCP port then
+forwards connections to the configured upstream endpoint.
 
 Such as to listen on port `3000` and forward connections to endpoint
 `my-endpoint`:
@@ -114,8 +115,8 @@ Such as to listen on port `3000` and forward connections to endpoint
 piko forward 3000 my-endpoint
 ```
 
-You can also use the [Go SDK](./docs/sdk/go-sdk.md) to open a `net.Conn` that's
-connected to the configured endpoint.
+You can also use the [Go SDK](https://github.com/andydunstall/piko/wiki/Go-SDK)
+to open a `net.Conn` that's connected to the configured endpoint.
 
 ## Design Goals
 
@@ -132,7 +133,8 @@ forwards the traffic to the upstream via its outbound-only connection to the
 server. If node N fails or is deprovisioned, the upstream listener will
 reconnect to another node and the cluster propagates the new routing
 information to the other nodes in the cluster. See
-[How Piko Works](./docs/how-piko-works.md) for details.
+[How Piko Works](https://github.com/andydunstall/piko/wiki/How-Piko-Works)
+for details.
 
 Piko also has a Prometheus endpoint, access logging, and status API so you can
 monitor your deployment and debug issues. See observability for details.
@@ -147,15 +149,16 @@ Upstream services and downstream clients may connect to any node in the cluster
 via the load balancer, then the cluster manages routing traffic to the
 appropriate upstream.
 
-See [Kubernetes](./docs/server/kubernetes.md) for details.
+See [Kubernetes](https://github.com/andydunstall/piko/wiki/Server-Kubernetes)
+for details.
 
 ## Getting Started
 
-See [Getting Started](./docs/getting-started.md).
+See [Getting Started](https://github.com/andydunstall/piko/wiki/Getting-Started).
 
 ## How Piko Works
 
-See [How Piko Works](./docs/how-piko-works.md).
+See [How Piko Works](https://github.com/andydunstall/piko/wiki/How-Piko-Works).
 
 ## Support
 
@@ -164,17 +167,7 @@ ask questions, get help, or suggest ideas.
 
 ## Docs
 
-- [How Piko Works](./docs/how-piko-works.md)
-- Tutorials
-  - [Getting Started](./docs/getting-started.md)
-  - [Install](./docs/tutorials/install.md)
-  - [TCP Forwarding](./docs/tutorials/tcp-forwarding.md)
-- [Server](./docs/server/server.md)
-  - [Observability](./docs/server/observability.md)
-  - [Kubernetes](./docs/server/kubernetes.md)
-- [Agent](./docs/agent/agent.md)
-- [Forward](./docs/forward/forward.md)
-- [Go SDK](./docs/sdk/go-sdk.md)
+See [Wiki](https://github.com/andydunstall/piko/wiki/).
 
 ## Contributing
 
