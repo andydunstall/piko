@@ -22,7 +22,7 @@ connections (tunnels) to Piko, then Piko forwards traffic to your services via
 their established connections.
 
 Piko has two key design goals:
-* Built to serve production traffic by running as a cluster of nodes fault
+* Built to serve production traffic by running as a cluster of nodes for fault
 tolerance, horizontal scaling and zero-downtime deployments
 * Simple to host behind a HTTP(S) load balancer on Kubernetes
 
@@ -100,20 +100,21 @@ can send requests to endpoint `foo` using header `x-piko-endpoint: foo`.
 Piko supports proxying TCP traffic, though unlike HTTP it requires using either
 [Piko forward](https://github.com/andydunstall/piko/wiki/Forward) or the
 [Go SDK](https://github.com/andydunstall/piko/wiki/Go-SDK) to map the desired
-local TCP port to the target endpoint (as there's no way to identify the target
-endpoint using raw TCP).
+local TCP port to the target endpoint.
 
-[Piko forward](https://github.com/andydunstall/piko/wiki/Forward) is basically
-the opposite of [Piko agent](https://github.com/andydunstall/piko/wiki/Agent).
-Instead of listening on an endpoint and forwarding to a local port on the
-upstream, Piko forward runs on the client and listens on a TCP port then
-forwards connections to the configured upstream endpoint.
+Piko forward listens on a local TCP port and forwards connections to the
+configured upstream endpoint via the Piko server.
 
 Such as to listen on port `3000` and forward connections to endpoint
 `my-endpoint`:
 ```
 piko forward 3000 my-endpoint
 ```
+
+Note unlike with HTTP, there is no way to identify the target endpoint when
+connecting with raw TCP, which is why you must first connect to Piko forward
+instead of connecting directly to the Piko server. Piko forward can also
+authenticate with the server and forward connections via TLS.
 
 You can also use the [Go SDK](https://github.com/andydunstall/piko/wiki/Go-SDK)
 to open a `net.Conn` that's connected to the configured endpoint.
