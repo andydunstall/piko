@@ -32,9 +32,7 @@ Therefore Piko can be used as an open-source alternative to
 Such as you may use Piko to expose services in a customer network, a bring your
 own cloud (BYOC) service, or to connect to user devices.
 
-## Features
-
-### Reverse Proxy
+## Reverse Proxy
 
 In a traditional reverse proxy, you configure routing rules describing how to
 route incoming traffic to your upstream services. The proxy will then open
@@ -50,7 +48,7 @@ correct upstream via its outbound connection.
 Therefore your services may run anywhere without requiring a public route, as
 long as they can open a connection to the Piko server.
 
-### Endpoints
+## Endpoints
 
 Upstream services listen for traffic on a particular endpoint. Piko then
 manages routing incoming connections and requests to an upstream service
