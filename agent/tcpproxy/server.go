@@ -135,14 +135,12 @@ func forward(conn1 net.Conn, conn2 net.Conn) {
 	go func() {
 		defer wg.Done()
 		defer conn1.Close()
-		// nolint
-		io.Copy(conn1, conn2)
+		_, _ = io.Copy(conn1, conn2)
 	}()
 	go func() {
 		defer wg.Done()
 		defer conn2.Close()
-		// nolint
-		io.Copy(conn2, conn1)
+		_, _ = io.Copy(conn2, conn1)
 	}()
 	wg.Wait()
 }

@@ -103,15 +103,13 @@ func (f *Forwarder) forward(downstream net.Conn) {
 	go func() {
 		defer g.Done()
 		defer downstream.Close()
-		// nolint
-		io.Copy(downstream, upstream)
+		_, _ = io.Copy(downstream, upstream)
 	}()
 
 	go func() {
 		defer g.Done()
 		defer upstream.Close()
-		// nolint
-		io.Copy(upstream, downstream)
+		_, _ = io.Copy(upstream, downstream)
 	}()
 
 	g.Wait()
