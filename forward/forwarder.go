@@ -87,14 +87,12 @@ func (f *Forwarder) forwardConn(conn net.Conn) {
 	go func() {
 		defer g.Done()
 		defer conn.Close()
-		// nolint
-		io.Copy(conn, upstream)
+		_, _ = io.Copy(conn, upstream)
 	}()
 	go func() {
 		defer g.Done()
 		defer upstream.Close()
-		// nolint
-		io.Copy(upstream, conn)
+		_, _ = io.Copy(upstream, conn)
 	}()
 	g.Wait()
 }
