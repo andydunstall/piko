@@ -104,8 +104,12 @@ func (f *Forwarder) forward(downstream net.Conn) {
 		defer g.Done()
 		defer downstream.Close()
 		_, err := io.Copy(downstream, upstream)
-		if err != nil && !errors.Is(err, io.EOF) {
-			f.logger.Debug("failure to copy from upstream to downstream", zap.String("addr", f.addr), zap.Error(err))
+		if err != nil {
+			f.logger.Debug(
+				"copy to downstream closed",
+				zap.String("addr", f.addr),
+				zap.Error(err),
+			)
 		}
 	}()
 
@@ -113,8 +117,12 @@ func (f *Forwarder) forward(downstream net.Conn) {
 		defer g.Done()
 		defer upstream.Close()
 		_, err := io.Copy(upstream, downstream)
-		if err != nil && !errors.Is(err, io.EOF) {
-			f.logger.Debug("failure to copy from downstream to upstream", zap.String("addr", f.addr), zap.Error(err))
+		if err != nil {
+			f.logger.Debug(
+				"copy to upstream closed",
+				zap.String("addr", f.addr),
+				zap.Error(err),
+			)
 		}
 	}()
 

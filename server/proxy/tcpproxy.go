@@ -1,7 +1,6 @@
 package proxy
 
 import (
-	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -95,16 +94,16 @@ func (p *TCPProxy) forward(upstream net.Conn, downstream net.Conn) {
 		defer wg.Done()
 		defer upstream.Close()
 		_, err := io.Copy(upstream, downstream)
-		if err != nil && !errors.Is(err, io.EOF) {
-			p.logger.Debug("failure to copy from downstream to upstream", zap.Error(err))
+		if err != nil {
+			p.logger.Debug("copy to upstream closed", zap.Error(err))
 		}
 	}()
 	go func() {
 		defer wg.Done()
 		defer downstream.Close()
 		_, err := io.Copy(downstream, upstream)
-		if err != nil && !errors.Is(err, io.EOF) {
-			p.logger.Debug("failure to copy from upstream to downstream", zap.Error(err))
+		if err != nil {
+			p.logger.Debug("copy to downstream closed", zap.Error(err))
 		}
 	}()
 	wg.Wait()

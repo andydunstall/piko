@@ -88,16 +88,24 @@ func (f *Forwarder) forwardConn(conn net.Conn) {
 		defer g.Done()
 		defer conn.Close()
 		_, err := io.Copy(conn, upstream)
-		if err != nil && !errors.Is(err, io.EOF) {
-			f.logger.Debug("failure to copy from upstream to connection", zap.String("endpoint-id", f.endpointID), zap.Error(err))
+		if err != nil {
+			f.logger.Debug(
+				"copy to conn closed",
+				zap.String("endpoint-id", f.endpointID),
+				zap.Error(err),
+			)
 		}
 	}()
 	go func() {
 		defer g.Done()
 		defer upstream.Close()
 		_, err := io.Copy(upstream, conn)
-		if err != nil && !errors.Is(err, io.EOF) {
-			f.logger.Debug("failure to copy from connection to upstream", zap.String("endpoint-id", f.endpointID), zap.Error(err))
+		if err != nil {
+			f.logger.Debug(
+				"copy to upstream closed",
+				zap.String("endpoint-id", f.endpointID),
+				zap.Error(err),
+			)
 		}
 	}()
 	g.Wait()

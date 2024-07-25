@@ -1,7 +1,6 @@
 package tcpproxy
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -137,16 +136,16 @@ func (s *Server) forward(conn net.Conn, upstream net.Conn) {
 		defer wg.Done()
 		defer conn.Close()
 		_, err := io.Copy(conn, upstream)
-		if err != nil && !errors.Is(err, io.EOF) {
-			s.logger.Debug("failure to copy from upstream to connection", zap.Error(err))
+		if err != nil {
+			s.logger.Debug("copy to conn closed", zap.Error(err))
 		}
 	}()
 	go func() {
 		defer wg.Done()
 		defer upstream.Close()
 		_, err := io.Copy(upstream, conn)
-		if err != nil && !errors.Is(err, io.EOF) {
-			s.logger.Debug("failure to copy from connection to upstream", zap.Error(err))
+		if err != nil {
+			s.logger.Debug("copy to upstream closed", zap.Error(err))
 		}
 	}()
 	wg.Wait()
