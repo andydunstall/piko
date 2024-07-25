@@ -96,7 +96,7 @@ func (p *TCPProxy) forward(upstream net.Conn, downstream net.Conn) {
 		defer upstream.Close()
 		_, err := io.Copy(upstream, downstream)
 		if err != nil && !errors.Is(err, io.EOF) {
-			p.logger.Error("failure to copy from downstream to upstream", zap.Error(err))
+			p.logger.Debug("failure to copy from downstream to upstream", zap.Error(err))
 		}
 	}()
 	go func() {
@@ -104,7 +104,7 @@ func (p *TCPProxy) forward(upstream net.Conn, downstream net.Conn) {
 		defer downstream.Close()
 		_, err := io.Copy(downstream, upstream)
 		if err != nil && !errors.Is(err, io.EOF) {
-			p.logger.Error("failure to copy from upstream to downstream", zap.Error(err))
+			p.logger.Debug("failure to copy from upstream to downstream", zap.Error(err))
 		}
 	}()
 	wg.Wait()

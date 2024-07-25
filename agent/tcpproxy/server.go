@@ -138,7 +138,7 @@ func (s *Server) forward(conn net.Conn, upstream net.Conn) {
 		defer conn.Close()
 		_, err := io.Copy(conn, upstream)
 		if err != nil && !errors.Is(err, io.EOF) {
-			s.logger.Error("failure to copy from upstream to connection", zap.Error(err))
+			s.logger.Debug("failure to copy from upstream to connection", zap.Error(err))
 		}
 	}()
 	go func() {
@@ -146,7 +146,7 @@ func (s *Server) forward(conn net.Conn, upstream net.Conn) {
 		defer upstream.Close()
 		_, err := io.Copy(upstream, conn)
 		if err != nil && !errors.Is(err, io.EOF) {
-			s.logger.Error("failure to copy from connection to upstream", zap.Error(err))
+			s.logger.Debug("failure to copy from connection to upstream", zap.Error(err))
 		}
 	}()
 	wg.Wait()
