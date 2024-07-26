@@ -35,17 +35,17 @@ upstreams.
 
 Examples:
   # Start 1000 HTTP upstream servers with 100 endpoints.
-  piko workload upstreams
+  piko test workload upstreams
 
   # Start 1000 TCP upstreams.
-  piko workload upstreams --protocol tcp
+  piko test workload upstreams --protocol tcp
 
   # Start 5000 HTTP upstream servers with 5000 endpoints (so each upstream has a
   # unique endpoint ID).
-  piko workload upstreams --upstreams 5000 --endpoints 5000
+  piko test workload upstreams --upstreams 5000 --endpoints 5000
 
   # Configure the Piko server address.
-  piko workload upstreams --server.url https://piko.example.com:8001
+  piko test workload upstreams --server.url https://piko.example.com:8001
 `,
 	}
 

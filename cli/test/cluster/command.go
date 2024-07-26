@@ -39,10 +39,10 @@ signal to the process.
 
 Examples:
   # Start a cluster of 5 nodes.
-  piko workload cluster --nodes 5
+  piko test cluster --nodes 5
 
   # Start a cluster and replace one node every 10 seconds.
-  piko workload cluster --churn.interval 10s
+  piko test cluster --churn.interval 10s
 `,
 	}
 
