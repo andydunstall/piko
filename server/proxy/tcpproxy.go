@@ -84,21 +84,27 @@ func (p *TCPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request, endpointID 
 	downstreamConn := pikowebsocket.New(wsConn)
 	defer downstreamConn.Close()
 
-	forward(upstreamConn, downstreamConn)
+	p.forward(upstreamConn, downstreamConn)
 }
 
-func forward(conn1 net.Conn, conn2 net.Conn) {
+func (p *TCPProxy) forward(upstream net.Conn, downstream net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		defer conn1.Close()
-		_, _ = io.Copy(conn1, conn2)
+		defer upstream.Close()
+		_, err := io.Copy(upstream, downstream)
+		if err != nil {
+			p.logger.Debug("copy to upstream closed", zap.Error(err))
+		}
 	}()
 	go func() {
 		defer wg.Done()
-		defer conn2.Close()
-		_, _ = io.Copy(conn2, conn1)
+		defer downstream.Close()
+		_, err := io.Copy(downstream, upstream)
+		if err != nil {
+			p.logger.Debug("copy to downstream closed", zap.Error(err))
+		}
 	}()
 	wg.Wait()
 }

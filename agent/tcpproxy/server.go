@@ -96,7 +96,7 @@ func (s *Server) serveConn(c net.Conn) {
 	}
 	defer upstream.Close()
 
-	forward(c, upstream)
+	s.forward(c, upstream)
 }
 
 func (s *Server) addConn(c net.Conn) {
@@ -129,18 +129,24 @@ func (s *Server) logConnClosed() {
 	}
 }
 
-func forward(conn1 net.Conn, conn2 net.Conn) {
+func (s *Server) forward(conn net.Conn, upstream net.Conn) {
 	var wg sync.WaitGroup
 	wg.Add(2)
 	go func() {
 		defer wg.Done()
-		defer conn1.Close()
-		_, _ = io.Copy(conn1, conn2)
+		defer conn.Close()
+		_, err := io.Copy(conn, upstream)
+		if err != nil {
+			s.logger.Debug("copy to conn closed", zap.Error(err))
+		}
 	}()
 	go func() {
 		defer wg.Done()
-		defer conn2.Close()
-		_, _ = io.Copy(conn2, conn1)
+		defer upstream.Close()
+		_, err := io.Copy(upstream, conn)
+		if err != nil {
+			s.logger.Debug("copy to upstream closed", zap.Error(err))
+		}
 	}()
 	wg.Wait()
 }
