@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/prometheus/client_golang/prometheus"
@@ -55,6 +56,8 @@ type Server struct {
 	wg sync.WaitGroup
 
 	registry *prometheus.Registry
+
+	RebalancingCancel context.CancelFunc
 
 	logger log.Logger
 }
@@ -262,7 +265,77 @@ func (s *Server) Start() error {
 		}
 	}
 
+	s.RebalancingDaemon()
+
 	return nil
+}
+
+// If the node need to be rebalanced, return the number of local connections.
+func (s *Server) needRebalancing() (int, bool) {
+	totalConns, localConns := s.clusterState.TotalAndLocalUpstreams()
+	averageConns := float32(totalConns) /
+		float32(s.clusterState.NodesNum())
+	if float32(localConns) > averageConns*
+		(1+s.conf.Cluster.RebalancingThreshold) {
+		return localConns, true
+	}
+	return 0, false
+}
+
+// Shed the given number of connections from the upstream server.
+func (s *Server) sheddingConnections(connsToShed int) {
+	haveShed := 0
+	s.upstreamServer.ConnsMux.Lock()
+	for conn := range s.upstreamServer.Conns {
+		(*conn).Close()
+		delete(s.upstreamServer.Conns, conn)
+		haveShed++
+		if haveShed >= connsToShed {
+			break
+		}
+	}
+	s.upstreamServer.ConnsMux.Unlock()
+}
+
+// Start the daemon that will shed connections from the upstream server.
+func (s *Server) startShedding(connsToShed int, rebalancing *atomic.Bool) {
+	rebalancing.CompareAndSwap(false, true)
+	for {
+		s.sheddingConnections(connsToShed)
+		time.Sleep(time.Second)
+		if _, needRebalance := s.needRebalancing(); !needRebalance {
+			rebalancing.CompareAndSwap(true, false)
+			return
+		}
+	}
+}
+
+// RebalancingDaemon start the daemon that will check and rebalance connections.
+func (s *Server) RebalancingDaemon() {
+	s.runGoroutine(func() {
+		ticker := time.NewTicker(s.conf.Cluster.RebalancingCheckInterval)
+		defer ticker.Stop()
+		ctx, cancel := context.WithCancel(context.Background())
+		s.RebalancingCancel = cancel
+		rebalancing := atomic.NewBool(false)
+		for {
+			select {
+			case <-ctx.Done():
+				s.logger.Debug("rebalancing daemon stopped")
+				return
+			case <-ticker.C:
+				// If we are rebalancing, skip this check.
+				if rebalancing.Load() {
+					continue
+				}
+				// Check if we need to rebalance, if so shed connections.
+				if localConn, needRebalance := s.needRebalancing(); needRebalance {
+					connsToShed := int(min(1, float32(localConn)*s.conf.Cluster.RebalancingRate))
+					go s.startShedding(connsToShed, rebalancing)
+				}
+			}
+		}
+	})
 }
 
 // Shutdown gracefully stops the server node.
@@ -308,6 +381,8 @@ func (s *Server) Shutdown() {
 	s.shutdownAdminServer(ctx)
 
 	s.shutdownUsageReporting()
+
+	s.RebalancingCancel()
 
 	s.wg.Wait()
 

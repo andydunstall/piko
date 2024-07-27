@@ -391,3 +391,19 @@ func (s *State) addMetricsNode(status NodeStatus) {
 func (s *State) removeMetricsNode(status NodeStatus) {
 	s.metrics.Nodes.With(prometheus.Labels{"status": string(status)}).Dec()
 }
+
+func (s *State) TotalAndLocalUpstreams() (int, int) {
+	totalUpstreams := 0
+	localUpstreams := 0
+	for _, n := range s.NodesMetadata() {
+		if n.ID == s.localID {
+			localUpstreams = n.Upstreams
+		}
+		totalUpstreams += n.Upstreams
+	}
+	return totalUpstreams, localUpstreams
+}
+
+func (s *State) NodesNum() int {
+	return len(s.nodes)
+}

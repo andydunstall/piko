@@ -299,6 +299,12 @@ type ClusterConfig struct {
 	AbortIfJoinFails bool `json:"abort_if_join_fails" yaml:"abort_if_join_fails"`
 
 	Gossip gossip.Config `json:"gossip" yaml:"gossip"`
+
+	RebalancingThreshold float32 `json:"rebalancing_threshold" yaml:"rebalancing_threshold"`
+
+	RebalancingRate float32 `json:"rebalancing_rate" yaml:"rebalancing_rate"`
+
+	RebalancingCheckInterval time.Duration `json:"rebalancing_check_interval" yaml:"rebalancing_check_interval"`
 }
 
 func (c *ClusterConfig) Validate() error {
@@ -377,6 +383,30 @@ set.`,
 Whether the server node should abort if it is configured with more than one
 node to join (excluding itself) but fails to join any members.`,
 	)
+	fs.Float32Var(
+		&c.RebalancingThreshold,
+		"cluster.rebalancing-threshold",
+		c.RebalancingThreshold,
+		`
+Threshold for node startup rebalancing, if the node have 'threshold' more
+connections than the cluster average`,
+	)
+
+	fs.Float32Var(
+		&c.RebalancingRate,
+		"cluster.rebalancing-rate",
+		c.RebalancingRate,
+		`
+Rate for node startup rebalancing, shedding 'rate' of connections every second.`,
+	)
+
+	fs.DurationVar(
+		&c.RebalancingCheckInterval,
+		"cluster.rebalancing-check-interval",
+		c.RebalancingCheckInterval,
+		`
+Time interval that checks if rebalancing is needed.`,
+	)
 
 	c.Gossip.RegisterFlags(fs, "cluster")
 }
@@ -447,6 +477,9 @@ func Default() *Config {
 				Interval:      time.Millisecond * 100,
 				MaxPacketSize: 1400,
 			},
+			RebalancingThreshold:     0.2,
+			RebalancingRate:          0.005,
+			RebalancingCheckInterval: time.Second * 5,
 		},
 		Log: log.Config{
 			Level: "info",
