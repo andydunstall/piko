@@ -4,9 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"net"
-	"strings"
 
 	"github.com/andydunstall/yamux"
 	"go.uber.org/zap"
@@ -81,11 +79,7 @@ func (l *listener) AcceptWithContext(ctx context.Context) (net.Conn, error) {
 			return nil, ErrClosed
 		}
 
-		if err != io.EOF && !strings.Contains(err.Error(), "closed") && !strings.Contains(err.Error(), "reset by peer") {
-			l.logger.Error("failed to accept conn", zap.Error(err))
-		} else {
-			l.logger.Warn("disconnected; reconnecting")
-		}
+		l.logger.Warn("disconnected; reconnecting", zap.Error(err))
 
 		if err := l.connect(l.closeCtx); err != nil {
 			return nil, fmt.Errorf("connect: %w", err)

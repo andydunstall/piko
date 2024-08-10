@@ -3,7 +3,7 @@ module github.com/andydunstall/piko
 go 1.22
 
 require (
-	github.com/andydunstall/yamux v0.1.3
+	github.com/andydunstall/yamux v0.1.4
 	github.com/gin-gonic/gin v1.10.0
 	github.com/goccy/go-yaml v1.12.0
 	github.com/golang-jwt/jwt/v5 v5.2.1

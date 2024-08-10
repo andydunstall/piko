@@ -146,7 +146,7 @@ func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Sessi
 			return nil, err
 		}
 
-		u.logger().Error(
+		u.logger().Warn(
 			"connect failed; retrying",
 			zap.String("endpoint-id", endpointID),
 			zap.String("url", url),
