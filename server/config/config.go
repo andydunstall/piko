@@ -109,9 +109,6 @@ func (c *ProxyConfig) Validate() error {
 	if c.BindAddr == "" {
 		return fmt.Errorf("missing bind addr")
 	}
-	if c.Timeout == 0 {
-		return fmt.Errorf("missing timeout")
-	}
 	if err := c.TLS.Validate(); err != nil {
 		return fmt.Errorf("tls: %w", err)
 	}
