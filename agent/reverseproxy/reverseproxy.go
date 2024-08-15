@@ -43,7 +43,7 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 }
 
 func (p *ReverseProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if p.timeout != 0 {
+	if p.timeout != 0 && r.Header.Get("upgrade") != "websocket" {
 		ctx, cancel := context.WithTimeout(r.Context(), p.timeout)
 		defer cancel()
 

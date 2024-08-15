@@ -92,7 +92,7 @@ func (p *HTTPProxy) ServeHTTPWithUpstream(
 	endpointID string,
 	upstream upstream.Upstream,
 ) {
-	if p.timeout != 0 {
+	if p.timeout != 0 && r.Header.Get("upgrade") != "websocket" {
 		ctx, cancel := context.WithTimeout(r.Context(), p.timeout)
 		defer cancel()
 
