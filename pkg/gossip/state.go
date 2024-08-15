@@ -80,6 +80,14 @@ type deltaEntry struct {
 
 type delta []deltaEntry
 
+func (d delta) EntriesTotal() int {
+	total := 0
+	for _, e := range d {
+		total += len(e.Entries)
+	}
+	return total
+}
+
 type nodeState struct {
 	NodeMetadata
 

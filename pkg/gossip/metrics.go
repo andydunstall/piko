@@ -27,6 +27,18 @@ type Metrics struct {
 	// connection.
 	PacketBytesOutbound prometheus.Counter
 
+	// DigestEntriesInbound is the total number of incoming digest entries.
+	DigestEntriesInbound prometheus.Counter
+
+	// DeltaEntriesInbound is the total number of incoming delta entries.
+	DeltaEntriesInbound prometheus.Counter
+
+	// DigestEntriesOutbound is the total number of outgoing digest entries.
+	DigestEntriesOutbound prometheus.Counter
+
+	// DeltaEntriesOutbound is the total number of outgoing delta entries.
+	DeltaEntriesOutbound prometheus.Counter
+
 	// Entries is the number of entries labelled by node_id, deleted and
 	// internal.
 	Entries *prometheus.GaugeVec
@@ -82,6 +94,38 @@ func newMetrics() *Metrics {
 				Help:      "Total number of written bytes via a packet connection",
 			},
 		),
+		DigestEntriesInbound: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: "piko",
+				Subsystem: "gossip",
+				Name:      "digest_entries_inbound_total",
+				Help:      "Total number of inbound digest entries",
+			},
+		),
+		DeltaEntriesInbound: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: "piko",
+				Subsystem: "gossip",
+				Name:      "delta_entries_inbound_total",
+				Help:      "Total number of inbound digest entries",
+			},
+		),
+		DigestEntriesOutbound: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: "piko",
+				Subsystem: "gossip",
+				Name:      "digest_entries_outbound_total",
+				Help:      "Total number of outbound digest entries",
+			},
+		),
+		DeltaEntriesOutbound: prometheus.NewCounter(
+			prometheus.CounterOpts{
+				Namespace: "piko",
+				Subsystem: "gossip",
+				Name:      "delta_entries_outbound_total",
+				Help:      "Total number of outbound delta entries",
+			},
+		),
 		Entries: prometheus.NewGaugeVec(
 			prometheus.GaugeOpts{
 				Namespace: "piko",
@@ -102,6 +146,10 @@ func (m *Metrics) Register(reg *prometheus.Registry) {
 		m.ConnectionsOutbound,
 		m.StreamBytesOutbound,
 		m.PacketBytesOutbound,
+		m.DigestEntriesInbound,
+		m.DeltaEntriesInbound,
+		m.DigestEntriesOutbound,
+		m.DeltaEntriesOutbound,
 		m.Entries,
 	)
 }

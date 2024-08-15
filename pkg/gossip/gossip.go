@@ -381,6 +381,8 @@ func (g *Gossip) gossip(node NodeMetadata) error {
 			break
 		}
 		bufLen = buf.Len()
+
+		g.metrics.DigestEntriesOutbound.Inc()
 	}
 
 	udpAddr, err := net.ResolveUDPAddr("udp", node.Addr)
@@ -438,13 +440,17 @@ func (g *Gossip) join(addr string) (string, error) {
 		return "", fmt.Errorf("encode: %w", err)
 	}
 
+	delta := g.state.LocalDelta()
 	if err := encoder.Encode(g.state.LocalDelta()); err != nil {
 		return "", fmt.Errorf("encode: %w", err)
 	}
+	g.metrics.DeltaEntriesOutbound.Add(float64(delta.EntriesTotal()))
 
-	if err := encoder.Encode(g.state.Digest()); err != nil {
+	digest := g.state.Digest()
+	if err := encoder.Encode(digest); err != nil {
 		return "", fmt.Errorf("encode: %w", err)
 	}
+	g.metrics.DigestEntriesOutbound.Add(float64(len(digest)))
 
 	if err := w.Flush(); err != nil {
 		return "", fmt.Errorf("flush: %w", err)
@@ -457,10 +463,10 @@ func (g *Gossip) join(addr string) (string, error) {
 		return "", fmt.Errorf("decode: %w", err)
 	}
 
-	var delta delta
 	if err := decoder.Decode(&delta); err != nil {
 		return "", fmt.Errorf("decode: %w", err)
 	}
+	g.metrics.DeltaEntriesInbound.Add(float64(delta.EntriesTotal()))
 
 	g.state.ApplyDelta(delta)
 
@@ -509,9 +515,11 @@ func (g *Gossip) leave(addr string) error {
 		return fmt.Errorf("encode: %w", err)
 	}
 
-	if err := encoder.Encode(g.state.LocalDelta()); err != nil {
+	delta := g.state.LocalDelta()
+	if err := encoder.Encode(delta); err != nil {
 		return fmt.Errorf("encode: %w", err)
 	}
+	g.metrics.DeltaEntriesOutbound.Add(float64(delta.EntriesTotal()))
 
 	if err := w.Flush(); err != nil {
 		return fmt.Errorf("flush: %w", err)
