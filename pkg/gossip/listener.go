@@ -131,10 +131,12 @@ func (l *streamListener) join(r io.Reader, w *bufio.Writer) error {
 	if err := decoder.Decode(&delta); err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
+	l.metrics.DeltaEntriesInbound.Add(float64(delta.EntriesTotal()))
 	var digest digest
 	if err := decoder.Decode(&digest); err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
+	l.metrics.DigestEntriesInbound.Add(float64(len(digest)))
 
 	// Apply unknown state from the delta.
 	l.state.ApplyDelta(delta)
@@ -156,6 +158,7 @@ func (l *streamListener) join(r io.Reader, w *bufio.Writer) error {
 	if err := encoder.Encode(delta); err != nil {
 		return fmt.Errorf("encode: %w", err)
 	}
+	l.metrics.DeltaEntriesOutbound.Add(float64(delta.EntriesTotal()))
 
 	if err := w.Flush(); err != nil {
 		return fmt.Errorf("flush: %w", err)
@@ -174,6 +177,7 @@ func (l *streamListener) leave(r io.Reader, w *bufio.Writer) error {
 	if err := decoder.Decode(&delta); err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
+	l.metrics.DeltaEntriesInbound.Add(float64(delta.EntriesTotal()))
 
 	// Apply unknown state from the delta.
 	l.state.ApplyDelta(delta)
@@ -285,6 +289,7 @@ func (l *packetListener) digest(b []byte) error {
 	if err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
+	l.metrics.DigestEntriesInbound.Add(float64(len(digest)))
 
 	// Discover any unknown nodes from the digest.
 	l.state.ApplyDigest(digest)
@@ -293,16 +298,19 @@ func (l *packetListener) digest(b []byte) error {
 	if err := l.sendDelta(delta, header.Addr); err != nil {
 		return fmt.Errorf("send delta: %w", err)
 	}
+	l.metrics.DeltaEntriesOutbound.Add(float64(delta.EntriesTotal()))
 
 	// If the digest was a request, send our own digest response.
 	if header.Request {
+		digest := l.state.Digest()
 		if err := l.sendDigest(
-			l.state.Digest(),
+			digest,
 			header.Addr,
 			false,
 		); err != nil {
 			return fmt.Errorf("send digest: %w", err)
 		}
+		l.metrics.DigestEntriesOutbound.Add(float64(len(digest)))
 	}
 
 	return nil
@@ -313,6 +321,7 @@ func (l *packetListener) delta(b []byte) error {
 	if err != nil {
 		return fmt.Errorf("decode: %w", err)
 	}
+	l.metrics.DeltaEntriesInbound.Add(float64(delta.EntriesTotal()))
 
 	l.failureDetector.Report(header.NodeID)
 
