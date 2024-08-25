@@ -104,7 +104,7 @@ func (c *ListenerConfig) Validate() error {
 		if _, ok := c.URL(); !ok {
 			return fmt.Errorf("invalid addr")
 		}
-	} else if c.Protocol != ListenerProtocolTCP {
+	} else if c.Protocol == ListenerProtocolTCP {
 		if _, ok := c.Host(); !ok {
 			return fmt.Errorf("invalid addr")
 		}
