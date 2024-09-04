@@ -174,27 +174,29 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 	}
 
 	// Agent server.
-	serverLn, err := net.Listen("tcp", conf.Server.BindAddr)
-	if err != nil {
-		return fmt.Errorf("server listen: %s: %w", conf.Server.BindAddr, err)
+	if conf.Server.Enabled {
+		serverLn, err := net.Listen("tcp", conf.Server.BindAddr)
+		if err != nil {
+			return fmt.Errorf("server listen: %s: %w", conf.Server.BindAddr, err)
+		}
+		server := server.NewServer(registry, logger)
+
+		group.Add(func() error {
+			if err := server.Serve(serverLn); err != nil {
+				return fmt.Errorf("agent server: %w", err)
+			}
+			return nil
+		}, func(error) {
+			shutdownCtx, cancel := context.WithTimeout(
+				context.Background(), conf.GracePeriod,
+			)
+			defer cancel()
+
+			if err := server.Shutdown(shutdownCtx); err != nil {
+				logger.Warn("failed to gracefully shutdown agent server", zap.Error(err))
+			}
+		})
 	}
-	server := server.NewServer(registry, logger)
-
-	group.Add(func() error {
-		if err := server.Serve(serverLn); err != nil {
-			return fmt.Errorf("agent server: %w", err)
-		}
-		return nil
-	}, func(error) {
-		shutdownCtx, cancel := context.WithTimeout(
-			context.Background(), conf.GracePeriod,
-		)
-		defer cancel()
-
-		if err := server.Shutdown(shutdownCtx); err != nil {
-			logger.Warn("failed to gracefully shutdown agent server", zap.Error(err))
-		}
-	})
 
 	// Termination handler.
 	signalCtx, signalCancel := context.WithCancel(context.Background())

@@ -219,11 +219,17 @@ reconnect.`,
 }
 
 type ServerConfig struct {
+	// Enabled indicates whether to enable the agent metrics server.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
 }
 
 func (c *ServerConfig) Validate() error {
+	if !c.Enabled {
+		return nil
+	}
 	if c.BindAddr == "" {
 		return fmt.Errorf("missing bind addr")
 	}
@@ -231,6 +237,16 @@ func (c *ServerConfig) Validate() error {
 }
 
 func (c *ServerConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.BoolVar(
+		&c.Enabled,
+		"server.enabled",
+		c.Enabled,
+		`
+Whether to enable the agent metrics server.
+
+Disabled by default.`,
+	)
+
 	fs.StringVar(
 		&c.BindAddr,
 		"server.bind-addr",
