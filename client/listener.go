@@ -75,10 +75,6 @@ func (l *listener) AcceptWithContext(ctx context.Context) (net.Conn, error) {
 			return nil, ctx.Err()
 		}
 
-		if errors.Is(err, yamux.ErrSessionShutdown) {
-			return nil, ErrClosed
-		}
-
 		l.logger.Warn("disconnected; reconnecting", zap.Error(err))
 
 		if err := l.connect(l.closeCtx); err != nil {
