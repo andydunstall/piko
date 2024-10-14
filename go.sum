@@ -1,5 +1,5 @@
-github.com/andydunstall/yamux v0.1.4 h1:VrcjPsG5gUb8QnUFdHXoJnmFfncnu0wbeEjekZs4M78=
-github.com/andydunstall/yamux v0.1.4/go.mod h1:v4C9l2I4bhYdww+IVgjO0o5rVzxXbx2nneuFDHvyM28=
+github.com/andydunstall/yamux v0.1.5 h1:IM0aZukwckStCEnFy/3xGmV81eAXyRKTdSAjQo5oI+Y=
+github.com/andydunstall/yamux v0.1.5/go.mod h1:v4C9l2I4bhYdww+IVgjO0o5rVzxXbx2nneuFDHvyM28=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
 github.com/beorn7/perks v1.0.1/go.mod h1:G2ZrVWU2WbWT9wwq4/hrbKbnv/1ERSJQ0ibhJ6rlkpw=
 github.com/bytedance/sonic v1.11.6 h1:oUp34TzMlL+OY1OUWxHqsdkgC/Zfc85zGqw9siXjrc0=
