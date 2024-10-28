@@ -9,6 +9,7 @@ import (
 
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
@@ -67,6 +68,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	logger = logger.WithSubsystem("server")
 
 	registry := prometheus.NewRegistry()
+	registry.MustRegister(collectors.NewGoCollector())
 
 	s := &Server{
 		fatalCh:  make(chan struct{}),
