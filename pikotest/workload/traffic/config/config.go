@@ -33,6 +33,29 @@ func (c *ConnectConfig) Validate() error {
 	return nil
 }
 
+func (c *ConnectConfig) RegisterFlags(fs *pflag.FlagSet) {
+	fs.StringVar(
+		&c.URL,
+		"connect.url",
+		c.URL,
+		`
+Piko server URL.
+
+Note Piko connects to the server with WebSockets, so will replace http/https
+with ws/wss (you can configure either).`,
+	)
+
+	fs.DurationVar(
+		&c.Timeout,
+		"connect.timeout",
+		c.Timeout,
+		`
+Timeout attempting to connect to the Piko server on boot. Note if the agent
+is disconnected after the initial connection succeeds it will keep trying to
+reconnect.`,
+	)
+}
+
 type Config struct {
 	Protocol string `json:"protocol" yaml:"protocol"`
 
@@ -82,7 +105,7 @@ Upstream listener protocol (HTTP or TCP).`,
 		"clients",
 		c.Clients,
 		`
-...`,
+Number of clients.`,
 	)
 
 	fs.IntVar(
@@ -90,7 +113,7 @@ Upstream listener protocol (HTTP or TCP).`,
 		"endpoints",
 		c.Endpoints,
 		`
-...`,
+Number of endponits to connect to`,
 	)
 
 	fs.IntVar(
@@ -109,6 +132,8 @@ The number of requests/connections per second per client.`,
 The size of each request. As the upstream echos the response body, the response
 will have the same size.`,
 	)
+
+	c.Connect.RegisterFlags(fs)
 
 	c.Log.RegisterFlags(fs)
 }
