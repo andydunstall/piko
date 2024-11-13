@@ -29,6 +29,9 @@ type ListenerConfig struct {
 	// Addr is the address of the upstream service to forward to.
 	Addr string `json:"addr" yaml:"addr"`
 
+	// InsecureSkipVerify allows the proxy to ignore certificates on HTTPS connections.
+	InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
+
 	// Protocol is the protocol to listen on. Supports "http" and "tcp".
 	// Defaults to "http".
 	Protocol ListenerProtocol `json:"protocol" yaml:"protocol"`

@@ -2,6 +2,7 @@ package reverseproxy
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -37,6 +38,13 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 		proxy:   proxy,
 		timeout: conf.Timeout,
 		logger:  logger,
+	}
+	if conf.InsecureSkipVerify {
+		proxy.Transport = &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		}
 	}
 	proxy.ErrorHandler = rp.errorHandler
 	return rp
