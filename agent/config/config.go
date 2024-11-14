@@ -22,15 +22,43 @@ const (
 	ListenerProtocolTCP  ListenerProtocol = "tcp"
 )
 
+type ListenerTLSConfig struct {
+	// RootCAs contains a path to root certificate authorities to validate
+	// the TLS connection to the Piko server.
+	//
+	// Defaults to using the host root CAs.
+	RootCAs string `json:"root_cas" yaml:"root_cas"`
+
+	// InsecureSkipVerify allows the proxy to ignore certificates on HTTPS connections.
+	InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
+}
+
+func (c *ListenerTLSConfig) Load() (*tls.Config, error) {
+	tlsConfig := &tls.Config{}
+
+	if c.RootCAs != "" {
+		caCert, err := os.ReadFile(c.RootCAs)
+		if err != nil {
+			return nil, fmt.Errorf("open root cas: %s: %w", c.RootCAs, err)
+		}
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM(caCert)
+		if !ok {
+			return nil, fmt.Errorf("parse root cas: %s: %w", c.RootCAs, err)
+		}
+		tlsConfig.RootCAs = caCertPool
+	}
+	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
+
+	return tlsConfig, nil
+}
+
 type ListenerConfig struct {
 	// EndpointID is the endpoint ID to register.
 	EndpointID string `json:"endpoint_id" yaml:"endpoint_id"`
 
 	// Addr is the address of the upstream service to forward to.
 	Addr string `json:"addr" yaml:"addr"`
-
-	// InsecureSkipVerify allows the proxy to ignore certificates on HTTPS connections.
-	InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
 
 	// Protocol is the protocol to listen on. Supports "http" and "tcp".
 	// Defaults to "http".
@@ -42,6 +70,8 @@ type ListenerConfig struct {
 
 	// Timeout is the timeout to forward incoming requests to the upstream.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
+
+	TLS ListenerTLSConfig `json:"tls" yaml:"tls"`
 }
 
 // Host parses the given upstream address into a host and port. Return false if
