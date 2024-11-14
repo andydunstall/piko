@@ -7,13 +7,15 @@ import (
 
 	"github.com/spf13/pflag"
 
-	agentconfig "github.com/andydunstall/piko/agent/config"
 	"github.com/andydunstall/piko/pkg/log"
 )
 
 type ConnectConfig struct {
-	// URL is the server URL.
-	URL string `json:"url" yaml:"url"`
+	// ProxyURL is the server proxy URL.
+	ProxyURL string `json:"proxy_url" yaml:"proxy_url"`
+
+	// UpstreamURL is the server upstream URL.
+	UpstreamURL string `json:"upstream_url" yaml:"upstream_url"`
 
 	// Timeout is the timeout attempting to connect to the Piko server on
 	// boot.
@@ -21,11 +23,17 @@ type ConnectConfig struct {
 }
 
 func (c *ConnectConfig) Validate() error {
-	if c.URL == "" {
-		return fmt.Errorf("missing url")
+	if c.ProxyURL == "" {
+		return fmt.Errorf("missing proxy url")
 	}
-	if _, err := url.Parse(c.URL); err != nil {
-		return fmt.Errorf("invalid url: %w", err)
+	if _, err := url.Parse(c.ProxyURL); err != nil {
+		return fmt.Errorf("invalid proxy url: %w", err)
+	}
+	if c.UpstreamURL == "" {
+		return fmt.Errorf("missing upstream url")
+	}
+	if _, err := url.Parse(c.UpstreamURL); err != nil {
+		return fmt.Errorf("invalid upstream url: %w", err)
 	}
 	if c.Timeout == 0 {
 		return fmt.Errorf("missing timeout")
@@ -35,11 +43,21 @@ func (c *ConnectConfig) Validate() error {
 
 func (c *ConnectConfig) RegisterFlags(fs *pflag.FlagSet) {
 	fs.StringVar(
-		&c.URL,
-		"connect.url",
-		c.URL,
+		&c.ProxyURL,
+		"connect.proxy-url",
+		c.ProxyURL,
 		`
-Piko server URL.
+Piko server proxy URL.
+
+Note Piko connects to the server with WebSockets, so will replace http/https
+with ws/wss (you can configure either).`,
+	)
+	fs.StringVar(
+		&c.UpstreamURL,
+		"connect.upstream-url",
+		c.UpstreamURL,
+		`
+Piko server upstream URL.
 
 Note Piko connects to the server with WebSockets, so will replace http/https
 with ws/wss (you can configure either).`,
@@ -57,17 +75,15 @@ reconnect.`,
 }
 
 type Config struct {
-	Protocol string `json:"protocol" yaml:"protocol"`
+	Requests int `json:"requests" yaml:"requests"`
 
 	Clients int `json:"clients" yaml:"clients"`
 
 	Endpoints int `json:"endpoints" yaml:"endpoints"`
 
-	// Rate is the number of requests/connections per second per client.
-	Rate int `json:"rate" yaml:"rate"`
+	Upstreams int `json:"upstreams" yaml:"upstreams"`
 
-	// RequestSize is the size of each request.
-	RequestSize int `json:"request_size" yaml:"request_size"`
+	Size int `json:"size" yaml:"size"`
 
 	Connect ConnectConfig `json:"server" yaml:"server"`
 
@@ -76,14 +92,15 @@ type Config struct {
 
 func Default() *Config {
 	return &Config{
-		Protocol:    string(agentconfig.ListenerProtocolHTTP),
-		Clients:     100,
-		Endpoints:   100,
-		Rate:        10,
-		RequestSize: 1024,
+		Requests:  100000,
+		Clients:   100,
+		Endpoints: 100,
+		Upstreams: 100,
+		Size:      1024,
 		Connect: ConnectConfig{
-			URL:     "http://localhost:8000",
-			Timeout: time.Second * 5,
+			ProxyURL:    "http://localhost:8000",
+			UpstreamURL: "http://localhost:8001",
+			Timeout:     time.Second * 5,
 		},
 		Log: log.Config{
 			Level: "info",
@@ -92,45 +109,40 @@ func Default() *Config {
 }
 
 func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
-	fs.StringVar(
-		&c.Protocol,
-		"protocol",
-		string(c.Protocol),
+	fs.IntVar(
+		&c.Requests,
+		"requests",
+		c.Requests,
 		`
-Upstream listener protocol (HTTP or TCP).`,
+Number of requests to send.`,
 	)
-
 	fs.IntVar(
 		&c.Clients,
 		"clients",
 		c.Clients,
 		`
-Number of clients.`,
+Number of clients to connect.`,
 	)
-
 	fs.IntVar(
 		&c.Endpoints,
 		"endpoints",
 		c.Endpoints,
 		`
-Number of endponits to connect to`,
+Number of endpoints to register.`,
 	)
-
 	fs.IntVar(
-		&c.Rate,
-		"rate",
-		c.Rate,
+		&c.Upstreams,
+		"upstreams",
+		c.Upstreams,
 		`
-The number of requests/connections per second per client.`,
+Number of upstream listeners to register.`,
 	)
-
 	fs.IntVar(
-		&c.RequestSize,
-		"request-size",
-		c.RequestSize,
+		&c.Size,
+		"size",
+		c.Size,
 		`
-The size of each request. As the upstream echos the response body, the response
-will have the same size.`,
+Request payload size.`,
 	)
 
 	c.Connect.RegisterFlags(fs)
@@ -139,24 +151,20 @@ will have the same size.`,
 }
 
 func (c *Config) Validate() error {
-	if c.Protocol == "" {
-		return fmt.Errorf("missing protocol")
+	if c.Requests == 0 {
+		return fmt.Errorf("missing requests")
 	}
-	if agentconfig.ListenerProtocol(c.Protocol) != agentconfig.ListenerProtocolHTTP &&
-		agentconfig.ListenerProtocol(c.Protocol) != agentconfig.ListenerProtocolTCP {
-		return fmt.Errorf("unsupported protocol: %s", c.Protocol)
-	}
-
 	if c.Clients == 0 {
 		return fmt.Errorf("missing clients")
 	}
-
 	if c.Endpoints == 0 {
 		return fmt.Errorf("missing endpoints")
 	}
-
-	if c.Rate == 0 {
-		return fmt.Errorf("missing rate")
+	if c.Upstreams == 0 {
+		return fmt.Errorf("missing upstreams")
+	}
+	if c.Size == 0 {
+		return fmt.Errorf("missing size")
 	}
 
 	if err := c.Connect.Validate(); err != nil {
