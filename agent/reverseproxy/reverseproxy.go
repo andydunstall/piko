@@ -36,8 +36,8 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 
 	transport := http.DefaultTransport
 	if tpt, ok := transport.(*http.Transport); ok {
-        tpt.TLSClientConfig, _ = conf.TLS.Load()
-    }
+		tpt.TLSClientConfig, _ = conf.TLS.Load()
+	}
 
 	proxy.Transport = transport
 
