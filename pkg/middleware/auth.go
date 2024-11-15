@@ -76,13 +76,27 @@ func (m *Auth) Verify(c *gin.Context) {
 }
 
 func (m *Auth) parseToken(c *gin.Context) (string, bool) {
-	authorization := c.Request.Header.Get("Authorization")
-	authType, tokenString, ok := strings.Cut(authorization, " ")
-	if !ok {
+	// Support both x-piko-authorization and authorization, where
+	// x-piko-authorization takes precedence. x-piko-authorization can be used
+	// to avoid conflicts with the upstream authorization header.
+	authorization := c.Request.Header.Get("x-piko-authorization")
+	if authorization == "" {
+		authorization = c.Request.Header.Get("Authorization")
+	}
+	if authorization == "" {
 		m.logger.Warn("missing authorization header")
 		c.AbortWithStatusJSON(
 			http.StatusUnauthorized,
 			gin.H{"error": "missing authorization"},
+		)
+		return "", false
+	}
+	authType, tokenString, ok := strings.Cut(authorization, " ")
+	if !ok {
+		m.logger.Warn("invalid authorization header")
+		c.AbortWithStatusJSON(
+			http.StatusUnauthorized,
+			gin.H{"error": "invalid authorization"},
 		)
 		return "", false
 	}

@@ -30,7 +30,7 @@ type errorMessage struct {
 }
 
 func TestAuth(t *testing.T) {
-	t.Run("ok", func(t *testing.T) {
+	t.Run("authorization ok", func(t *testing.T) {
 		verifier := &fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
@@ -46,6 +46,37 @@ func TestAuth(t *testing.T) {
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest("GET", "http://example.com/foo", nil)
 		c.Request.Header.Add("Authorization", "Bearer 123")
+
+		m.Verify(c)
+
+		resp := w.Result()
+		assert.Equal(t, http.StatusOK, resp.StatusCode)
+
+		// Verify the token was added to context.
+		token, ok := c.Get(TokenContextKey)
+		assert.True(t, ok)
+		assert.Equal(t, []string{"e1", "e2", "e3"}, token.(*auth.Token).Endpoints)
+	})
+
+	t.Run("x-piko-authorization ok", func(t *testing.T) {
+		verifier := &fakeVerifier{
+			handler: func(token string) (*auth.Token, error) {
+				assert.Equal(t, "123", token)
+				return &auth.Token{
+					Expiry:    time.Now().Add(time.Hour),
+					Endpoints: []string{"e1", "e2", "e3"},
+				}, nil
+			},
+		}
+		m := NewAuth(verifier, log.NewNopLogger())
+
+		w := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(w)
+		c.Request = httptest.NewRequest("GET", "http://example.com/foo", nil)
+		// Add both x-piko-authorization and Authorization, where
+		// x-piko-authorization should take precedence.
+		c.Request.Header.Add("x-piko-authorization", "Bearer 123")
+		c.Request.Header.Add("Authorization", "Bearer xyz")
 
 		m.Verify(c)
 
