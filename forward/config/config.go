@@ -62,6 +62,12 @@ type TLSConfig struct {
 	//
 	// Defaults to using the host root CAs.
 	RootCAs string `json:"root_cas" yaml:"root_cas"`
+
+	// InsecureSkipVerify configures the client to accept any certificate
+	// presented by the server and any host name in that certificate.
+	//
+	// See https://pkg.go.dev/crypto/tls#Config.
+	InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
 }
 
 func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
@@ -75,6 +81,15 @@ A path to a certificate PEM file containing root certificiate authorities to
 validate the TLS connection to the Piko server.
 
 Defaults to using the host root CAs.`,
+	)
+
+	fs.BoolVar(
+		&c.InsecureSkipVerify,
+		prefix+"insecure-skip-verify",
+		c.InsecureSkipVerify,
+		`
+Configures the client to accept any certificate presented by the server and any
+host name in that certificate.`,
 	)
 }
 
@@ -95,6 +110,8 @@ func (c *TLSConfig) Load() (*tls.Config, error) {
 		return nil, fmt.Errorf("parse root cas: %s: %w", c.RootCAs, err)
 	}
 	tlsConfig.RootCAs = caCertPool
+
+	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
 
 	return tlsConfig, nil
 }
