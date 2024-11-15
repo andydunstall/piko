@@ -77,9 +77,9 @@ Examples:
 		}
 
 		// Listener protocol defaults to HTTP.
-		for _, listener := range conf.Listeners {
-			if listener.Protocol == "" {
-				listener.Protocol = config.ListenerProtocolHTTP
+		for i := 0; i != len(conf.Listeners); i++ {
+			if conf.Listeners[i].Protocol == "" {
+				conf.Listeners[i].Protocol = config.ListenerProtocolHTTP
 			}
 		}
 
@@ -170,6 +170,9 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 					logger.Warn("failed to close listener", zap.Error(err))
 				}
 			})
+		} else {
+			// Verified on startup so should never happen.
+			panic("unsupported protocol: " + listenerConfig.Protocol)
 		}
 	}
 
