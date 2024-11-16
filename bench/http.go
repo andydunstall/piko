@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	weakrand "math/rand"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -161,9 +162,26 @@ type httpClient struct {
 }
 
 func newHTTPClient(conf *config.Config, logger log.Logger) *httpClient {
+	dialer := &net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}
+	transport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           dialer.DialContext,
+		ForceAttemptHTTP2:     true,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		MaxIdleConns:          100,
+		// Override MaxIdleConnsPerHost to avoid opening too many connections
+		// to the target server.
+		MaxIdleConnsPerHost: 100,
+	}
 	client := &httpClient{
 		client: &http.Client{
-			Timeout: conf.Connect.Timeout,
+			Transport: transport,
+			Timeout:   conf.Connect.Timeout,
 		},
 		conf:   conf,
 		logger: logger,
