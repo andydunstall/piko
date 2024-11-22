@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"time"
@@ -31,7 +32,29 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 		panic("invalid addr: " + conf.Addr)
 	}
 
+	dialer := &net.Dialer{
+		Timeout:   conf.Timeout,
+		KeepAlive: 30 * time.Second,
+	}
+	// Same as http.DefaultTransport with custom TLS client config.
+	transport := &http.Transport{
+		Proxy:                 http.ProxyFromEnvironment,
+		DialContext:           dialer.DialContext,
+		ForceAttemptHTTP2:     true,
+		IdleConnTimeout:       90 * time.Second,
+		TLSHandshakeTimeout:   10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		MaxIdleConns:          100,
+	}
+	tlsClientConfig, err := conf.TLS.Load()
+	if err != nil {
+		// Validated on boot so should never happen.
+		panic("invalid tls config: " + err.Error())
+	}
+	transport.TLSClientConfig = tlsClientConfig
+
 	proxy := httputil.NewSingleHostReverseProxy(u)
+	proxy.Transport = transport
 	proxy.ErrorLog = logger.StdLogger(zapcore.WarnLevel)
 	rp := &ReverseProxy{
 		proxy:   proxy,
