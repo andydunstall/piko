@@ -82,6 +82,12 @@ func (c *ListenerConfig) URL() (*url.URL, bool) {
 		}, true
 	}
 
+	// URL.
+	u, err := url.Parse(c.Addr)
+	if err == nil && u.Scheme != "" && u.Host != "" {
+		return u, true
+	}
+
 	// Host and port.
 	host, portStr, err := net.SplitHostPort(c.Addr)
 	if err == nil {
@@ -89,12 +95,6 @@ func (c *ListenerConfig) URL() (*url.URL, bool) {
 			Scheme: "http",
 			Host:   net.JoinHostPort(host, portStr),
 		}, true
-	}
-
-	// URL.
-	u, err := url.Parse(c.Addr)
-	if err == nil && u.Scheme != "" && u.Host != "" {
-		return u, true
 	}
 
 	return nil, false

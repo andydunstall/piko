@@ -41,13 +41,27 @@ func TestListenerConfig_URL(t *testing.T) {
 			},
 		},
 		{
+			addr: "https://google.com:443",
+			url: &url.URL{
+				Scheme: "https",
+				Host:   "google.com:443",
+			},
+		},
+		{
+			addr: "https://google.com",
+			url: &url.URL{
+				Scheme: "https",
+				Host:   "google.com",
+			},
+		},
+		{
 			addr: "invalid",
 			ok:   false,
 		},
 	}
 
 	for _, tt := range tests {
-		tt := tt // for t.Parallel
+		tt := tt
 		t.Run(tt.addr, func(t *testing.T) {
 			conf := &ListenerConfig{Addr: tt.addr}
 			u, ok := conf.URL()
