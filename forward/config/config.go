@@ -70,6 +70,11 @@ type TLSConfig struct {
 	InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
 }
 
+func (c *TLSConfig) Validate() error {
+	_, err := c.Load()
+	return err
+}
+
 func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
 	prefix = prefix + ".tls."
 	fs.StringVar(
@@ -94,22 +99,24 @@ host name in that certificate.`,
 }
 
 func (c *TLSConfig) Load() (*tls.Config, error) {
-	if c.RootCAs == "" {
+	if c.RootCAs == "" && !c.InsecureSkipVerify {
 		return nil, nil
 	}
 
 	tlsConfig := &tls.Config{}
 
-	caCert, err := os.ReadFile(c.RootCAs)
-	if err != nil {
-		return nil, fmt.Errorf("open root cas: %s: %w", c.RootCAs, err)
+	if c.RootCAs != "" {
+		caCert, err := os.ReadFile(c.RootCAs)
+		if err != nil {
+			return nil, fmt.Errorf("open root cas: %s: %w", c.RootCAs, err)
+		}
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM(caCert)
+		if !ok {
+			return nil, fmt.Errorf("parse root cas: %s: %w", c.RootCAs, err)
+		}
+		tlsConfig.RootCAs = caCertPool
 	}
-	caCertPool := x509.NewCertPool()
-	ok := caCertPool.AppendCertsFromPEM(caCert)
-	if !ok {
-		return nil, fmt.Errorf("parse root cas: %s: %w", c.RootCAs, err)
-	}
-	tlsConfig.RootCAs = caCertPool
 
 	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
 
@@ -138,6 +145,9 @@ func (c *ConnectConfig) Validate() error {
 	}
 	if c.Timeout == 0 {
 		return fmt.Errorf("missing timeout")
+	}
+	if err := c.TLS.Validate(); err != nil {
+		return fmt.Errorf("tls: %w", err)
 	}
 	return nil
 }
