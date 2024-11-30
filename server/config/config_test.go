@@ -45,7 +45,6 @@ proxy:
     issuer: my-issuer
 
   tls:
-    enabled: true
     cert: /piko/cert.pem
     key: /piko/key.pem
 
@@ -61,7 +60,6 @@ upstream:
     issuer: my-issuer
 
   tls:
-    enabled: true
     cert: /piko/cert.pem
     key: /piko/key.pem
 
@@ -77,7 +75,6 @@ admin:
     issuer: my-issuer
 
   tls:
-    enabled: true
     cert: /piko/cert.pem
     key: /piko/key.pem
 
@@ -139,9 +136,8 @@ grace_period: 2m
 				Issuer:         "my-issuer",
 			},
 			TLS: TLSConfig{
-				Enabled: true,
-				Cert:    "/piko/cert.pem",
-				Key:     "/piko/key.pem",
+				Cert: "/piko/cert.pem",
+				Key:  "/piko/key.pem",
 			},
 		},
 		Upstream: UpstreamConfig{
@@ -155,9 +151,8 @@ grace_period: 2m
 				Issuer:         "my-issuer",
 			},
 			TLS: TLSConfig{
-				Enabled: true,
-				Cert:    "/piko/cert.pem",
-				Key:     "/piko/key.pem",
+				Cert: "/piko/cert.pem",
+				Key:  "/piko/key.pem",
 			},
 		},
 		Admin: AdminConfig{
@@ -171,9 +166,8 @@ grace_period: 2m
 				Issuer:         "my-issuer",
 			},
 			TLS: TLSConfig{
-				Enabled: true,
-				Cert:    "/piko/cert.pem",
-				Key:     "/piko/key.pem",
+				Cert: "/piko/cert.pem",
+				Key:  "/piko/key.pem",
 			},
 		},
 		Cluster: ClusterConfig{
@@ -224,7 +218,6 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--proxy.auth.ecdsa-public-key", "ecdsa-public-key",
 		"--proxy.auth.audience", "my-audience",
 		"--proxy.auth.issuer", "my-issuer",
-		"--proxy.tls.enabled",
 		"--proxy.tls.cert", "/piko/cert.pem",
 		"--proxy.tls.key", "/piko/key.pem",
 		"--upstream.bind-addr", "10.15.104.25:8001",
@@ -234,7 +227,6 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--upstream.auth.ecdsa-public-key", "ecdsa-public-key",
 		"--upstream.auth.audience", "my-audience",
 		"--upstream.auth.issuer", "my-issuer",
-		"--upstream.tls.enabled",
 		"--upstream.tls.cert", "/piko/cert.pem",
 		"--upstream.tls.key", "/piko/key.pem",
 		"--admin.bind-addr", "10.15.104.25:8002",
@@ -244,7 +236,6 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--admin.auth.ecdsa-public-key", "ecdsa-public-key",
 		"--admin.auth.audience", "my-audience",
 		"--admin.auth.issuer", "my-issuer",
-		"--admin.tls.enabled",
 		"--admin.tls.cert", "/piko/cert.pem",
 		"--admin.tls.key", "/piko/key.pem",
 		"--cluster.node-id", "my-node",
@@ -289,9 +280,8 @@ func TestConfig_LoadFlags(t *testing.T) {
 				Issuer:         "my-issuer",
 			},
 			TLS: TLSConfig{
-				Enabled: true,
-				Cert:    "/piko/cert.pem",
-				Key:     "/piko/key.pem",
+				Cert: "/piko/cert.pem",
+				Key:  "/piko/key.pem",
 			},
 		},
 		Upstream: UpstreamConfig{
@@ -305,9 +295,8 @@ func TestConfig_LoadFlags(t *testing.T) {
 				Issuer:         "my-issuer",
 			},
 			TLS: TLSConfig{
-				Enabled: true,
-				Cert:    "/piko/cert.pem",
-				Key:     "/piko/key.pem",
+				Cert: "/piko/cert.pem",
+				Key:  "/piko/key.pem",
 			},
 		},
 		Admin: AdminConfig{
@@ -321,9 +310,8 @@ func TestConfig_LoadFlags(t *testing.T) {
 				Issuer:         "my-issuer",
 			},
 			TLS: TLSConfig{
-				Enabled: true,
-				Cert:    "/piko/cert.pem",
-				Key:     "/piko/key.pem",
+				Cert: "/piko/cert.pem",
+				Key:  "/piko/key.pem",
 			},
 		},
 		Cluster: ClusterConfig{

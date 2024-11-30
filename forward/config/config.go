@@ -99,10 +99,6 @@ host name in that certificate.`,
 }
 
 func (c *TLSConfig) Load() (*tls.Config, error) {
-	if c.RootCAs == "" && !c.InsecureSkipVerify {
-		return nil, nil
-	}
-
 	tlsConfig := &tls.Config{}
 
 	if c.RootCAs != "" {

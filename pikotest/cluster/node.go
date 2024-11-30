@@ -46,10 +46,6 @@ func NewNode(opts ...Option) *Node {
 	// file.
 	var rootCAPool *x509.CertPool
 	if options.tls {
-		conf.Proxy.TLS.Enabled = true
-		conf.Upstream.TLS.Enabled = true
-		conf.Admin.TLS.Enabled = true
-
 		pool, cert, err := testutil.LocalTLSServerCert()
 		if err != nil {
 			panic("tls cert: " + err.Error())
