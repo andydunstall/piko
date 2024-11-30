@@ -129,7 +129,7 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 	if strings.HasPrefix(resp.Header.Get("content-type"), "application/json") {
 		var m errorMessage
 		if decodeErr := json.NewDecoder(resp.Body).Decode(&m); decodeErr == nil {
-			err = fmt.Errorf(m.Error)
+			err = errors.New(m.Error)
 		}
 	}
 
