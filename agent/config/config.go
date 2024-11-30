@@ -128,6 +128,13 @@ func (c *ListenerConfig) Validate() error {
 }
 
 type TLSConfig struct {
+	// Cert contains a path to the PEM encoded certificate to present to
+	// the server (optional).
+	Cert string `json:"cert" yaml:"cert"`
+
+	// Key contains a path to the PEM encoded private key (optional).
+	Key string `json:"key" yaml:"key"`
+
 	// RootCAs contains a path to root certificate authorities to validate
 	// the TLS connection to the Piko server.
 	//
@@ -142,12 +149,31 @@ type TLSConfig struct {
 }
 
 func (c *TLSConfig) Validate() error {
+	if c.Cert != "" && c.Key == "" {
+		return fmt.Errorf("missing key")
+	}
+
 	_, err := c.Load()
 	return err
 }
 
 func (c *TLSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
 	prefix = prefix + ".tls."
+	fs.StringVar(
+		&c.Cert,
+		prefix+"cert",
+		c.Cert,
+		`
+Path to the PEM encoded certificate file to present to the server.`,
+	)
+	fs.StringVar(
+		&c.Key,
+		prefix+"key",
+		c.Key,
+		`
+Path to the PEM encoded key file.`,
+	)
+
 	fs.StringVar(
 		&c.RootCAs,
 		prefix+"root-cas",
@@ -171,6 +197,14 @@ host name in that certificate.`,
 
 func (c *TLSConfig) Load() (*tls.Config, error) {
 	tlsConfig := &tls.Config{}
+
+	if c.Cert != "" {
+		cert, err := tls.LoadX509KeyPair(c.Cert, c.Key)
+		if err != nil {
+			return nil, fmt.Errorf("load key pair: %w", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
 
 	if c.RootCAs != "" {
 		caCert, err := os.ReadFile(c.RootCAs)
