@@ -146,14 +146,19 @@ func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Sessi
 			return nil, err
 		}
 
+		backoff, _ := backoff.Backoff()
 		u.logger().Warn(
 			"connect failed; retrying",
 			zap.String("endpoint-id", endpointID),
 			zap.String("url", url),
+			zap.String("backoff", backoff.String()),
 			zap.Error(err),
 		)
 
-		if !backoff.Wait(ctx) {
+		select {
+		case <-time.After(backoff):
+			continue
+		case <-ctx.Done():
 			return nil, ctx.Err()
 		}
 	}

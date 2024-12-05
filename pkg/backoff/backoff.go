@@ -1,7 +1,6 @@
 package backoff
 
 import (
-	"context"
 	"math/rand"
 	"time"
 )
@@ -30,23 +29,17 @@ func New(retries int, minBackoff time.Duration, maxBackoff time.Duration) *Backo
 	}
 }
 
-// Wait blocks until the next retry. Returns false if the number of retries has
-// been reached so the client should stop.
-func (b *Backoff) Wait(ctx context.Context) bool {
+// Backoff returns whether to retry or abort, and how long to backoff for.
+func (b *Backoff) Backoff() (time.Duration, bool) {
 	if b.retries != 0 && b.attempts > b.retries {
-		return false
+		return 0, false
 	}
 	b.attempts++
 
 	backoff := b.nextWait()
 	b.lastBackoff = backoff
 
-	select {
-	case <-time.After(b.lastBackoff):
-		return true
-	case <-ctx.Done():
-		return false
-	}
+	return backoff, true
 }
 
 func (b *Backoff) nextWait() time.Duration {

@@ -77,10 +77,23 @@ func (g *Gossip) JoinOnStartup(ctx context.Context, addrs []string) ([]string, e
 		if err == nil {
 			return nodeIDs, nil
 		}
-		g.logger.Warn("failed to join cluster", zap.Error(err))
+
+		backoff, retry := backoff.Backoff()
+		if !retry {
+			return nil, lastErr
+		}
+
+		g.logger.Warn(
+			"failed to join cluster; retrying",
+			zap.String("backoff", backoff.String()),
+			zap.Error(err),
+		)
 		lastErr = err
 
-		if !backoff.Wait(ctx) {
+		select {
+		case <-time.After(backoff):
+			continue
+		case <-ctx.Done():
 			return nil, lastErr
 		}
 	}
