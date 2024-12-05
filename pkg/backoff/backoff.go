@@ -56,6 +56,9 @@ func (b *Backoff) nextWait() time.Duration {
 	} else {
 		backoff = b.lastBackoff * 2
 	}
+	if backoff > b.maxBackoff {
+		backoff = b.maxBackoff
+	}
 
 	jitterMultipler := 1.0 + (rand.Float64() * 0.1)
 	return time.Duration(float64(backoff) * jitterMultipler)
