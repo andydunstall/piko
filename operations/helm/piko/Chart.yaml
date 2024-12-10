@@ -6,7 +6,7 @@ home: https://github.com/andydunstall/piko
 
 version: 0.1.0
 
-appVersion: "v0.6.1"
+appVersion: "v0.6.4"
 
 sources:
   - https://github.com/dragonflydb/dragonfly
