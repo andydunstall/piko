@@ -255,6 +255,34 @@ func TestJWTVerifier_Invalid(t *testing.T) {
 	})
 }
 
+func TestJWTVerifier_DisableDisconnectOnExpiry(t *testing.T) {
+	secretKey := generateTestHSKey(t)
+
+	endpointClaims := JWTClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+		Piko: PikoClaims{
+			Endpoints: []string{"my-endpoint"},
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, endpointClaims)
+	tokenString, err := token.SignedString([]byte(secretKey))
+	assert.NoError(t, err)
+
+	verifier := NewJWTVerifier(&LoadedConfig{
+		HMACSecretKey:             secretKey,
+		DisableDisconnectOnExpiry: true,
+	})
+	parsedToken, err := verifier.Verify(tokenString)
+	assert.NoError(t, err)
+
+	assert.Equal(t, []string{"my-endpoint"}, parsedToken.Endpoints)
+	// The token expiry should not be set.
+	assert.True(t, parsedToken.Expiry.IsZero())
+}
+
 func generateTestHSKey(t *testing.T) []byte {
 	b := make([]byte, 10)
 	_, err := rand.Read(b)

@@ -32,15 +32,22 @@ type Config struct {
 	//
 	// If not given the 'iss' claim will be ignored.
 	Issuer string `json:"issuer" yaml:"issuer"`
+
+	// DisableDisconnectOnExpiry disables disconnecting the client when their
+	// token expires.
+	//
+	// Piko still verifies the token expiry when the client first connects.
+	DisableDisconnectOnExpiry bool `json:"disable_disconnect_on_expiry"`
 }
 
 // LoadedConfig is the same as Config except it parses the RSA and ECDSA keys.
 type LoadedConfig struct {
-	HMACSecretKey  []byte
-	RSAPublicKey   *rsa.PublicKey
-	ECDSAPublicKey *ecdsa.PublicKey
-	Audience       string
-	Issuer         string
+	HMACSecretKey             []byte
+	RSAPublicKey              *rsa.PublicKey
+	ECDSAPublicKey            *ecdsa.PublicKey
+	Audience                  string
+	Issuer                    string
+	DisableDisconnectOnExpiry bool
 }
 
 // Enabled returns whether authentication is enabled.
@@ -52,9 +59,10 @@ func (c *Config) Enabled() bool {
 
 func (c *Config) Load() (*LoadedConfig, error) {
 	config := LoadedConfig{
-		HMACSecretKey: []byte(c.HMACSecretKey),
-		Audience:      c.Audience,
-		Issuer:        c.Issuer,
+		HMACSecretKey:             []byte(c.HMACSecretKey),
+		Audience:                  c.Audience,
+		Issuer:                    c.Issuer,
+		DisableDisconnectOnExpiry: c.DisableDisconnectOnExpiry,
 	}
 
 	if c.RSAPublicKey != "" {
@@ -122,5 +130,14 @@ Issuer of endpoint connection JWT  to verify.
 
 If given the JWT 'iss' claim must match the given issuer. Otherwise it
 is ignored.`,
+	)
+	fs.BoolVar(
+		&c.DisableDisconnectOnExpiry,
+		prefix+"disable-disconnect-on-expiry",
+		c.DisableDisconnectOnExpiry,
+		`
+Disables disconnecting the client when their token expires.
+
+Piko still verifies the token expiry when the client first connects.`,
 	)
 }

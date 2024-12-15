@@ -28,6 +28,8 @@ type JWTVerifier struct {
 	audience string
 	issuer   string
 
+	disableDisconnectOnExpiry bool
+
 	// methods contains the valid JWT methods, which depends on the
 	// verification keys configured.
 	methods []string
@@ -35,8 +37,9 @@ type JWTVerifier struct {
 
 func NewJWTVerifier(conf *LoadedConfig) *JWTVerifier {
 	v := &JWTVerifier{
-		audience: conf.Audience,
-		issuer:   conf.Issuer,
+		audience:                  conf.Audience,
+		issuer:                    conf.Issuer,
+		disableDisconnectOnExpiry: conf.DisableDisconnectOnExpiry,
 	}
 
 	if len(conf.HMACSecretKey) > 0 {
@@ -105,8 +108,13 @@ func (v *JWTVerifier) Verify(tokenString string) (*Token, error) {
 		return nil, ErrInvalidToken
 	}
 
+	fmt.Println(v.disableDisconnectOnExpiry)
+
+	// Discard the expiry if DisableDisconnectOnExpiry (we've already
+	// checked whether the token expired, claims.ExpiresAt is used to
+	// disconnect when the token expires).
 	var expiry time.Time
-	if claims.ExpiresAt != nil {
+	if claims.ExpiresAt != nil && !v.disableDisconnectOnExpiry {
 		expiry = claims.ExpiresAt.Time
 	}
 	return &Token{
