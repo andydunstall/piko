@@ -108,8 +108,6 @@ func (v *JWTVerifier) Verify(tokenString string) (*Token, error) {
 		return nil, ErrInvalidToken
 	}
 
-	fmt.Println(v.disableDisconnectOnExpiry)
-
 	// Discard the expiry if DisableDisconnectOnExpiry (we've already
 	// checked whether the token expired, claims.ExpiresAt is used to
 	// disconnect when the token expires).
