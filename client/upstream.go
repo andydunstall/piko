@@ -45,6 +45,8 @@ type Upstream struct {
 	// Piko server.
 	//
 	// Defaults to no tenant (optional).
+	//
+	// Experimental.
 	TenantID string
 
 	// TLSConfig specifies the TLS configuration to use with the Piko server.

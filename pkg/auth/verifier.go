@@ -7,8 +7,9 @@ import (
 )
 
 var (
-	ErrInvalidToken = errors.New("invalid token")
-	ErrExpiredToken = errors.New("expired token")
+	ErrInvalidToken  = errors.New("invalid token")
+	ErrExpiredToken  = errors.New("expired token")
+	ErrUnknownTenant = errors.New("unknown tenant")
 )
 
 // Token represents an authenticated Piko token.
@@ -21,6 +22,9 @@ type Token struct {
 	// to access (either connect to or listen on). If empty then all endpoints
 	// are allowed.
 	Endpoints []string
+
+	// TenantID is the ID of the client tenant.
+	TenantID string
 }
 
 // EndpointPermitted returns whether the token it permitted to access the

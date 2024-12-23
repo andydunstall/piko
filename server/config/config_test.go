@@ -68,6 +68,14 @@ upstream:
     cert: /piko/cert.pem
     key: /piko/key.pem
 
+  tenants:
+    - id: tenant-1
+      auth:
+        hmac_secret_key: hmac-secret-key
+    - id: tenant-2
+      auth:
+        rsa_public_key: rsa-public-key
+
 admin:
   bind_addr: 10.15.104.25:8002
   advertise_addr: 1.2.3.4:8002
@@ -163,6 +171,20 @@ grace_period: 2m
 			TLS: TLSConfig{
 				Cert: "/piko/cert.pem",
 				Key:  "/piko/key.pem",
+			},
+			Tenants: []TenantConfig{
+				{
+					ID: "tenant-1",
+					Auth: auth.Config{
+						HMACSecretKey: "hmac-secret-key",
+					},
+				},
+				{
+					ID: "tenant-2",
+					Auth: auth.Config{
+						RSAPublicKey: "rsa-public-key",
+					},
+				},
 			},
 		},
 		Admin: AdminConfig{

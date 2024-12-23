@@ -235,14 +235,14 @@ func TestServer_Authentication(t *testing.T) {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return &auth.Token{
 					Expiry: time.Now().Add(time.Hour),
 				}, nil
 			},
-		}
+		}, nil)
 
 		s := NewServer(
 			nil,
@@ -272,12 +272,12 @@ func TestServer_Authentication(t *testing.T) {
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return nil, auth.ErrInvalidToken
 			},
-		}
+		}, nil)
 
 		s := NewServer(
 			nil,

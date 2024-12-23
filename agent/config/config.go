@@ -232,6 +232,8 @@ type ConnectConfig struct {
 	Token string `json:"token" yaml:"token"`
 
 	// TenantID is the ID of the agent tenant (optional).
+	//
+	// Experimental.
 	TenantID string `json:"tenant_id" yaml:"tenant_id"`
 
 	// Timeout is the timeout attempting to connect to the Piko server on
