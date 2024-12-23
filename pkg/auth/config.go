@@ -37,7 +37,7 @@ type Config struct {
 	// token expires.
 	//
 	// Piko still verifies the token expiry when the client first connects.
-	DisableDisconnectOnExpiry bool `json:"disable_disconnect_on_expiry"`
+	DisableDisconnectOnExpiry bool `json:"disable_disconnect_on_expiry" yaml:"disable_disconnect_on_expiry"`
 }
 
 // LoadedConfig is the same as Config except it parses the RSA and ECDSA keys.
