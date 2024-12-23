@@ -36,7 +36,7 @@ type Server struct {
 
 func NewServer(
 	upstreams Manager,
-	verifier auth.Verifier,
+	verifier *auth.MultiTenantVerifier,
 	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {
@@ -102,6 +102,7 @@ func (s *Server) Shutdown(ctx context.Context) error {
 func (s *Server) upstreamRoute(c *gin.Context) {
 	endpointID := c.Param("endpointID")
 
+	var tenantID string
 	token, ok := c.Get(middleware.TokenContextKey)
 	if ok {
 		// If the token contains a set of permitted endpoints, verify the
@@ -121,6 +122,7 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 			)
 			return
 		}
+		tenantID = endpointToken.TenantID
 	}
 
 	wsConn, err := s.websocketUpgrader.Upgrade(c.Writer, c.Request, nil)
@@ -136,11 +138,13 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 		"upstream connected",
 		zap.String("endpoint-id", endpointID),
 		zap.String("client-ip", c.ClientIP()),
+		zap.String("tenant-id", tenantID),
 	)
 	defer s.logger.Info(
 		"upstream disconnected",
 		zap.String("endpoint-id", endpointID),
 		zap.String("client-ip", c.ClientIP()),
+		zap.String("tenant-id", tenantID),
 	)
 
 	ctx := s.ctx
