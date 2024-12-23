@@ -41,6 +41,12 @@ type Upstream struct {
 	// Defaults to no authentication.
 	Token string
 
+	// TenantID configures the tenant to authenticate the listener with the
+	// Piko server.
+	//
+	// Defaults to no tenant (optional).
+	TenantID string
+
 	// TLSConfig specifies the TLS configuration to use with the Piko server.
 	//
 	// If nil, the default configuration is used.
@@ -110,6 +116,7 @@ func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Sessi
 			ctx,
 			url,
 			websocket.WithToken(u.Token),
+			websocket.WithTenantID(u.TenantID),
 			websocket.WithTLSConfig(u.TLSConfig),
 		)
 		if err == nil {
