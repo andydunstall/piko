@@ -129,11 +129,9 @@ func showClusterNode(nodeID string, c *client.Client) {
 		os.Exit(1)
 	}
 
-	// Print node details including upstreams (total connections)
 	fmt.Printf("Node ID: %s\n", node.ID)
 	fmt.Printf("Total Connections: %d\n", node)
 
-	// Print the rest of the node data
 	b, _ := yaml.Marshal(node)
 	fmt.Print(string(b))
 }
