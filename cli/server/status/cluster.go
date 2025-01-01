@@ -8,7 +8,7 @@ import (
 	yaml "github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 
-	"github.com/andydunstall/piko/server/cluster"
+	clusterServer "github.com/andydunstall/piko/server/cluster"
 	"github.com/andydunstall/piko/server/status/client"
 )
 
@@ -46,7 +46,7 @@ Examples:
 }
 
 type clusterNodesOutput struct {
-	Nodes []*cluster.NodeMetadata `json:"nodes"`
+	Nodes []*clusterServer.NodeMetadata `json:"nodes"`
 }
 
 func showClusterNodes(c *client.Client) {
@@ -58,14 +58,37 @@ func showClusterNodes(c *client.Client) {
 		os.Exit(1)
 	}
 
+	// Convert nodes to NodeMetadata.
+	metadata := make([]*clusterServer.NodeMetadata, len(nodes))
+	for i, node := range nodes {
+		metadata[i] = &clusterServer.NodeMetadata{
+			ID:        node.ID,
+			Status:    node.Status,
+			ProxyAddr: node.ProxyAddr,
+			AdminAddr: node.AdminAddr,
+			Endpoints: node.Endpoints,
+			Upstreams: node.Upstreams,
+		}
+	}
+
 	// Sort by ID.
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].ID < nodes[j].ID
+	sort.Slice(metadata, func(i, j int) bool {
+		return metadata[i].ID < metadata[j].ID
 	})
 
-	output := clusterNodesOutput{
-		Nodes: nodes,
+	// Calculate total and average connections.
+	average, total := CalculateClusterMetrics(metadata)
+
+	output := struct {
+		Nodes              []*clusterServer.NodeMetadata `json:"nodes"`
+		TotalConnections   int                           `json:"total_connections"`
+		AverageConnections float64                       `json:"average_connections"`
+	}{
+		Nodes:              metadata,
+		TotalConnections:   total,
+		AverageConnections: average,
 	}
+
 	b, _ := yaml.Marshal(output)
 	fmt.Print(string(b))
 }
@@ -99,12 +122,28 @@ Examples:
 func showClusterNode(nodeID string, c *client.Client) {
 	cluster := client.NewCluster(c)
 
+	// Fetch the node by ID
 	node, err := cluster.Node(nodeID)
 	if err != nil {
-		fmt.Printf("failed to get cluster nodes: %s: %s\n", nodeID, err.Error())
+		fmt.Printf("failed to get cluster node: %s: %s\n", nodeID, err.Error())
 		os.Exit(1)
 	}
 
+	// Print node details including upstreams (total connections)
+	fmt.Printf("Node ID: %s\n", node.ID)
+	fmt.Printf("Total Connections: %d\n", node)
+
+	// Print the rest of the node data
 	b, _ := yaml.Marshal(node)
 	fmt.Print(string(b))
+}
+
+func CalculateClusterMetrics(nodes []*clusterServer.NodeMetadata) (average float64, total int) {
+	for _, node := range nodes {
+		total += node.Upstreams
+	}
+	if len(nodes) > 0 {
+		average = float64(total) / float64(len(nodes))
+	}
+	return average, total
 }
