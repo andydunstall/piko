@@ -2,7 +2,11 @@ package cluster
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
+	"time"
+
+	"github.com/andydunstall/piko/bench/config"
 )
 
 var (
@@ -153,4 +157,27 @@ func GenerateNodeID() string {
 		b[i] = alphaNumericChars[n.Int64()]
 	}
 	return string(b)
+}
+
+func (n *Node) StartRebalancing(nodes []*Node, interval time.Duration, config config.Config) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Dynamically calculate metadata for all nodes.
+		var nodeMetadataList []*NodeMetadata
+		for _, node := range nodes {
+			nodeMetadataList = append(nodeMetadataList, node.Metadata())
+		}
+
+		totalConnections := n.TotalConnections(nodeMetadataList)
+		clusterAverage := n.AverageConnections(nodeMetadataList)
+
+		fmt.Printf("Rebalancing: Cluster Average Connections: %.2f\n", clusterAverage)
+
+		// Shed connections for nodes exceeding the threshold.
+		for _, node := range nodes {
+			node.maybeShedConnections(nodeMetadataList, clusterAverage, config.RebalanceThreshold, config.ShedRate, totalConnections)
+		}
+	}
 }

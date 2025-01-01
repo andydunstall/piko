@@ -2,10 +2,12 @@ package upstream
 
 import (
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/atomic"
 
+	"github.com/andydunstall/piko/bench/config"
 	"github.com/andydunstall/piko/server/cluster"
 )
 
@@ -83,10 +85,12 @@ type LoadBalancedManager struct {
 	cluster *cluster.State
 
 	metrics *Metrics
+
+	node *cluster.Node
 }
 
 func NewLoadBalancedManager(cluster *cluster.State) *LoadBalancedManager {
-	return &LoadBalancedManager{
+	manager := &LoadBalancedManager{
 		localUpstreams: make(map[string]*loadBalancer),
 		cluster:        cluster,
 		usage: &Usage{
@@ -95,6 +99,10 @@ func NewLoadBalancedManager(cluster *cluster.State) *LoadBalancedManager {
 		},
 		metrics: NewMetrics(),
 	}
+
+	go manager.node.StartRebalancing(manager.cluster.Nodes(), 1*time.Minute, *config.Default())
+
+	return manager
 }
 
 func (m *LoadBalancedManager) Select(endpointID string, allowRemote bool) (Upstream, bool) {
