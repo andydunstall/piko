@@ -84,6 +84,52 @@ func (n *Node) Metadata() *NodeMetadata {
 	}
 }
 
+func (n *Node) TotalConnections(nodes []*NodeMetadata) int {
+	total := 0
+	for _, node := range nodes {
+		total += node.Upstreams
+	}
+	return total
+}
+
+func (n *Node) AverageConnections(metadata []*NodeMetadata) float64 {
+	if len(metadata) == 0 {
+		return 0
+	}
+	return float64(n.TotalConnections(metadata)) / float64(len(metadata))
+}
+
+func (n *Node) maybeShedConnections(nodes []*NodeMetadata, clusterAverage float64, threshold float64, shedRate float64, totalConnections int) {
+	if totalConnections < 10 {
+		return
+	}
+
+	excess := float64(n.TotalConnections(nodes)) - (clusterAverage * (1.0 + threshold))
+	if excess > 0 {
+		shedCount := int(excess * shedRate)
+		n.shedConnections(shedCount)
+	}
+}
+
+// Shed connections by disconnecting a specified number of listeners.
+func (n *Node) shedConnections(count int) {
+	removed := 0
+	for endpoint, listenerCount := range n.Endpoints {
+		if removed >= count {
+			break
+		}
+
+		disconnect := min(count-removed, listenerCount)
+		n.Endpoints[endpoint] -= disconnect
+		removed += disconnect
+
+		// Propagate these changes through gossip.
+		if n.Endpoints[endpoint] <= 0 {
+			delete(n.Endpoints, endpoint)
+		}
+	}
+}
+
 // NodeMetadata contains metadata fields from Node.
 type NodeMetadata struct {
 	ID        string     `json:"id"`
