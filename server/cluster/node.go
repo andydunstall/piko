@@ -2,7 +2,11 @@ package cluster
 
 import (
 	"crypto/rand"
+	"fmt"
 	"math/big"
+	"time"
+
+	"github.com/andydunstall/piko/bench/config"
 )
 
 var (
@@ -84,6 +88,52 @@ func (n *Node) Metadata() *NodeMetadata {
 	}
 }
 
+func (n *Node) TotalConnections(nodes []*NodeMetadata) int {
+	total := 0
+	for _, node := range nodes {
+		total += node.Upstreams
+	}
+	return total
+}
+
+func (n *Node) AverageConnections(metadata []*NodeMetadata) float64 {
+	if len(metadata) == 0 {
+		return 0
+	}
+	return float64(n.TotalConnections(metadata)) / float64(len(metadata))
+}
+
+func (n *Node) maybeShedConnections(nodes []*NodeMetadata, clusterAverage float64, threshold float64, shedRate float64, totalConnections int) {
+	if totalConnections < 10 {
+		return
+	}
+
+	excess := float64(n.TotalConnections(nodes)) - (clusterAverage * (1.0 + threshold))
+	if excess > 0 {
+		shedCount := int(excess * shedRate)
+		n.shedConnections(shedCount)
+	}
+}
+
+// Shed connections by disconnecting a specified number of listeners.
+func (n *Node) shedConnections(count int) {
+	removed := 0
+	for endpoint, listenerCount := range n.Endpoints {
+		if removed >= count {
+			break
+		}
+
+		disconnect := min(count-removed, listenerCount)
+		n.Endpoints[endpoint] -= disconnect
+		removed += disconnect
+
+		// Propagate these changes through gossip.
+		if n.Endpoints[endpoint] <= 0 {
+			delete(n.Endpoints, endpoint)
+		}
+	}
+}
+
 // NodeMetadata contains metadata fields from Node.
 type NodeMetadata struct {
 	ID        string     `json:"id"`
@@ -107,4 +157,27 @@ func GenerateNodeID() string {
 		b[i] = alphaNumericChars[n.Int64()]
 	}
 	return string(b)
+}
+
+func (n *Node) StartRebalancing(nodes []*Node, interval time.Duration, config config.Config) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+
+	for range ticker.C {
+		// Dynamically calculate metadata for all nodes.
+		var nodeMetadataList []*NodeMetadata
+		for _, node := range nodes {
+			nodeMetadataList = append(nodeMetadataList, node.Metadata())
+		}
+
+		totalConnections := n.TotalConnections(nodeMetadataList)
+		clusterAverage := n.AverageConnections(nodeMetadataList)
+
+		fmt.Printf("Rebalancing: Cluster Average Connections: %.2f\n", clusterAverage)
+
+		// Shed connections for nodes exceeding the threshold.
+		for _, node := range nodes {
+			node.maybeShedConnections(nodeMetadataList, clusterAverage, config.RebalanceThreshold, config.ShedRate, totalConnections)
+		}
+	}
 }

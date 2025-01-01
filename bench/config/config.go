@@ -88,6 +88,10 @@ type Config struct {
 	Connect ConnectConfig `json:"server" yaml:"server"`
 
 	Log log.Config `json:"log" yaml:"log"`
+
+	RebalanceThreshold float64 `json:"rebalance_threshold" yaml:"rebalance_threshold"`
+
+	ShedRate float64 `json:"shed_rate" yaml:"shed_rate"`
 }
 
 func Default() *Config {
@@ -105,6 +109,9 @@ func Default() *Config {
 		Log: log.Config{
 			Level: "info",
 		},
+
+		RebalanceThreshold: 0.2,   // 20%
+		ShedRate:           0.005, // 0.5% per second
 	}
 }
 
@@ -144,6 +151,20 @@ Number of upstream listeners to register.`,
 		`
 Request payload size.`,
 	)
+	fs.Float64Var(
+		&c.RebalanceThreshold,
+		"rebalance.threshold",
+		c.RebalanceThreshold,
+		`
+Threshold for rebalancing, as a fraction of the cluster average (e.g., 0.2 = 20%).`,
+	)
+	fs.Float64Var(
+		&c.ShedRate,
+		"rebalance.shed-rate",
+		c.ShedRate,
+		`
+Rate at which connections are shed, as a fraction of the total connections per second (e.g., 0.005 = 0.5%).`,
+	)
 
 	c.Connect.RegisterFlags(fs)
 
@@ -165,6 +186,12 @@ func (c *Config) Validate() error {
 	}
 	if c.Size == 0 {
 		return fmt.Errorf("missing size")
+	}
+	if c.RebalanceThreshold < 0 {
+		return fmt.Errorf("rebalance.threshold must be non-negative")
+	}
+	if c.ShedRate < 0 {
+		return fmt.Errorf("rebalance.shed-rate must be non-negative")
 	}
 
 	if err := c.Connect.Validate(); err != nil {
