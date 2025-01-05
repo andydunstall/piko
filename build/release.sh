@@ -17,4 +17,6 @@ fi
 gh release create \
   $1 \
   bin/artifacts/* \
+  --clobber \
   --generate-notes
+
