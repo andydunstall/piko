@@ -14,9 +14,16 @@ then
   exit 2
 fi
 
-gh release create \
-  $1 \
-  bin/artifacts/* \
-  --clobber \
-  --generate-notes
+if gh release edit $1 --verify-tag ;
+then
+  # Release exists, upload binaries
+  gh release upload \
+    $1 \
+    bin/artifacts/*
+else
+  gh release create \
+    $1 \
+    bin/artifacts/* \
+    --generate-notes
+fi
 
