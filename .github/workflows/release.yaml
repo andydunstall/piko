@@ -1,0 +1,30 @@
+name: Create release
+
+on:
+  pull_request:
+  # push:
+  #   tags:
+  #     - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Artifacts
+        run: build/artifacts.sh
+  # release:
+  #   name: Release
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Build Artifacts
+  #       run: 
+  #     - name: Create Release
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         tag: ${{github.ref_name}}
+  #       run: |
+
