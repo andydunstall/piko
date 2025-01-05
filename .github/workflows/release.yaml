@@ -1,0 +1,46 @@
+name: Create release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+env:
+  GH_TAG: ${{github.ref_name}}
+
+permissions:
+  contents: write
+
+jobs:
+  build-release-binaries:
+    name: Build Relase Binaries
+    runs-on: ubuntu-latest
+    steps:
+      # https://github.com/actions/checkout
+      - uses: actions/checkout@v4
+      # Build the binaries using the `build/artifacts.sh` script in the repo
+      - name: Build Artifacts
+        run: build/artifacts.sh $GH_TAG
+      # https://github.com/marketplace/actions/upload-a-build-artifact
+      - uses: actions/upload-artifact@v4
+        with:
+          name: binaries
+          path: bin/artifacts/
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs: [build-release-binaries]
+    steps:
+      # https://github.com/actions/checkout
+      - uses: actions/checkout@v4
+      # https://github.com/actions/download-artifact
+      - uses: actions/download-artifact@v4
+        with:
+          name: binaries
+          path: bin/artifacts/
+      - name: Create Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: build/release.sh $GH_TAG
+
