@@ -118,7 +118,7 @@ func TestServer_Authentication(t *testing.T) {
 
 		manager := newFakeManager()
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return &auth.Token{
@@ -126,7 +126,7 @@ func TestServer_Authentication(t *testing.T) {
 					Endpoints: []string{"my-endpoint"},
 				}, nil
 			},
-		}
+		}, nil)
 
 		s := NewServer(manager, verifier, nil, log.NewNopLogger())
 		go func() {
@@ -156,7 +156,7 @@ func TestServer_Authentication(t *testing.T) {
 
 		manager := newFakeManager()
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return &auth.Token{
@@ -165,7 +165,7 @@ func TestServer_Authentication(t *testing.T) {
 					Endpoints: []string{"my-endpoint"},
 				}, nil
 			},
-		}
+		}, nil)
 
 		s := NewServer(manager, verifier, nil, log.NewNopLogger())
 		go func() {
@@ -196,7 +196,7 @@ func TestServer_Authentication(t *testing.T) {
 
 		manager := newFakeManager()
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return &auth.Token{
@@ -204,7 +204,7 @@ func TestServer_Authentication(t *testing.T) {
 					Endpoints: []string{"foo"},
 				}, nil
 			},
-		}
+		}, nil)
 
 		s := NewServer(manager, verifier, nil, log.NewNopLogger())
 		go func() {
@@ -228,14 +228,14 @@ func TestServer_Authentication(t *testing.T) {
 
 		manager := newFakeManager()
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return &auth.Token{
 					Expiry: time.Now().Add(time.Hour),
 				}, nil
 			},
-		}
+		}, nil)
 
 		s := NewServer(manager, verifier, nil, log.NewNopLogger())
 		go func() {
@@ -265,12 +265,12 @@ func TestServer_Authentication(t *testing.T) {
 
 		manager := newFakeManager()
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return nil, auth.ErrInvalidToken
 			},
-		}
+		}, nil)
 
 		s := NewServer(manager, verifier, nil, log.NewNopLogger())
 		go func() {
