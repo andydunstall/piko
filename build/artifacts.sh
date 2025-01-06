@@ -1,4 +1,9 @@
 #!/bin/bash
+set -euo pipefail
+
+# Set the VERSION to $1, otherwise get it from `git describe`
+GIT_VERSION=$(git describe || echo "NONE")
+VERSION="${1:-$GIT_VERSION}"
 
 declare -a arr=(
 	"linux/amd64"
@@ -11,7 +16,6 @@ mkdir -p bin/artifacts
 
 for i in "${arr[@]}"
 do
-	VERSION=$(git describe)
 	GOOSARCH=$i
 	GOOS=${GOOSARCH%/*}
 	GOARCH=${GOOSARCH#*/}
