@@ -12,6 +12,9 @@ permissions:
   contents: write
 
 jobs:
+  # # # # # # # # # # # # # # # # #
+  # Binaries & GH Releases
+  # # # # # # # # # # # # # # # # #
   build-release-binaries:
     name: Build Relase Binaries
     runs-on: ubuntu-latest
@@ -49,7 +52,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-release-binaries]
     steps:
-      # https://github.com/actions/checkout
       - uses: actions/checkout@v4
       # https://github.com/actions/download-artifact
       - uses: actions/download-artifact@v4
@@ -60,4 +62,66 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: build/release.sh $GH_TAG
+  
+  # # # # # # # # # # # # # # # # #
+  # Update Helm Chart
+  # # # # # # # # # # # # # # # # #
+  update-helm-chart-version:
+    name: Update Helm Chart Version
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update Chart
+        # https://github.com/marketplace/actions/github-push
+        run: |
+          CAPTURE_GROUP="appVersion:\ \"v[0-9]\+\.[0-9]\+\.[0-9]\+\""
+          REPLACEMENT="appVersion\:\ \"$GH_TAG\""
+          echo "Updating Piko Helm Chart to Version $GH_TAG"
+          sed -i'' "s/$CAPTURE_GROUP/$REPLACEMENT/" $GITHUB_WORKSPACE/operations/helm/piko/Chart.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "[bot] bump helm chart to version $GH_TAG"
+          git push origin HEAD:main
 
+  # # # # # # # # # # # # # # # # #
+  # Build & Publish Containers
+  # # # # # # # # # # # # # # # # #
+  docker-containers:
+    name: Build & Publish Containers
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - name: Check out the repo
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Docker Tags
+        # https://github.com/docker/metadata-action
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{github.actor}}/piko
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          build-args: version=$GH_TAG
+          file: build/Dockerfile
+          platforms: linux/arm64,linux/amd64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
