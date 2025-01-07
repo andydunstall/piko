@@ -45,7 +45,7 @@ jobs:
           echo "Updating Piko Helm Chart to Version $GH_TAG"
           sed -i'' "s/$CAPTURE_GROUP/$REPLACEMENT/" $GITHUB_WORKSPACE/operations/helm/piko/Chart.yaml
           echo "***"
-          echo $GITHUB_HEAD_REF
+          env
           echo "***"
           git config --global user.name 'Github Action Release'
           git config --global user.email 'noreply'
