@@ -30,23 +30,6 @@ jobs:
           name: binaries
           path: bin/artifacts/
 
-  update-helm-chart-version:
-    name: Update Helm Chart Version
-    runs-on: ubuntu-latest
-    steps:
-      # https://github.com/actions/checkout
-      - uses: actions/checkout@v4
-      - name: Update Chart
-        run: |
-          CAPTURE_GROUP="appVersion:\ \"v[0-9]\+\.[0-9]\+\.[0-9]\+\""
-          REPLACEMENT="appVersion\:\ \"$GH_TAG\""
-          echo "Updating Piko Helm Chart to Version $GH_TAG"
-          sed -i'' "s/$CAPTURE_GROUP/$REPLACEMENT/" $GITHUB_WORKSPACE/operations/helm/piko/Chart.yaml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git commit -am "[bot] bump helm chart to version $GH_TAG"
-          git push origin HEAD:main
-
   release:
     name: Release
     runs-on: ubuntu-latest
