@@ -35,6 +35,7 @@ jobs:
     steps:
       # https://github.com/actions/checkout
       - uses: actions/checkout@v4
+      - name: Update Chart
         run: |
           CAPTURE_GROUP="appVersion:\ \"v[0-9]\+\.[0-9]\+\.[0-9]\+\""
           REPLACEMENT="appVersion\:\ \"$GH_TAG\""
