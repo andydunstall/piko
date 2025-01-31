@@ -7,7 +7,6 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
@@ -28,7 +27,7 @@ type Server struct {
 
 func NewServer(
 	conf config.ListenerConfig,
-	registry *prometheus.Registry,
+	metrics *middleware.LabeledMetrics,
 	logger log.Logger,
 ) *Server {
 	logger = logger.WithSubsystem("proxy.http")
@@ -50,11 +49,9 @@ func NewServer(
 
 	s.router.Use(middleware.NewLogger(conf.AccessLog, logger))
 
-	metrics := middleware.NewMetrics("agent")
-	if registry != nil {
-		metrics.Register(registry)
+	if metrics != nil {
+		router.Use(metrics.Handler(conf.EndpointID))
 	}
-	router.Use(metrics.Handler())
 
 	s.router.NoRoute(s.proxyRoute)
 
