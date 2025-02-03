@@ -121,6 +121,8 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 	}
 
 	registry := prometheus.NewRegistry()
+	proxyMetrics := reverseproxy.NewMetrics("agent")
+	proxyMetrics.Register(registry)
 
 	var group rungroup.Group
 
@@ -138,7 +140,7 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 		defer ln.Close()
 
 		if listenerConfig.Protocol == config.ListenerProtocolHTTP {
-			server := reverseproxy.NewServer(listenerConfig, registry, logger)
+			server := reverseproxy.NewServer(listenerConfig, proxyMetrics, logger)
 
 			// Listener handler.
 			group.Add(func() error {
