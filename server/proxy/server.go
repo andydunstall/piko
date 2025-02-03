@@ -33,7 +33,7 @@ func NewServer(
 	upstreams upstream.Manager,
 	proxyConfig config.ProxyConfig,
 	registry *prometheus.Registry,
-	verifier auth.Verifier,
+	verifier *auth.MultiTenantVerifier,
 	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {

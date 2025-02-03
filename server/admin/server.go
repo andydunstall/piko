@@ -43,7 +43,7 @@ type Server struct {
 func NewServer(
 	clusterState *cluster.State,
 	registry *prometheus.Registry,
-	verifier auth.Verifier,
+	verifier *auth.MultiTenantVerifier,
 	tlsConfig *tls.Config,
 	logger log.Logger,
 ) *Server {
