@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/hashicorp/go-sockaddr"
 	"github.com/prometheus/client_golang/prometheus"
@@ -34,6 +35,9 @@ type Server struct {
 
 	upstreamLn     net.Listener
 	upstreamServer *upstream.Server
+
+	rebalanceCtx    context.Context
+	rebalanceCancel context.CancelFunc
 
 	adminLn     net.Listener
 	adminServer *admin.Server
@@ -93,6 +97,10 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		return nil, fmt.Errorf("upstream listen: %w", err)
 	}
 	s.upstreamLn = upstreamLn
+
+	rebalanceCtx, rebalanceCancel := context.WithCancel(context.Background())
+	s.rebalanceCtx = rebalanceCtx
+	s.rebalanceCancel = rebalanceCancel
 
 	// Admin listener.
 
@@ -155,6 +163,8 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		upstreams,
 		upstreamVerifier,
 		upstreamTLSConfig,
+		s.clusterState,
+		conf.Upstream,
 		logger,
 	)
 
@@ -391,6 +401,11 @@ func (s *Server) startUpstreamServer() {
 			s.logger.Error("failed to run upstream server", zap.Error(err))
 		}
 	})
+	if s.conf.Upstream.Rebalance.Threshold != 0 {
+		s.runGoroutine(func() {
+			s.upstreamRebalance()
+		})
+	}
 }
 
 func (s *Server) startAdminServer() {
@@ -419,6 +434,7 @@ func (s *Server) shutdownUsageReporting() {
 }
 
 func (s *Server) shutdownUpstreamServer(ctx context.Context) {
+	s.rebalanceCancel()
 	if err := s.upstreamServer.Shutdown(ctx); err != nil {
 		s.logger.Error("failed to shutdown upstream server", zap.Error(err))
 	}
@@ -490,6 +506,21 @@ func (s *Server) adminListen() (net.Listener, error) {
 	}
 
 	return ln, nil
+}
+
+// upstreamRebalance rebalances the upstream server connections every second.
+func (s *Server) upstreamRebalance() {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			s.upstreamServer.Rebalance()
+		case <-s.rebalanceCtx.Done():
+			return
+		}
+	}
 }
 
 // runGoroutine runs the given function as a background goroutine. If the
