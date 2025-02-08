@@ -331,6 +331,27 @@ func (s *State) RemoveRemoteEndpoint(id string, endpointID string) bool {
 	return true
 }
 
+// AvgConns returns the mean number of connections per node in the cluster.
+func (s *State) AvgConns() int {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	var totalConns int
+	var nodes int
+	for _, node := range s.nodes {
+		if node.Status != NodeStatusActive {
+			// Ignore unreachable and left nodes.
+			continue
+		}
+		for _, conns := range node.Endpoints {
+			totalConns += conns
+		}
+		nodes++
+	}
+
+	return totalConns / nodes
+}
+
 func (s *State) Metrics() *Metrics {
 	return s.metrics
 }

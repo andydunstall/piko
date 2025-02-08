@@ -5,8 +5,10 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"math"
 	"net"
 	"net/http"
+	"sync"
 
 	"github.com/andydunstall/yamux"
 	"github.com/gin-gonic/gin"
@@ -18,11 +20,16 @@ import (
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/middleware"
 	pikowebsocket "github.com/andydunstall/piko/pkg/websocket"
+	"github.com/andydunstall/piko/server/cluster"
+	"github.com/andydunstall/piko/server/config"
 )
 
 // Server accepts connections from upstream services.
 type Server struct {
 	upstreams Manager
+
+	sessions   map[*yamux.Session]struct{}
+	sessionsMu sync.Mutex
 
 	httpServer *http.Server
 
@@ -31,6 +38,10 @@ type Server struct {
 	ctx    context.Context
 	cancel func()
 
+	cluster *cluster.State
+
+	config config.UpstreamConfig
+
 	logger log.Logger
 }
 
@@ -38,6 +49,8 @@ func NewServer(
 	upstreams Manager,
 	verifier auth.Verifier,
 	tlsConfig *tls.Config,
+	cluster *cluster.State,
+	config config.UpstreamConfig,
 	logger log.Logger,
 ) *Server {
 	logger = logger.WithSubsystem("upstream")
@@ -46,6 +59,7 @@ func NewServer(
 	ctx, cancel := context.WithCancel(context.Background())
 	server := &Server{
 		upstreams: upstreams,
+		sessions:  make(map[*yamux.Session]struct{}),
 		httpServer: &http.Server{
 			Handler:   router,
 			TLSConfig: tlsConfig,
@@ -54,6 +68,8 @@ func NewServer(
 		websocketUpgrader: &websocket.Upgrader{},
 		ctx:               ctx,
 		cancel:            cancel,
+		cluster:           cluster,
+		config:            config,
 		logger:            logger,
 	}
 
@@ -87,6 +103,51 @@ func (s *Server) Serve(ln net.Listener) error {
 		return fmt.Errorf("http serve: %w", err)
 	}
 	return nil
+}
+
+func (s *Server) Rebalance() {
+	if len(s.cluster.Nodes()) <= 1 {
+		s.logger.Debug("rebalance; skip; no other nodes")
+		return
+	}
+
+	localConns := s.openSessions()
+	if localConns == 0 || localConns < int(s.config.Rebalance.MinConns) {
+		s.logger.Debug(
+			"rebalance; skip; too few conns",
+			zap.Int("local_conns", localConns),
+		)
+		return
+	}
+
+	avgConns := s.cluster.AvgConns()
+	balance := float64(localConns-avgConns) / float64(avgConns)
+	if balance < s.config.Rebalance.Threshold {
+		s.logger.Debug(
+			"rebalance; skip; below threshold",
+			zap.String("balance", fmt.Sprintf("%.2f", balance)),
+			zap.Float64("threshold", s.config.Rebalance.Threshold),
+			zap.Int("local_conns", localConns),
+			zap.Int("avg_conns", avgConns),
+		)
+		return
+	}
+
+	// Shed up to the shed rate (as Rebalance is called every second).
+	shedding := float64(localConns) * balance
+	if shedding > float64(avgConns)*s.config.Rebalance.ShedRate {
+		shedding = math.Ceil(float64(avgConns) * s.config.Rebalance.ShedRate)
+	}
+
+	s.logger.Info(
+		"rebalance; shedding connections",
+		zap.Int("shedding", int(shedding)),
+		zap.String("balance", fmt.Sprintf("%.2f", balance)),
+		zap.Float64("threshold", s.config.Rebalance.Threshold),
+		zap.Int("local_conns", localConns),
+		zap.Int("avg_conns", avgConns),
+	)
+	s.shedSessions(int(shedding))
 }
 
 // Shutdown attempts to gracefully shutdown the server by waiting for pending
@@ -165,6 +226,9 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 	}
 	defer sess.Close()
 
+	s.addSession(sess)
+	defer s.removeSession(sess)
+
 	upstream := NewConnUpstream(endpointID, sess)
 
 	s.upstreams.AddConn(upstream)
@@ -185,9 +249,52 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 				s.logger.Info("upstream token expired")
 				return
 			}
+			if errors.Is(err, yamux.ErrSessionShutdown) {
+				return
+			}
 			s.logger.Warn("session closed unexpectedly", zap.Error(err))
 			return
 		}
+	}
+}
+
+func (s *Server) addSession(sess *yamux.Session) {
+	s.sessionsMu.Lock()
+	defer s.sessionsMu.Unlock()
+
+	s.sessions[sess] = struct{}{}
+}
+
+func (s *Server) removeSession(sess *yamux.Session) {
+	s.sessionsMu.Lock()
+	defer s.sessionsMu.Unlock()
+
+	delete(s.sessions, sess)
+}
+
+func (s *Server) openSessions() int {
+	s.sessionsMu.Lock()
+	defer s.sessionsMu.Unlock()
+
+	return len(s.sessions)
+}
+
+func (s *Server) shedSessions(n int) {
+	// Don't hold the mutex during close as Close could block.
+	s.sessionsMu.Lock()
+	var shedding []*yamux.Session
+	for sess := range s.sessions {
+		shedding = append(shedding, sess)
+		if len(shedding) >= n {
+			break
+		}
+	}
+	s.sessionsMu.Unlock()
+
+	// Note don't update s.sessions, as the session will automatically be
+	// removed when it's closed.
+	for _, sess := range shedding {
+		sess.Close()
 	}
 }
 

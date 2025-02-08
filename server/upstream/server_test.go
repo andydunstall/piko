@@ -15,6 +15,7 @@ import (
 	"github.com/andydunstall/piko/pkg/log"
 	"github.com/andydunstall/piko/pkg/testutil"
 	"github.com/andydunstall/piko/pkg/websocket"
+	"github.com/andydunstall/piko/server/config"
 )
 
 type fakeManager struct {
@@ -58,7 +59,7 @@ func TestServer_Register(t *testing.T) {
 
 		manager := newFakeManager()
 
-		s := NewServer(manager, nil, nil, log.NewNopLogger())
+		s := NewServer(manager, nil, nil, nil, config.UpstreamConfig{}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -87,7 +88,7 @@ func TestServer_Register(t *testing.T) {
 
 		manager := newFakeManager()
 
-		s := NewServer(manager, nil, nil, log.NewNopLogger())
+		s := NewServer(manager, nil, nil, nil, config.UpstreamConfig{}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -128,7 +129,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}
 
-		s := NewServer(manager, verifier, nil, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -167,7 +168,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}
 
-		s := NewServer(manager, verifier, nil, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -206,7 +207,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}
 
-		s := NewServer(manager, verifier, nil, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -237,7 +238,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}
 
-		s := NewServer(manager, verifier, nil, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -272,7 +273,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}
 
-		s := NewServer(manager, verifier, nil, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -299,7 +300,7 @@ func TestServer_TLS(t *testing.T) {
 
 	manager := newFakeManager()
 
-	s := NewServer(manager, nil, tlsConfig, log.NewNopLogger())
+	s := NewServer(manager, nil, tlsConfig, nil, config.UpstreamConfig{}, log.NewNopLogger())
 	go func() {
 		require.NoError(t, s.Serve(ln))
 	}()
