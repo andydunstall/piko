@@ -34,12 +34,25 @@ Queries the server for the set of nodes the cluster that this node knows about.
 The output contains the state of each known node.
 
 Examples:
+  # Inspect all nodes.
   piko server status cluster nodes
+
+  # Inspect only active nodes.
+  piko server status cluster nodes --status active
 `,
 	}
 
+	var status string
+	cmd.Flags().StringVar(
+		&status,
+		"status",
+		"",
+		`
+Filter by node status.`,
+	)
+
 	cmd.Run = func(_ *cobra.Command, _ []string) {
-		showClusterNodes(c)
+		showClusterNodes(c, cluster.NodeStatus(status))
 	}
 
 	return cmd
@@ -49,22 +62,30 @@ type clusterNodesOutput struct {
 	Nodes []*cluster.NodeMetadata `json:"nodes"`
 }
 
-func showClusterNodes(c *client.Client) {
-	cluster := client.NewCluster(c)
+func showClusterNodes(c *client.Client, status cluster.NodeStatus) {
+	client := client.NewCluster(c)
 
-	nodes, err := cluster.Nodes()
+	nodes, err := client.Nodes()
 	if err != nil {
 		fmt.Printf("failed to get cluster nodes: %s\n", err.Error())
 		os.Exit(1)
 	}
 
+	var filtered []*cluster.NodeMetadata
+	for _, node := range nodes {
+		if status != "" && status != node.Status {
+			continue
+		}
+		filtered = append(filtered, node)
+	}
+
 	// Sort by ID.
-	sort.Slice(nodes, func(i, j int) bool {
-		return nodes[i].ID < nodes[j].ID
+	sort.Slice(filtered, func(i, j int) bool {
+		return filtered[i].ID < filtered[j].ID
 	})
 
 	output := clusterNodesOutput{
-		Nodes: nodes,
+		Nodes: filtered,
 	}
 	b, _ := yaml.Marshal(output)
 	fmt.Print(string(b))
