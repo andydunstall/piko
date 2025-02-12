@@ -177,6 +177,24 @@ keys and values, including the request line.`,
 	)
 }
 
+type TenantConfig struct {
+	ID string `json:"id" yaml:"id"`
+
+	Auth auth.Config `json:"auth" yaml:"auth"`
+}
+
+func (c *TenantConfig) Validate() error {
+	if c.ID == "" {
+		return fmt.Errorf("missing tenant id")
+	}
+	if !c.Auth.Enabled() {
+		// Require tenants to be authenticated (theres no point otherwise).
+		return fmt.Errorf("tenant auth disabled")
+	}
+
+	return nil
+}
+
 type ProxyConfig struct {
 	// BindAddr is the address to bind to listen for incoming HTTP connections.
 	BindAddr string `json:"bind_addr" yaml:"bind_addr"`
@@ -272,6 +290,8 @@ type UpstreamConfig struct {
 	Rebalance RebalanceConfig `json:"rebalance" yaml:"rebalance"`
 
 	TLS TLSConfig `json:"tls" yaml:"tls"`
+
+	Tenants []TenantConfig `json:"tenants" yaml:"tenants"`
 }
 
 func (c *UpstreamConfig) Validate() error {
@@ -283,6 +303,16 @@ func (c *UpstreamConfig) Validate() error {
 	}
 	if err := c.TLS.Validate(); err != nil {
 		return fmt.Errorf("tls: %w", err)
+	}
+	if !c.Auth.Enabled() && len(c.Tenants) > 0 {
+		// Require default authentication when enabling tenants (theres no point
+		// otherwise).
+		return fmt.Errorf("cannot have tenants without default authentication")
+	}
+	for _, tenant := range c.Tenants {
+		if err := tenant.Validate(); err != nil {
+			return fmt.Errorf("tenant: %w", err)
+		}
 	}
 	return nil
 }
