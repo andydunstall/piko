@@ -49,6 +49,7 @@ func (e *RetryableError) Error() string {
 
 type dialOptions struct {
 	token     string
+	tenantID  string
 	tlsConfig *tls.Config
 }
 
@@ -64,6 +65,16 @@ func (o tokenOption) apply(opts *dialOptions) {
 
 func WithToken(token string) DialOption {
 	return tokenOption(token)
+}
+
+type tenantIDOption string
+
+func (o tenantIDOption) apply(opts *dialOptions) {
+	opts.tenantID = string(o)
+}
+
+func WithTenantID(tenantID string) DialOption {
+	return tenantIDOption(tenantID)
 }
 
 type tlsConfigOption struct {
@@ -112,6 +123,9 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 	header := make(http.Header)
 	if options.token != "" {
 		header.Set("Authorization", "Bearer "+options.token)
+	}
+	if options.tenantID != "" {
+		header.Set("x-piko-tenant-id", options.tenantID)
 	}
 
 	wsConn, resp, err := dialer.DialContext(
