@@ -12,7 +12,7 @@ require (
 	github.com/hashicorp/go-sockaddr v1.0.7
 	github.com/oklog/run v1.1.0
 	github.com/prometheus/client_golang v1.20.5
-	github.com/spf13/cobra v1.8.1
+	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.6
 	github.com/stretchr/testify v1.10.0
 	github.com/ugorji/go/codec v1.2.12
