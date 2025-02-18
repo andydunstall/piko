@@ -38,7 +38,7 @@ Examples:
 		"access-log",
 		true,
 		`
-Whether to log all incoming connections as 'info' logs.`,
+Whether to log all incoming connections as 'info' logs. For more options, use a configuration file.`,
 	)
 
 	var timeout time.Duration
@@ -59,8 +59,10 @@ Timeout connecting to the upstream.`,
 			EndpointID: args[0],
 			Addr:       args[1],
 			Protocol:   config.ListenerProtocolTCP,
-			AccessLog:  accessLog,
-			Timeout:    timeout,
+			AccessLog: log.AccessLogConfig{
+				Enabled: accessLog,
+			},
+			Timeout: timeout,
 		}}
 
 		var err error

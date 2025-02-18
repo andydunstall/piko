@@ -28,7 +28,16 @@ proxy:
   bind_addr: 10.15.104.25:8000
   advertise_addr: 1.2.3.4:8000
   timeout: 20s
-  access_log: true
+  access_log:
+    enabled: false
+    request_headers:
+      blocklist:
+        - abc
+        - xyz
+    response_headers:
+      allowlist:
+        - def
+        - ghi
 
   http:
     read_timeout: 5s
@@ -125,7 +134,15 @@ grace_period: 2m
 			BindAddr:      "10.15.104.25:8000",
 			AdvertiseAddr: "1.2.3.4:8000",
 			Timeout:       time.Second * 20,
-			AccessLog:     true,
+			AccessLog: log.AccessLogConfig{
+				Enabled: false,
+				RequestHeaders: log.AccessLogHeaderConfig{
+					Blocklist: []string{"abc", "xyz"},
+				},
+				ResponseHeaders: log.AccessLogHeaderConfig{
+					Allowlist: []string{"def", "ghi"},
+				},
+			},
 			HTTP: HTTPConfig{
 				ReadTimeout:       time.Second * 5,
 				ReadHeaderTimeout: time.Second * 5,
@@ -217,7 +234,9 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--proxy.bind-addr", "10.15.104.25:8000",
 		"--proxy.advertise-addr", "1.2.3.4:8000",
 		"--proxy.timeout", "20s",
-		"--proxy.access-log",
+		"--proxy.access-log.enabled",
+		"--proxy.access-log.request-headers.allowlist", "abc,def",
+		"--proxy.access-log.response-headers.blocklist", "xyz,ghi",
 		"--proxy.http.read-timeout", "5s",
 		"--proxy.http.read-header-timeout", "5s",
 		"--proxy.http.write-timeout", "5s",
@@ -277,7 +296,15 @@ func TestConfig_LoadFlags(t *testing.T) {
 			BindAddr:      "10.15.104.25:8000",
 			AdvertiseAddr: "1.2.3.4:8000",
 			Timeout:       time.Second * 20,
-			AccessLog:     true,
+			AccessLog: log.AccessLogConfig{
+				Enabled: true,
+				RequestHeaders: log.AccessLogHeaderConfig{
+					Allowlist: []string{"abc", "def"},
+				},
+				ResponseHeaders: log.AccessLogHeaderConfig{
+					Blocklist: []string{"xyz", "ghi"},
+				},
+			},
 			HTTP: HTTPConfig{
 				ReadTimeout:       time.Second * 5,
 				ReadHeaderTimeout: time.Second * 5,

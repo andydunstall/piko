@@ -33,9 +33,9 @@ type ListenerConfig struct {
 	// Defaults to "http".
 	Protocol ListenerProtocol `json:"protocol" yaml:"protocol"`
 
-	// AccessLog indicates whether to log all incoming connections and requests
-	// for the endpoint.
-	AccessLog bool `json:"access_log" yaml:"access_log"`
+	// AccessLogConfig allows us to control how the incoming requests to
+	// the proxy are logged.
+	AccessLog log.AccessLogConfig `json:"access_log" yaml:"access_log"`
 
 	// Timeout is the timeout to forward incoming requests to the upstream.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
@@ -124,6 +124,11 @@ func (c *ListenerConfig) Validate() error {
 	if err := c.TLS.Validate(); err != nil {
 		return fmt.Errorf("tls: %w", err)
 	}
+
+	if err := c.AccessLog.Validate(); err != nil {
+		return fmt.Errorf("access_log: %w", err)
+	}
+
 	return nil
 }
 

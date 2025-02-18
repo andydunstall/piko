@@ -41,7 +41,7 @@ Examples:
 		"access-log",
 		true,
 		`
-Whether to log all incoming HTTP requests and responses as 'info' logs.`,
+Whether to log all incoming HTTP requests and responses as 'info' logs. For more options, use a configuration file.`,
 	)
 
 	var timeout time.Duration
@@ -62,8 +62,10 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 			EndpointID: args[0],
 			Addr:       args[1],
 			Protocol:   config.ListenerProtocolHTTP,
-			AccessLog:  accessLog,
-			Timeout:    timeout,
+			AccessLog: log.AccessLogConfig{
+				Enabled: accessLog,
+			},
+			Timeout: timeout,
 		}}
 
 		var err error
