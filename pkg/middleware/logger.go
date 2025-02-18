@@ -23,7 +23,7 @@ type loggedRequest struct {
 }
 
 // NewLogger creates logging middleware that logs every request.
-func NewLogger(accessLog bool, logger log.Logger) gin.HandlerFunc {
+func NewLogger(accessLogConfig log.AccessLogConfig, logger log.Logger) gin.HandlerFunc {
 	logger = logger.WithSubsystem(logger.Subsystem() + ".access")
 	return func(c *gin.Context) {
 		s := time.Now()
@@ -35,19 +35,22 @@ func NewLogger(accessLog bool, logger log.Logger) gin.HandlerFunc {
 			return
 		}
 
+		requestHeaders := accessLogConfig.RequestHeaders.Filter(c.Request.Header)
+		responseHeaders := accessLogConfig.ResponseHeaders.Filter(c.Writer.Header())
+
 		req := &loggedRequest{
 			Proto:           c.Request.Proto,
 			Method:          c.Request.Method,
 			Host:            c.Request.Host,
 			Path:            c.Request.URL.Path,
-			RequestHeaders:  c.Request.Header,
-			ResponseHeaders: c.Writer.Header(),
+			RequestHeaders:  requestHeaders,
+			ResponseHeaders: responseHeaders,
 			Status:          c.Writer.Status(),
 			Duration:        time.Since(s).String(),
 		}
 		if c.Writer.Status() >= http.StatusInternalServerError {
 			logger.Warn("request", zap.Any("request", req))
-		} else if accessLog {
+		} else if accessLogConfig.Enabled {
 			logger.Info("request", zap.Any("request", req))
 		} else {
 			logger.Debug("request", zap.Any("request", req))

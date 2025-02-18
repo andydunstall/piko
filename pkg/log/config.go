@@ -2,6 +2,7 @@ package log
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/spf13/pflag"
 )
@@ -49,4 +50,109 @@ debug logs.
 
 Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 	)
+}
+
+type AccessLogHeaderConfig struct {
+	// Prevent these headers from being logged.
+	// You can only define one of Allowlist or Blocklist.
+	Blocklist []string `json:"blocklist" yaml:"blocklist"`
+
+	// Log only these headers.
+	// You can only define one of Allowlist or Blocklist.
+	Allowlist []string `json:"allowlist" yaml:"allowlist"`
+
+	// In-memory map that is composed right after arguments have
+	// been validated. This is used to speed up runtime lookups
+	// for headers.
+	allowList map[string]string
+}
+
+func (c *AccessLogHeaderConfig) Validate() error {
+	if len(c.Allowlist) > 0 && len(c.Blocklist) > 0 {
+		return fmt.Errorf("cannot define both allowlist and blocklist")
+	}
+
+	// Create the allow-list header map used to filter headers at runtime.
+	if len(c.Allowlist) > 0 {
+		c.allowList = make(map[string]string)
+		for _, el := range c.Allowlist {
+			c.allowList[el] = el
+		}
+	}
+	return nil
+}
+
+func (c *AccessLogHeaderConfig) Filter(h http.Header) http.Header {
+	if len(c.Allowlist) > 0 {
+		for name := range h {
+			// Use the map created during validation to hasten lookups.
+			if _, ok := c.allowList[name]; !ok {
+				h.Del(name)
+			}
+		}
+		return h
+	}
+
+	if len(c.Blocklist) > 0 {
+		for _, blocked := range c.Blocklist {
+			h.Del(blocked)
+		}
+		return h
+	}
+
+	return h
+}
+
+func (c *AccessLogHeaderConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	fs.StringSliceVar(
+		&c.Allowlist,
+		prefix+"allowlist",
+		c.Allowlist,
+		`
+Log only these headers`,
+	)
+	fs.StringSliceVar(
+		&c.Blocklist,
+		prefix+"blocklist",
+		c.Blocklist,
+		`
+Block these headers from being logged`,
+	)
+}
+
+type AccessLogConfig struct {
+	// If Access logging is enabled, using the 'info' log level.
+	// If disabled, logs will be emitted with the 'debug' log level,
+	// while still respecting the header allow and block lists.
+	Enabled bool `json:"enabled" yaml:"enabled"`
+
+	// Control how Request Headers are logged.
+	RequestHeaders AccessLogHeaderConfig `json:"request_headers" yaml:"request_headers"`
+
+	// Control how Response Headers are logged.
+	ResponseHeaders AccessLogHeaderConfig `json:"response_headers" yaml:"response_headers"`
+}
+
+func (c *AccessLogConfig) Validate() error {
+	if err := c.RequestHeaders.Validate(); err != nil {
+		return fmt.Errorf("request_headers: %w", err)
+	}
+
+	if err := c.ResponseHeaders.Validate(); err != nil {
+		return fmt.Errorf("response_headers: %w", err)
+	}
+	return nil
+}
+
+func (c *AccessLogConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	prefix = prefix + ".access-log."
+	fs.BoolVar(
+		&c.Enabled,
+		prefix+"enabled",
+		true,
+		`
+If Access logging is enabled`,
+	)
+	c.RequestHeaders.RegisterFlags(fs, prefix+"request-headers.")
+	c.ResponseHeaders.RegisterFlags(fs, prefix+"response-headers.")
 }
