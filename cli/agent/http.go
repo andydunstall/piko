@@ -35,17 +35,14 @@ Examples:
 `,
 	}
 
-	var accessLog bool
-	cmd.Flags().BoolVar(
-		&accessLog,
-		"access-log",
-		true,
-		`
-Whether to log all incoming HTTP requests and responses as 'info' logs. For more options, use a configuration file.`,
-	)
+	accessLog := log.AccessLogConfig{
+		Disable: false,
+	}
+	flags := cmd.Flags()
+	accessLog.RegisterFlags(flags, "")
 
 	var timeout time.Duration
-	cmd.Flags().DurationVar(
+	flags.DurationVar(
 		&timeout,
 		"timeout",
 		time.Second*10,
@@ -62,10 +59,8 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 			EndpointID: args[0],
 			Addr:       args[1],
 			Protocol:   config.ListenerProtocolHTTP,
-			AccessLog: log.AccessLogConfig{
-				Enabled: accessLog,
-			},
-			Timeout: timeout,
+			AccessLog:  accessLog,
+			Timeout:    timeout,
 		}}
 
 		var err error

@@ -142,11 +142,15 @@ func (c *AccessLogConfig) Validate() error {
 }
 
 func (c *AccessLogConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
-	prefix = prefix + ".access-log."
+	if len(prefix) > 0 {
+		prefix = prefix + ".access-log."
+	} else {
+		prefix = "access-log."
+	}
 	fs.BoolVar(
 		&c.Disable,
 		prefix+"disable",
-		true,
+		false,
 		`
 If Access logging is disabled`,
 	)
