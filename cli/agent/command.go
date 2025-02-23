@@ -81,6 +81,9 @@ Examples:
 			if conf.Listeners[i].Protocol == "" {
 				conf.Listeners[i].Protocol = config.ListenerProtocolHTTP
 			}
+			if conf.Listeners[i].AccessLog.Level == "" {
+				conf.Listeners[i].AccessLog.Level = "info"
+			}
 		}
 
 		if err := conf.Validate(); err != nil {

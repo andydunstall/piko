@@ -32,13 +32,25 @@ Examples:
 `,
 	}
 
-	var disableAccessLogging bool
-	cmd.Flags().BoolVar(
-		&disableAccessLogging,
-		"access-log.disable",
-		false,
+	accessLogConfig := log.AccessLogConfig{
+		Level:   "info",
+		Disable: false,
+	}
+	cmd.Flags().StringVar(
+		&accessLogConfig.Level,
+		"access-log.level",
+		accessLogConfig.Level,
 		`
-Disables logging all incoming connections as 'info' logs. For more options, use a configuration file.`,
+The record log level for audit log entries.
+
+The available levels are 'debug', 'info', 'warn' and 'error'.`,
+	)
+	cmd.Flags().BoolVar(
+		&accessLogConfig.Disable,
+		"access-log.disable",
+		accessLogConfig.Disable,
+		`
+Disable the access log, so requests will not be logged.`,
 	)
 
 	var timeout time.Duration
@@ -59,10 +71,8 @@ Timeout connecting to the upstream.`,
 			EndpointID: args[0],
 			Addr:       args[1],
 			Protocol:   config.ListenerProtocolTCP,
-			AccessLog: log.AccessLogConfig{
-				Disable: disableAccessLogging,
-			},
-			Timeout: timeout,
+			AccessLog:  accessLogConfig,
+			Timeout:    timeout,
 		}}
 
 		var err error
