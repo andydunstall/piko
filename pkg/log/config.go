@@ -126,20 +126,18 @@ type AccessLogConfig struct {
 	// while still respecting the header allow and block lists.
 	Enabled bool `json:"enabled" yaml:"enabled"`
 
-	// Control how Request Headers are logged.
 	RequestHeaders AccessLogHeaderConfig `json:"request_headers" yaml:"request_headers"`
 
-	// Control how Response Headers are logged.
 	ResponseHeaders AccessLogHeaderConfig `json:"response_headers" yaml:"response_headers"`
 }
 
 func (c *AccessLogConfig) Validate() error {
 	if err := c.RequestHeaders.Validate(); err != nil {
-		return fmt.Errorf("request_headers: %w", err)
+		return fmt.Errorf("request headers: %w", err)
 	}
 
 	if err := c.ResponseHeaders.Validate(); err != nil {
-		return fmt.Errorf("response_headers: %w", err)
+		return fmt.Errorf("response headers: %w", err)
 	}
 	return nil
 }

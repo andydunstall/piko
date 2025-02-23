@@ -33,7 +33,7 @@ type ListenerConfig struct {
 	// Defaults to "http".
 	Protocol ListenerProtocol `json:"protocol" yaml:"protocol"`
 
-	// AccessLogConfig allows us to control how the incoming requests to
+	// AccessLog allows us to control how the incoming requests to
 	// the proxy are logged.
 	AccessLog log.AccessLogConfig `json:"access_log" yaml:"access_log"`
 
@@ -126,7 +126,7 @@ func (c *ListenerConfig) Validate() error {
 	}
 
 	if err := c.AccessLog.Validate(); err != nil {
-		return fmt.Errorf("access_log: %w", err)
+		return fmt.Errorf("access log: %w", err)
 	}
 
 	return nil

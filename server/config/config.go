@@ -187,7 +187,7 @@ type ProxyConfig struct {
 	// Timeout is the timeout to forward incoming requests to the upstream.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 
-	// AccessLogConfig allows us to control how the incoming requests to
+	// AccessLog allows us to control how the incoming requests to
 	// the proxy are logged.
 	AccessLog log.AccessLogConfig `json:"access_log" yaml:"access_log"`
 
@@ -207,7 +207,7 @@ func (c *ProxyConfig) Validate() error {
 	}
 
 	if err := c.AccessLog.Validate(); err != nil {
-		return fmt.Errorf("access_log: %w", err)
+		return fmt.Errorf("access log: %w", err)
 	}
 	return nil
 }
