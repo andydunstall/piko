@@ -32,13 +32,13 @@ Examples:
 `,
 	}
 
-	var accessLog bool
+	var disableAccessLogging bool
 	cmd.Flags().BoolVar(
-		&accessLog,
-		"access-log",
-		true,
+		&disableAccessLogging,
+		"access-log.disable",
+		false,
 		`
-Whether to log all incoming connections as 'info' logs.`,
+Disables logging all incoming connections as 'info' logs. For more options, use a configuration file.`,
 	)
 
 	var timeout time.Duration
@@ -59,8 +59,10 @@ Timeout connecting to the upstream.`,
 			EndpointID: args[0],
 			Addr:       args[1],
 			Protocol:   config.ListenerProtocolTCP,
-			AccessLog:  accessLog,
-			Timeout:    timeout,
+			AccessLog: log.AccessLogConfig{
+				Disable: disableAccessLogging,
+			},
+			Timeout: timeout,
 		}}
 
 		var err error

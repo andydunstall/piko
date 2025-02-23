@@ -205,9 +205,9 @@ type ProxyConfig struct {
 	// Timeout is the timeout to forward incoming requests to the upstream.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 
-	// AccessLog indicates whether to log all incoming connections and
-	// requests.
-	AccessLog bool `json:"access_log" yaml:"access_log"`
+	// AccessLog allows us to control how the incoming requests to
+	// the proxy are logged.
+	AccessLog log.AccessLogConfig `json:"access_log" yaml:"access_log"`
 
 	Auth auth.Config `json:"auth" yaml:"auth"`
 
@@ -222,6 +222,10 @@ func (c *ProxyConfig) Validate() error {
 	}
 	if err := c.TLS.Validate(); err != nil {
 		return fmt.Errorf("tls: %w", err)
+	}
+
+	if err := c.AccessLog.Validate(); err != nil {
+		return fmt.Errorf("access log: %w", err)
 	}
 	return nil
 }
@@ -263,13 +267,7 @@ advertise address of '10.26.104.14:8000'.`,
 Timeout when forwarding incoming requests to the upstream.`,
 	)
 
-	fs.BoolVar(
-		&c.AccessLog,
-		"proxy.access-log",
-		c.AccessLog,
-		`
-Whether to log all incoming connections and requests.`,
-	)
+	c.AccessLog.RegisterFlags(fs, "proxy")
 
 	c.HTTP.RegisterFlags(fs, "proxy")
 
@@ -547,9 +545,11 @@ type Config struct {
 func Default() *Config {
 	return &Config{
 		Proxy: ProxyConfig{
-			BindAddr:  ":8000",
-			Timeout:   time.Second * 30,
-			AccessLog: true,
+			BindAddr: ":8000",
+			Timeout:  time.Second * 30,
+			AccessLog: log.AccessLogConfig{
+				Disable: false,
+			},
 			HTTP: HTTPConfig{
 				ReadTimeout:       time.Second * 10,
 				ReadHeaderTimeout: time.Second * 10,

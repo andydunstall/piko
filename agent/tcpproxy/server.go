@@ -114,18 +114,18 @@ func (s *Server) removeConn(c net.Conn) {
 }
 
 func (s *Server) logConnOpened() {
-	if s.conf.AccessLog {
-		s.accessLogger.Info("connection opened")
-	} else {
+	if s.conf.AccessLog.Disable {
 		s.accessLogger.Debug("connection opened")
+	} else {
+		s.accessLogger.Info("connection opened")
 	}
 }
 
 func (s *Server) logConnClosed() {
-	if s.conf.AccessLog {
-		s.accessLogger.Info("connection closed")
-	} else {
+	if s.conf.AccessLog.Disable {
 		s.accessLogger.Debug("connection closed")
+	} else {
+		s.accessLogger.Info("connection closed")
 	}
 }
 

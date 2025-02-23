@@ -50,3 +50,76 @@ debug logs.
 Such as you can enable 'gossip' logs with '--log.subsystems gossip'.`,
 	)
 }
+
+type AccessLogHeaderConfig struct {
+	// Prevent these headers from being logged.
+	// You can only define one of Allowlist or Blocklist.
+	Blocklist []string `json:"blocklist" yaml:"blocklist"`
+
+	// Log only these headers.
+	// You can only define one of Allowlist or Blocklist.
+	Allowlist []string `json:"allowlist" yaml:"allowlist"`
+}
+
+func (c *AccessLogHeaderConfig) Validate() error {
+	if len(c.Allowlist) > 0 && len(c.Blocklist) > 0 {
+		return fmt.Errorf("cannot define both allowlist and blocklist")
+	}
+
+	return nil
+}
+
+func (c *AccessLogHeaderConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	fs.StringSliceVar(
+		&c.Allowlist,
+		prefix+"allowlist",
+		c.Allowlist,
+		`
+Log only these headers`,
+	)
+	fs.StringSliceVar(
+		&c.Blocklist,
+		prefix+"blocklist",
+		c.Blocklist,
+		`
+Block these headers from being logged`,
+	)
+}
+
+type AccessLogConfig struct {
+	// If disabled, logs will be emitted with the 'debug' log level,
+	// while respecting the header allow and block lists.
+	Disable bool `json:"disable" yaml:"disable"`
+
+	RequestHeaders AccessLogHeaderConfig `json:"request_headers" yaml:"request_headers"`
+
+	ResponseHeaders AccessLogHeaderConfig `json:"response_headers" yaml:"response_headers"`
+}
+
+func (c *AccessLogConfig) Validate() error {
+	if err := c.RequestHeaders.Validate(); err != nil {
+		return fmt.Errorf("request headers: %w", err)
+	}
+
+	if err := c.ResponseHeaders.Validate(); err != nil {
+		return fmt.Errorf("response headers: %w", err)
+	}
+	return nil
+}
+
+func (c *AccessLogConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	if len(prefix) > 0 {
+		prefix = prefix + ".access-log."
+	} else {
+		prefix = "access-log."
+	}
+	fs.BoolVar(
+		&c.Disable,
+		prefix+"disable",
+		false,
+		`
+If Access logging is disabled`,
+	)
+	c.RequestHeaders.RegisterFlags(fs, prefix+"request-headers.")
+	c.ResponseHeaders.RegisterFlags(fs, prefix+"response-headers.")
+}

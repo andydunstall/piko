@@ -35,17 +35,14 @@ Examples:
 `,
 	}
 
-	var accessLog bool
-	cmd.Flags().BoolVar(
-		&accessLog,
-		"access-log",
-		true,
-		`
-Whether to log all incoming HTTP requests and responses as 'info' logs.`,
-	)
+	accessLog := log.AccessLogConfig{
+		Disable: false,
+	}
+	flags := cmd.Flags()
+	accessLog.RegisterFlags(flags, "")
 
 	var timeout time.Duration
-	cmd.Flags().DurationVar(
+	flags.DurationVar(
 		&timeout,
 		"timeout",
 		time.Second*10,
