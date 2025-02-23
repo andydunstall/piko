@@ -35,11 +35,12 @@ Examples:
 `,
 	}
 
-	accessLog := log.AccessLogConfig{
+	accessLogConfig := log.AccessLogConfig{
+		Level:   "info",
 		Disable: false,
 	}
 	flags := cmd.Flags()
-	accessLog.RegisterFlags(flags, "")
+	accessLogConfig.RegisterFlags(flags, "")
 
 	var timeout time.Duration
 	flags.DurationVar(
@@ -59,7 +60,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 			EndpointID: args[0],
 			Addr:       args[1],
 			Protocol:   config.ListenerProtocolHTTP,
-			AccessLog:  accessLog,
+			AccessLog:  accessLogConfig,
 			Timeout:    timeout,
 		}}
 

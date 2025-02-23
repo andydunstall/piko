@@ -39,6 +39,7 @@ type Logger interface {
 	Info(msg string, fields ...zap.Field)
 	Warn(msg string, fields ...zap.Field)
 	Error(msg string, fields ...zap.Field)
+	Log(level zapcore.Level, msg string, fields ...zap.Field)
 	Sync() error
 	// StdLogger returns a standard library log.Logger that logs records using
 	// with the given level.
@@ -58,7 +59,7 @@ type logger struct {
 // NewLogger creates a new logger filtering using the given log level and
 // enabled subsystems.
 func NewLogger(lvl string, enabledSubsystems []string) (Logger, error) {
-	zapLevel, err := zapLevelFromString(lvl)
+	zapLevel, err := ZapLevelFromString(lvl)
 	if err != nil {
 		return nil, err
 	}
@@ -114,25 +115,23 @@ func (l *logger) With(fields ...zap.Field) Logger {
 }
 
 func (l *logger) Debug(msg string, fields ...zap.Field) {
-	if ce := l.check(zap.DebugLevel, msg); ce != nil {
-		ce.Write(fields...)
-	}
+	l.Log(zap.DebugLevel, msg, fields...)
 }
 
 func (l *logger) Info(msg string, fields ...zap.Field) {
-	if ce := l.check(zap.InfoLevel, msg); ce != nil {
-		ce.Write(fields...)
-	}
+	l.Log(zap.InfoLevel, msg, fields...)
 }
 
 func (l *logger) Warn(msg string, fields ...zap.Field) {
-	if ce := l.check(zap.WarnLevel, msg); ce != nil {
-		ce.Write(fields...)
-	}
+	l.Log(zap.WarnLevel, msg, fields...)
 }
 
 func (l *logger) Error(msg string, fields ...zap.Field) {
-	if ce := l.check(zap.ErrorLevel, msg); ce != nil {
+	l.Log(zap.ErrorLevel, msg, fields...)
+}
+
+func (l *logger) Log(level zapcore.Level, msg string, fields ...zap.Field) {
+	if ce := l.check(level, msg); ce != nil {
 		ce.Write(fields...)
 	}
 }
@@ -214,6 +213,9 @@ func (l *nopLogger) Warn(_ string, _ ...zap.Field) {
 func (l *nopLogger) Error(_ string, _ ...zap.Field) {
 }
 
+func (l *nopLogger) Log(_ zapcore.Level, _ string, _ ...zap.Field) {
+}
+
 func (l *nopLogger) Sync() error {
 	return nil
 }
@@ -234,7 +236,7 @@ func subsystemMatch(subsystem string, enabled []string) bool {
 	return false
 }
 
-func zapLevelFromString(s string) (zapcore.Level, error) {
+func ZapLevelFromString(s string) (zapcore.Level, error) {
 	switch s {
 	case "debug":
 		return zap.DebugLevel, nil

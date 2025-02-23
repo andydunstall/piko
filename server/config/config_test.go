@@ -29,15 +29,16 @@ proxy:
   advertise_addr: 1.2.3.4:8000
   timeout: 20s
   access_log:
-    disable: true
+    level: debug
     request_headers:
-      blocklist:
+      block_list:
         - abc
         - xyz
     response_headers:
-      allowlist:
+      allow_list:
         - def
         - ghi
+    disable: false
 
   http:
     read_timeout: 5s
@@ -143,13 +144,14 @@ grace_period: 2m
 			AdvertiseAddr: "1.2.3.4:8000",
 			Timeout:       time.Second * 20,
 			AccessLog: log.AccessLogConfig{
-				Disable: true,
+				Level: "debug",
 				RequestHeaders: log.AccessLogHeaderConfig{
-					Blocklist: []string{"abc", "xyz"},
+					BlockList: []string{"abc", "xyz"},
 				},
 				ResponseHeaders: log.AccessLogHeaderConfig{
-					Allowlist: []string{"def", "ghi"},
+					AllowList: []string{"def", "ghi"},
 				},
+				Disable: false,
 			},
 			HTTP: HTTPConfig{
 				ReadTimeout:       time.Second * 5,
@@ -256,9 +258,10 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--proxy.bind-addr", "10.15.104.25:8000",
 		"--proxy.advertise-addr", "1.2.3.4:8000",
 		"--proxy.timeout", "20s",
+		"--proxy.access-log.level", "debug",
+		"--proxy.access-log.request-headers.allow-list", "abc,def",
+		"--proxy.access-log.response-headers.block-list", "xyz,ghi",
 		"--proxy.access-log.disable",
-		"--proxy.access-log.request-headers.allowlist", "abc,def",
-		"--proxy.access-log.response-headers.blocklist", "xyz,ghi",
 		"--proxy.http.read-timeout", "5s",
 		"--proxy.http.read-header-timeout", "5s",
 		"--proxy.http.write-timeout", "5s",
@@ -319,13 +322,14 @@ func TestConfig_LoadFlags(t *testing.T) {
 			AdvertiseAddr: "1.2.3.4:8000",
 			Timeout:       time.Second * 20,
 			AccessLog: log.AccessLogConfig{
-				Disable: true,
+				Level: "debug",
 				RequestHeaders: log.AccessLogHeaderConfig{
-					Allowlist: []string{"abc", "def"},
+					AllowList: []string{"abc", "def"},
 				},
 				ResponseHeaders: log.AccessLogHeaderConfig{
-					Blocklist: []string{"xyz", "ghi"},
+					BlockList: []string{"xyz", "ghi"},
 				},
+				Disable: true,
 			},
 			HTTP: HTTPConfig{
 				ReadTimeout:       time.Second * 5,
