@@ -37,7 +37,7 @@ type loggerConfig struct {
 func NewLogger(config log.AccessLogConfig, l log.Logger) gin.HandlerFunc {
 	l = l.WithSubsystem(l.Subsystem() + ".access")
 
-	lc := NewLoggerConfig(config)
+	lc := newLoggerConfig(config)
 	return func(c *gin.Context) {
 		s := time.Now()
 
@@ -110,7 +110,7 @@ func (l *logHeaderFilter) Filter(h http.Header) http.Header {
 	return h
 }
 
-func NewLoggerConfig(c log.AccessLogConfig) loggerConfig {
+func newLoggerConfig(c log.AccessLogConfig) loggerConfig {
 	l := loggerConfig{}
 	l.RequestHeader.New(c.RequestHeaders.Allowlist, c.RequestHeaders.Blocklist)
 	l.ResponseHeader.New(c.ResponseHeaders.Allowlist, c.ResponseHeaders.Blocklist)
