@@ -2,7 +2,6 @@ package log
 
 import (
 	"fmt"
-	"net/http"
 
 	"github.com/spf13/pflag"
 )
@@ -60,11 +59,6 @@ type AccessLogHeaderConfig struct {
 	// Log only these headers.
 	// You can only define one of Allowlist or Blocklist.
 	Allowlist []string `json:"allowlist" yaml:"allowlist"`
-
-	// In-memory map that is composed right after arguments have
-	// been validated. This is used to speed up runtime lookups
-	// for headers.
-	allowList map[string]string
 }
 
 func (c *AccessLogHeaderConfig) Validate() error {
@@ -72,35 +66,7 @@ func (c *AccessLogHeaderConfig) Validate() error {
 		return fmt.Errorf("cannot define both allowlist and blocklist")
 	}
 
-	// Create the allow-list header map used to filter headers at runtime.
-	if len(c.Allowlist) > 0 {
-		c.allowList = make(map[string]string)
-		for _, el := range c.Allowlist {
-			c.allowList[el] = el
-		}
-	}
 	return nil
-}
-
-func (c *AccessLogHeaderConfig) Filter(h http.Header) http.Header {
-	if len(c.Allowlist) > 0 {
-		for name := range h {
-			// Use the map created during validation to hasten lookups.
-			if _, ok := c.allowList[name]; !ok {
-				h.Del(name)
-			}
-		}
-		return h
-	}
-
-	if len(c.Blocklist) > 0 {
-		for _, blocked := range c.Blocklist {
-			h.Del(blocked)
-		}
-		return h
-	}
-
-	return h
 }
 
 func (c *AccessLogHeaderConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
