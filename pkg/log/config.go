@@ -121,10 +121,9 @@ Block these headers from being logged`,
 }
 
 type AccessLogConfig struct {
-	// If Access logging is enabled, using the 'info' log level.
 	// If disabled, logs will be emitted with the 'debug' log level,
-	// while still respecting the header allow and block lists.
-	Enabled bool `json:"enabled" yaml:"enabled"`
+	// while respecting the header allow and block lists.
+	Disable bool `json:"disable" yaml:"disable"`
 
 	RequestHeaders AccessLogHeaderConfig `json:"request_headers" yaml:"request_headers"`
 
@@ -145,11 +144,11 @@ func (c *AccessLogConfig) Validate() error {
 func (c *AccessLogConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
 	prefix = prefix + ".access-log."
 	fs.BoolVar(
-		&c.Enabled,
-		prefix+"enabled",
+		&c.Disable,
+		prefix+"disable",
 		true,
 		`
-If Access logging is enabled`,
+If Access logging is disabled`,
 	)
 	c.RequestHeaders.RegisterFlags(fs, prefix+"request-headers.")
 	c.ResponseHeaders.RegisterFlags(fs, prefix+"response-headers.")

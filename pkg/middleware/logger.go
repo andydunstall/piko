@@ -50,10 +50,10 @@ func NewLogger(accessLogConfig log.AccessLogConfig, logger log.Logger) gin.Handl
 		}
 		if c.Writer.Status() >= http.StatusInternalServerError {
 			logger.Warn("request", zap.Any("request", req))
-		} else if accessLogConfig.Enabled {
-			logger.Info("request", zap.Any("request", req))
-		} else {
+		} else if accessLogConfig.Disable {
 			logger.Debug("request", zap.Any("request", req))
+		} else {
+			logger.Info("request", zap.Any("request", req))
 		}
 	}
 }

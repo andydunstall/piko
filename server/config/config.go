@@ -520,7 +520,7 @@ func Default() *Config {
 			BindAddr: ":8000",
 			Timeout:  time.Second * 30,
 			AccessLog: log.AccessLogConfig{
-				Enabled: true,
+				Disable: false,
 			},
 			HTTP: HTTPConfig{
 				ReadTimeout:       time.Second * 10,
