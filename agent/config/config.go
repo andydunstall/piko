@@ -226,10 +226,15 @@ func (c *TLSConfig) Load() (*tls.Config, error) {
 
 type ConnectConfig struct {
 	// URL is the Piko server URL to connect to.
-	URL string
+	URL string `json:"url" yaml:"url"`
 
 	// Token is a token to authenticate with the Piko server.
-	Token string
+	Token string `json:"token" yaml:"token"`
+
+	// TenantID is the ID of the agent tenant (optional).
+	//
+	// Experimental.
+	TenantID string `json:"tenant_id" yaml:"tenant_id"`
 
 	// Timeout is the timeout attempting to connect to the Piko server on
 	// boot.
@@ -270,6 +275,17 @@ Piko server 'upstream' port.`,
 		c.Token,
 		`
 Token is a token to authenticate with the Piko server.`,
+	)
+
+	fs.StringVar(
+		&c.TenantID,
+		"connect.tenant-id",
+		c.TenantID,
+		`
+Tenant ID of the agent.
+
+Tenants can be used to configure different authentication mechanisms and keys
+for different upstream services.`,
 	)
 
 	fs.DurationVar(

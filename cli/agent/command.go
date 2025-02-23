@@ -116,6 +116,7 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 	upstream := &client.Upstream{
 		URL:       connectURL,
 		Token:     conf.Connect.Token,
+		TenantID:  conf.Connect.TenantID,
 		TLSConfig: connectTLSConfig,
 		Logger:    logger.WithSubsystem("client"),
 	}

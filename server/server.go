@@ -124,13 +124,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	// Proxy server.
 
-	var proxyVerifier auth.Verifier
+	var proxyVerifier *auth.MultiTenantVerifier
 	if conf.Proxy.Auth.Enabled() {
 		verifierConf, err := conf.Proxy.Auth.Load()
 		if err != nil {
 			return nil, fmt.Errorf("proxy: load auth: %w", err)
 		}
-		proxyVerifier = auth.NewJWTVerifier(verifierConf)
+		proxyVerifier = auth.NewMultiTenantVerifier(
+			auth.NewJWTVerifier(verifierConf), nil,
+		)
 	}
 	proxyTLSConfig, err := conf.Proxy.TLS.Load()
 	if err != nil {
@@ -147,13 +149,26 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	// Upstream server.
 
-	var upstreamVerifier auth.Verifier
-	if conf.Upstream.Auth.Enabled() {
+	var upstreamVerifier *auth.MultiTenantVerifier
+	if conf.Upstream.Auth.Enabled() || len(conf.Upstream.Tenants) > 0 {
 		verifierConf, err := conf.Upstream.Auth.Load()
 		if err != nil {
 			return nil, fmt.Errorf("upstream: load auth: %w", err)
 		}
-		upstreamVerifier = auth.NewJWTVerifier(verifierConf)
+		defaultUpstreamVerifier := auth.NewJWTVerifier(verifierConf)
+
+		upstreamTenantVerifiers := make(map[string]auth.Verifier)
+		for _, tenantConf := range conf.Upstream.Tenants {
+			tenantVerifierConf, err := tenantConf.Auth.Load()
+			if err != nil {
+				return nil, fmt.Errorf("upstream: tenant %s: load auth: %w", tenantConf.ID, err)
+			}
+			upstreamTenantVerifiers[tenantConf.ID] = auth.NewJWTVerifier(tenantVerifierConf)
+		}
+
+		upstreamVerifier = auth.NewMultiTenantVerifier(
+			defaultUpstreamVerifier, upstreamTenantVerifiers,
+		)
 	}
 	upstreamTLSConfig, err := conf.Upstream.TLS.Load()
 	if err != nil {
@@ -170,13 +185,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	// Admin server.
 
-	var adminVerifier auth.Verifier
+	var adminVerifier *auth.MultiTenantVerifier
 	if conf.Admin.Auth.Enabled() {
 		verifierConf, err := conf.Admin.Auth.Load()
 		if err != nil {
 			return nil, fmt.Errorf("admin: load auth: %w", err)
 		}
-		adminVerifier = auth.NewJWTVerifier(verifierConf)
+		adminVerifier = auth.NewMultiTenantVerifier(
+			auth.NewJWTVerifier(verifierConf), nil,
+		)
 	}
 	adminTLSConfig, err := conf.Admin.TLS.Load()
 	if err != nil {

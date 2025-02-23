@@ -430,7 +430,7 @@ func TestServer_Authentication(t *testing.T) {
 		))
 		defer upstreamServer.Close()
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return &auth.Token{
@@ -438,7 +438,7 @@ func TestServer_Authentication(t *testing.T) {
 					Endpoints: []string{"my-endpoint"},
 				}, nil
 			},
-		}
+		}, nil)
 
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
@@ -484,7 +484,7 @@ func TestServer_Authentication(t *testing.T) {
 	})
 
 	t.Run("endpoint not permitted", func(t *testing.T) {
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return &auth.Token{
@@ -492,7 +492,7 @@ func TestServer_Authentication(t *testing.T) {
 					Endpoints: []string{"my-endpoint"},
 				}, nil
 			},
-		}
+		}, nil)
 
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
@@ -544,14 +544,14 @@ func TestServer_Authentication(t *testing.T) {
 		))
 		defer upstreamServer.Close()
 
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return &auth.Token{
 					Expiry: time.Now().Add(time.Hour),
 				}, nil
 			},
-		}
+		}, nil)
 
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)
@@ -597,12 +597,12 @@ func TestServer_Authentication(t *testing.T) {
 	})
 
 	t.Run("unauthenticated", func(t *testing.T) {
-		verifier := &fakeVerifier{
+		verifier := auth.NewMultiTenantVerifier(&fakeVerifier{
 			handler: func(token string) (*auth.Token, error) {
 				assert.Equal(t, "123", token)
 				return nil, auth.ErrInvalidToken
 			},
-		}
+		}, nil)
 
 		ln, err := net.Listen("tcp", "127.0.0.1:0")
 		require.NoError(t, err)

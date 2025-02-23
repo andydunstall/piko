@@ -18,11 +18,11 @@ const (
 
 // Auth is middleware to verify token requests.
 type Auth struct {
-	verifier auth.Verifier
+	verifier *auth.MultiTenantVerifier
 	logger   log.Logger
 }
 
-func NewAuth(verifier auth.Verifier, logger log.Logger) *Auth {
+func NewAuth(verifier *auth.MultiTenantVerifier, logger log.Logger) *Auth {
 	return &Auth{
 		verifier: verifier,
 		logger:   logger,
@@ -38,7 +38,9 @@ func (m *Auth) Verify(c *gin.Context) {
 		return
 	}
 
-	token, err := m.verifier.Verify(tokenString)
+	tenantID := m.parseTenant(c)
+
+	token, err := m.verifier.Verify(tokenString, tenantID)
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidToken) {
 			m.logger.Warn(
@@ -59,6 +61,17 @@ func (m *Auth) Verify(c *gin.Context) {
 			c.AbortWithStatusJSON(
 				http.StatusUnauthorized,
 				gin.H{"error": "expired token"},
+			)
+			return
+		}
+		if errors.Is(err, auth.ErrUnknownTenant) {
+			m.logger.Warn(
+				"auth unknwon tenant",
+				zap.Error(err),
+			)
+			c.AbortWithStatusJSON(
+				http.StatusUnauthorized,
+				gin.H{"error": "unknown tenant"},
 			)
 			return
 		}
@@ -113,4 +126,8 @@ func (m *Auth) parseToken(c *gin.Context) (string, bool) {
 	}
 
 	return tokenString, true
+}
+
+func (m *Auth) parseTenant(c *gin.Context) string {
+	return c.Request.Header.Get("x-piko-tenant-id")
 }
