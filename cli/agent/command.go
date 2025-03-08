@@ -129,11 +129,21 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 		// Already verified in conf.Validate() so this shouldn't happen.
 		return fmt.Errorf("connect url: %w", err)
 	}
+	var proxyURL *url.URL
+	if conf.Connect.ProxyURL != "" {
+		connectProxyURL, err := url.Parse(conf.Connect.ProxyURL)
+		if err != nil {
+			// Already verified in conf.Validate() so this shouldn't happen.
+			return fmt.Errorf("connect proxy url: %w", err)
+		}
+		proxyURL = connectProxyURL
+	}
 	upstream := &client.Upstream{
 		URL:       connectURL,
 		Token:     conf.Connect.Token,
 		TenantID:  conf.Connect.TenantID,
 		TLSConfig: connectTLSConfig,
+		ProxyURL:  proxyURL,
 		Logger:    logger.WithSubsystem("client"),
 	}
 
