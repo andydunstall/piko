@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -60,6 +61,8 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 		}
 		maxIdleConns = converted
 	}
+
+	logger.Info(fmt.Sprintf("keep-alive: %d, idle-conn: %d, max-idle-conns: %d", keepAlive, idleConnTimeout, maxIdleConns))
 
 	// FIXME: Check the timeouts.
 	dialer := &net.Dialer{
