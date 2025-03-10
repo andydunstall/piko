@@ -35,7 +35,6 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 	}
 
 	keepAlive := 30
-
 	if val, ok := os.LookupEnv("PIKO_DIALER_KEEP_ALIVE_TIMEOUT_S"); ok {
 		converted, err := strconv.Atoi(val)
 		if err != nil {
@@ -45,13 +44,21 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 	}
 
 	idleConnTimeout := 90
-
 	if val, ok := os.LookupEnv("PIKO_DIALER_IDLE_CONN_TIMEOUT_S"); ok {
 		converted, err := strconv.Atoi(val)
 		if err != nil {
 			panic(err)
 		}
 		idleConnTimeout = converted
+	}
+
+	maxIdleConns := 100
+	if val, ok := os.LookupEnv("PIKO_DIALER_MAX_IDLE_CONNS"); ok {
+		converted, err := strconv.Atoi(val)
+		if err != nil {
+			panic(err)
+		}
+		maxIdleConns = converted
 	}
 
 	// FIXME: Check the timeouts.
@@ -67,7 +74,7 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 		IdleConnTimeout:       time.Duration(idleConnTimeout) * time.Second,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		MaxIdleConns:          100,
+		MaxIdleConns:          maxIdleConns,
 	}
 	tlsClientConfig, err := conf.TLS.Load()
 	if err != nil {
