@@ -54,6 +54,10 @@ type Upstream struct {
 	// If nil, the default configuration is used.
 	TLSConfig *tls.Config
 
+	// ProxyURL is the URL to proxy the request from the client to the Piko
+	// server (optional).
+	ProxyURL *url.URL
+
 	// MinReconnectBackoff is the minimum backoff when reconnecting.
 	//
 	// Defaults to 100ms.
@@ -120,6 +124,7 @@ func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Sessi
 			websocket.WithToken(u.Token),
 			websocket.WithTenantID(u.TenantID),
 			websocket.WithTLSConfig(u.TLSConfig),
+			websocket.WithProxyURL(u.ProxyURL),
 		)
 		if err == nil {
 			u.logger().Debug(
