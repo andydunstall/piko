@@ -1,11 +1,12 @@
 module github.com/andydunstall/piko
 
 go 1.23.2
+toolchain go1.24.1
 
 require (
 	github.com/andydunstall/yamux v0.1.5
 	github.com/gin-gonic/gin v1.10.0
-	github.com/goccy/go-yaml v1.15.23
+	github.com/goccy/go-yaml v1.16.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/websocket v1.5.3
