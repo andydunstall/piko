@@ -1,0 +1,20 @@
+listeners:
+  - endpoint_id: "sombra-transcend-123"
+    addr: "http://localhost:9208"
+    timeout: ${LISTENER_TIMEOUT:7m}
+    protocol: http
+    keep_alive: 10m
+    max_idle_conns: -1
+
+connect:
+  url: "http://localhost:8001"
+  timeout: 30s
+  token: ${CONNECT_TOKEN}
+
+server:
+  enabled: true
+  bind_addr: ":5201"
+
+log:
+  level: info
+
