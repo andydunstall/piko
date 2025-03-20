@@ -4,12 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
-	"os"
-	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -35,49 +32,20 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 		panic("invalid addr: " + conf.Addr)
 	}
 
-	keepAlive := 30
-	if val, ok := os.LookupEnv("PIKO_DIALER_KEEP_ALIVE_TIMEOUT_S"); ok {
-		converted, err := strconv.Atoi(val)
-		if err != nil {
-			panic(err)
-		}
-		keepAlive = converted
-	}
-
-	idleConnTimeout := 90
-	if val, ok := os.LookupEnv("PIKO_DIALER_IDLE_CONN_TIMEOUT_S"); ok {
-		converted, err := strconv.Atoi(val)
-		if err != nil {
-			panic(err)
-		}
-		idleConnTimeout = converted
-	}
-
-	maxIdleConns := 100
-	if val, ok := os.LookupEnv("PIKO_DIALER_MAX_IDLE_CONNS"); ok {
-		converted, err := strconv.Atoi(val)
-		if err != nil {
-			panic(err)
-		}
-		maxIdleConns = converted
-	}
-
-	logger.Info(fmt.Sprintf("keep-alive: %d, idle-conn: %d, max-idle-conns: %d", keepAlive, idleConnTimeout, maxIdleConns))
-
-	// FIXME: Check the timeouts.
 	dialer := &net.Dialer{
 		Timeout:   conf.Timeout,
-		KeepAlive: time.Duration(keepAlive) * time.Second,
+		KeepAlive: conf.KeepAlive,
 	}
 	// Same as http.DefaultTransport with custom TLS client config.
 	transport := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           dialer.DialContext,
 		ForceAttemptHTTP2:     true,
-		IdleConnTimeout:       time.Duration(idleConnTimeout) * time.Second,
+		IdleConnTimeout:       conf.IdleConnection,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		MaxIdleConns:          maxIdleConns,
+		MaxIdleConns:          conf.MaxIdleConnections,
+		DisableCompression:    conf.DisableCompression,
 	}
 	tlsClientConfig, err := conf.TLS.Load()
 	if err != nil {

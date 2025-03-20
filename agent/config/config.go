@@ -40,6 +40,20 @@ type ListenerConfig struct {
 	// Timeout is the timeout to forward incoming requests to the upstream.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 
+	// Keep-alive timeout for connections to upstream. Defaults to 30 seconds.
+	KeepAlive time.Duration `json:"keep_alive" yaml:"keep_alive"`
+
+	// Idle connection timeout for connections to upstream. Defaults to 90 seconds.
+	IdleConnection time.Duration `json:"idle_conn" yaml:"idle_conn"`
+
+	// Maximum idle connections allowed for the agent. Defaults to 100.
+	// Set to -1 to for no limit.
+	MaxIdleConnections int `json:"max_idle_conns" yaml:"max_idle_conns"`
+
+	// Disable appending a `Accept-Encoding: gzip` header, if the header does not exist.
+	// Defaults to false.
+	DisableCompression bool `json:"disable_compression" yaml:"disable_compression"`
+
 	// TLS configures the client TLS config when connecting to the upstream
 	// service.
 	//

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	rungroup "github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
@@ -59,7 +60,7 @@ Examples:
   piko agent tcp my-endpoint 3000
 
   # Start all listeners configured in agent.yaml.
-  piko agent start --config.file ./agent.yaml
+  piko agent start --config.path ./agent.yaml
 `,
 	}
 
@@ -83,6 +84,18 @@ Examples:
 			}
 			if conf.Listeners[i].AccessLog.Level == "" {
 				conf.Listeners[i].AccessLog.Level = "info"
+			}
+			if conf.Listeners[i].KeepAlive.Nanoseconds() == 0 {
+				conf.Listeners[i].KeepAlive = 30 * time.Second
+			}
+			if conf.Listeners[i].IdleConnection.Nanoseconds() == 0 {
+				conf.Listeners[i].IdleConnection = 90 * time.Second
+			}
+			if conf.Listeners[i].MaxIdleConnections == 0 {
+				conf.Listeners[i].MaxIdleConnections = 100
+			}
+			if conf.Listeners[i].MaxIdleConnections == -1 {
+				conf.Listeners[i].MaxIdleConnections = 0
 			}
 		}
 

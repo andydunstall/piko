@@ -51,17 +51,57 @@ Examples:
 Timeout forwarding incoming HTTP requests to the upstream.`,
 	)
 
+	var keepAlive time.Duration
+	flags.DurationVar(
+		&keepAlive,
+		"keep_alive",
+		30*time.Second,
+		`
+ HTTP dialer Keep-alive duration in seconds`,
+	)
+
+	var idleConn time.Duration
+	flags.DurationVar(
+		&idleConn,
+		"idle_conn",
+		90*time.Second,
+		`
+ HTTP transport idle connection duration in seconds`,
+	)
+
+	var maxIdleConns int
+	flags.IntVar(
+		&maxIdleConns,
+		"max_idle_conns",
+		100,
+		`
+ HTTP transport maximum number of idle connections allowed`,
+	)
+
+	var disableCompression bool
+	flags.BoolVar(
+		&disableCompression,
+		"disable_compression",
+		false,
+		`
+ HTTP transport disable accepting compressed responses when transporting requests`,
+	)
+
 	var logger log.Logger
 
 	cmd.PreRun = func(_ *cobra.Command, args []string) {
 		// Discard any listeners in the configuration file and use from command
 		// line.
 		conf.Listeners = []config.ListenerConfig{{
-			EndpointID: args[0],
-			Addr:       args[1],
-			Protocol:   config.ListenerProtocolHTTP,
-			AccessLog:  accessLogConfig,
-			Timeout:    timeout,
+			EndpointID:         args[0],
+			Addr:               args[1],
+			Protocol:           config.ListenerProtocolHTTP,
+			AccessLog:          accessLogConfig,
+			Timeout:            timeout,
+			KeepAlive:          keepAlive,
+			IdleConnection:     idleConn,
+			MaxIdleConnections: maxIdleConns,
+			DisableCompression: disableCompression,
 		}}
 
 		var err error
