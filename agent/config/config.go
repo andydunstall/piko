@@ -22,6 +22,22 @@ const (
 	ListenerProtocolTCP  ListenerProtocol = "tcp"
 )
 
+type ListenerHttpClientConfig struct {
+	// Keep-alive timeout for connections to upstream. Defaults to 30 seconds.
+	KeepAliveTimeout time.Duration `json:"keep_alive_timeout" yaml:"keep_alive_timeout"`
+
+	// Idle connection timeout for connections to upstream. Defaults to 90 seconds.
+	IdleConnectionTimeout time.Duration `json:"idle_conn_timeout" yaml:"idle_conn_timeout"`
+
+	// Maximum idle connections allowed for the agent. Defaults to 100.
+	// Set to -1 to for no limit.
+	MaxIdleConnections int `json:"max_idle_conns" yaml:"max_idle_conns"`
+
+	// Disable appending a `Accept-Encoding: gzip` header, if the header does not exist.
+	// Defaults to false.
+	DisableCompression bool `json:"disable_compression" yaml:"disable_compression"`
+}
+
 type ListenerConfig struct {
 	// EndpointID is the endpoint ID to register.
 	EndpointID string `json:"endpoint_id" yaml:"endpoint_id"`
@@ -40,19 +56,9 @@ type ListenerConfig struct {
 	// Timeout is the timeout to forward incoming requests to the upstream.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 
-	// Keep-alive timeout for connections to upstream. Defaults to 30 seconds.
-	KeepAlive time.Duration `json:"keep_alive" yaml:"keep_alive"`
-
-	// Idle connection timeout for connections to upstream. Defaults to 90 seconds.
-	IdleConnection time.Duration `json:"idle_conn" yaml:"idle_conn"`
-
-	// Maximum idle connections allowed for the agent. Defaults to 100.
-	// Set to -1 to for no limit.
-	MaxIdleConnections int `json:"max_idle_conns" yaml:"max_idle_conns"`
-
-	// Disable appending a `Accept-Encoding: gzip` header, if the header does not exist.
-	// Defaults to false.
-	DisableCompression bool `json:"disable_compression" yaml:"disable_compression"`
+	// HTTP Client configuration for things like keep-alive timeouts, idle connection
+	// timeouts, etc.
+	HttpClient ListenerHttpClientConfig `json:"http_client" yaml:"http_client"`
 
 	// TLS configures the client TLS config when connecting to the upstream
 	// service.
