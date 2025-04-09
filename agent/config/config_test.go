@@ -81,21 +81,19 @@ func TestListenerConfig_URL(t *testing.T) {
 func TestConfig_LoadYAML(t *testing.T) {
 	yaml := `
 listeners:
-  - endpoint_id: "123"
-    addr: "http://localhost:9208"
+  - endpoint_id: '123'
+    addr: 'http://localhost:9208'
     timeout: 7m
     protocol: http
-    keep_alive: 10m
-
+    http_client:
+      keep_alive_timeout: 10m
 connect:
-  url: "http://localhost:8001"
+  url: 'http://localhost:8001'
   timeout: 30s
-  token: "cyz"
-
+  token: cyz
 server:
   enabled: true
-  bind_addr: ":5201"
-
+  bind_addr: ':5201'
 log:
   level: info
 `
@@ -125,11 +123,13 @@ log:
 					BlockList: nil,
 				},
 			},
-			Timeout:            7 * time.Minute,
-			KeepAlive:          10 * time.Minute,
-			MaxIdleConnections: 0,
-			IdleConnection:     0,
-			DisableCompression: false,
+			Timeout: 7 * time.Minute,
+			HttpClient: ListenerHttpClientConfig{
+				KeepAliveTimeout:      10 * time.Minute,
+				MaxIdleConnections:    0,
+				IdleConnectionTimeout: 0,
+				DisableCompression:    false,
+			},
 			TLS: TLSConfig{
 				Cert:               "",
 				Key:                "",

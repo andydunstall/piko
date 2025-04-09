@@ -54,7 +54,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 	var keepAlive time.Duration
 	flags.DurationVar(
 		&keepAlive,
-		"keep_alive",
+		"keep_alive_timeout",
 		30*time.Second,
 		`
  HTTP dialer Keep-alive duration in seconds`,
@@ -63,7 +63,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 	var idleConn time.Duration
 	flags.DurationVar(
 		&idleConn,
-		"idle_conn",
+		"idle_conn_timeout",
 		90*time.Second,
 		`
  HTTP transport idle connection duration in seconds`,
@@ -93,15 +93,17 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 		// Discard any listeners in the configuration file and use from command
 		// line.
 		conf.Listeners = []config.ListenerConfig{{
-			EndpointID:         args[0],
-			Addr:               args[1],
-			Protocol:           config.ListenerProtocolHTTP,
-			AccessLog:          accessLogConfig,
-			Timeout:            timeout,
-			KeepAlive:          keepAlive,
-			IdleConnection:     idleConn,
-			MaxIdleConnections: maxIdleConns,
-			DisableCompression: disableCompression,
+			EndpointID: args[0],
+			Addr:       args[1],
+			Protocol:   config.ListenerProtocolHTTP,
+			AccessLog:  accessLogConfig,
+			Timeout:    timeout,
+			HttpClient: config.ListenerHttpClientConfig{
+				KeepAliveTimeout:      keepAlive,
+				IdleConnectionTimeout: idleConn,
+				MaxIdleConnections:    maxIdleConns,
+				DisableCompression:    disableCompression,
+			},
 		}}
 
 		var err error
