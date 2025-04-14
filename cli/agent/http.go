@@ -98,7 +98,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 			Protocol:   config.ListenerProtocolHTTP,
 			AccessLog:  accessLogConfig,
 			Timeout:    timeout,
-			HttpClient: config.ListenerHttpClientConfig{
+			HTTPClient: config.ListenerHTTPClientConfig{
 				KeepAliveTimeout:      keepAlive,
 				IdleConnectionTimeout: idleConn,
 				MaxIdleConnections:    maxIdleConns,

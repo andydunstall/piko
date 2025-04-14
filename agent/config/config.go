@@ -22,7 +22,7 @@ const (
 	ListenerProtocolTCP  ListenerProtocol = "tcp"
 )
 
-type ListenerHttpClientConfig struct {
+type ListenerHTTPClientConfig struct {
 	// Keep-alive timeout for connections to upstream. Defaults to 30 seconds.
 	KeepAliveTimeout time.Duration `json:"keep_alive_timeout" yaml:"keep_alive_timeout"`
 
@@ -58,7 +58,7 @@ type ListenerConfig struct {
 
 	// HTTP Client configuration for things like keep-alive timeouts, idle connection
 	// timeouts, etc.
-	HttpClient ListenerHttpClientConfig `json:"http_client" yaml:"http_client"`
+	HTTPClient ListenerHTTPClientConfig `json:"http_client" yaml:"http_client"`
 
 	// TLS configures the client TLS config when connecting to the upstream
 	// service.

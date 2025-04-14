@@ -124,7 +124,7 @@ log:
 				},
 			},
 			Timeout: 7 * time.Minute,
-			HttpClient: ListenerHttpClientConfig{
+			HTTPClient: ListenerHTTPClientConfig{
 				KeepAliveTimeout:      10 * time.Minute,
 				MaxIdleConnections:    0,
 				IdleConnectionTimeout: 0,
