@@ -2,8 +2,12 @@ package config
 
 import (
 	"net/url"
+	"os"
 	"testing"
+	"time"
 
+	pikoconfig "github.com/andydunstall/piko/pkg/config"
+	"github.com/andydunstall/piko/pkg/log"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -72,4 +76,82 @@ func TestListenerConfig_URL(t *testing.T) {
 			assert.Equal(t, tt.url, u)
 		})
 	}
+}
+
+func TestConfig_LoadYAML(t *testing.T) {
+	yaml := `
+listeners:
+  - endpoint_id: '123'
+    addr: 'http://localhost:9208'
+    timeout: 7m
+    protocol: http
+    http_client:
+      keep_alive_timeout: 10m
+connect:
+  url: 'http://localhost:8001'
+  timeout: 30s
+  token: cyz
+server:
+  enabled: true
+  bind_addr: ':5201'
+log:
+  level: info
+`
+
+	f, err := os.CreateTemp("", "piko-agent")
+	assert.NoError(t, err)
+
+	_, err = f.WriteString(yaml)
+	assert.NoError(t, err)
+
+	var loadedConf Config
+	assert.NoError(t, pikoconfig.Load(&loadedConf, f.Name(), false))
+
+	expectedConf := Config{
+		Listeners: []ListenerConfig{{
+			EndpointID: "123",
+			Addr:       "http://localhost:9208",
+			Protocol:   "http",
+			AccessLog: log.AccessLogConfig{
+				Disable: false,
+				RequestHeaders: log.AccessLogHeaderConfig{
+					AllowList: nil,
+					BlockList: nil,
+				},
+				ResponseHeaders: log.AccessLogHeaderConfig{
+					AllowList: nil,
+					BlockList: nil,
+				},
+			},
+			Timeout: 7 * time.Minute,
+			HTTPClient: ListenerHTTPClientConfig{
+				KeepAliveTimeout:   10 * time.Minute,
+				MaxIdleConns:       0,
+				IdleConnTimeout:    0,
+				DisableCompression: false,
+			},
+			TLS: TLSConfig{
+				Cert:               "",
+				Key:                "",
+				RootCAs:            "",
+				InsecureSkipVerify: false,
+			},
+		}},
+		Connect: ConnectConfig{
+			URL:     "http://localhost:8001",
+			Timeout: 30 * time.Second,
+			Token:   "cyz",
+		},
+		Server: ServerConfig{
+			Enabled:  true,
+			BindAddr: ":5201",
+		},
+		Log: log.Config{
+			Level:      "info",
+			Subsystems: nil,
+		},
+		GracePeriod: 0,
+	}
+
+	assert.Equal(t, expectedConf, loadedConf)
 }

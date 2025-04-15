@@ -51,6 +51,36 @@ Examples:
 Timeout forwarding incoming HTTP requests to the upstream.`,
 	)
 
+	var httpClientConfig config.ListenerHTTPClientConfig
+	flags.DurationVar(
+		&httpClientConfig.KeepAliveTimeout,
+		"http-client.keep-alive-timeout",
+		30*time.Second,
+		`
+ HTTP dialer keep-alive timeout in seconds.`,
+	)
+	flags.DurationVar(
+		&httpClientConfig.IdleConnTimeout,
+		"http-client.idle-conn-timeout",
+		90*time.Second,
+		`
+ HTTP transport idle connection timeout in seconds.`,
+	)
+	flags.IntVar(
+		&httpClientConfig.MaxIdleConns,
+		"http-client.max-idle-conns",
+		100,
+		`
+ HTTP transport maximum number of idle connections allowed.`,
+	)
+	flags.BoolVar(
+		&httpClientConfig.DisableCompression,
+		"http-client.disable-compression",
+		false,
+		`
+ HTTP transport disable accepting compressed responses.`,
+	)
+
 	var logger log.Logger
 
 	cmd.PreRun = func(_ *cobra.Command, args []string) {
@@ -62,6 +92,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 			Protocol:   config.ListenerProtocolHTTP,
 			AccessLog:  accessLogConfig,
 			Timeout:    timeout,
+			HTTPClient: httpClientConfig,
 		}}
 
 		var err error

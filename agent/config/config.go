@@ -22,6 +22,20 @@ const (
 	ListenerProtocolTCP  ListenerProtocol = "tcp"
 )
 
+type ListenerHTTPClientConfig struct {
+	// Keep-alive timeout for connections to upstream. Defaults to 30 seconds.
+	KeepAliveTimeout time.Duration `json:"keep_alive_timeout" yaml:"keep_alive_timeout"`
+
+	// Idle connection timeout for connections to upstream. Defaults to 90 seconds.
+	IdleConnTimeout time.Duration `json:"idle_conn_timeout" yaml:"idle_conn_timeout"`
+
+	// Maximum idle connections allowed for the agent. Defaults to 100.
+	// Set to -1 to for no limit.
+	MaxIdleConns int `json:"max_idle_conns" yaml:"max_idle_conns"`
+
+	DisableCompression bool `json:"disable_compression" yaml:"disable_compression"`
+}
+
 type ListenerConfig struct {
 	// EndpointID is the endpoint ID to register.
 	EndpointID string `json:"endpoint_id" yaml:"endpoint_id"`
@@ -39,6 +53,11 @@ type ListenerConfig struct {
 
 	// Timeout is the timeout to forward incoming requests to the upstream.
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
+
+	// HTTP client configuration.
+	//
+	// Only applies if the protocol is ListenerProtocolHTTP.
+	HTTPClient ListenerHTTPClientConfig `json:"http_client" yaml:"http_client"`
 
 	// TLS configures the client TLS config when connecting to the upstream
 	// service.

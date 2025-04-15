@@ -34,17 +34,18 @@ func NewReverseProxy(conf config.ListenerConfig, logger log.Logger) *ReverseProx
 
 	dialer := &net.Dialer{
 		Timeout:   conf.Timeout,
-		KeepAlive: 30 * time.Second,
+		KeepAlive: conf.HTTPClient.KeepAliveTimeout,
 	}
 	// Same as http.DefaultTransport with custom TLS client config.
 	transport := &http.Transport{
 		Proxy:                 http.ProxyFromEnvironment,
 		DialContext:           dialer.DialContext,
 		ForceAttemptHTTP2:     true,
-		IdleConnTimeout:       90 * time.Second,
+		IdleConnTimeout:       conf.HTTPClient.IdleConnTimeout,
 		TLSHandshakeTimeout:   10 * time.Second,
 		ExpectContinueTimeout: 1 * time.Second,
-		MaxIdleConns:          100,
+		MaxIdleConns:          conf.HTTPClient.MaxIdleConns,
+		DisableCompression:    conf.HTTPClient.DisableCompression,
 	}
 	tlsClientConfig, err := conf.TLS.Load()
 	if err != nil {
