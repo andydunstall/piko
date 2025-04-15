@@ -51,40 +51,34 @@ Examples:
 Timeout forwarding incoming HTTP requests to the upstream.`,
 	)
 
-	var keepAlive time.Duration
+	var httpClientConfig config.ListenerHTTPClientConfig
 	flags.DurationVar(
-		&keepAlive,
-		"keep_alive_timeout",
+		&httpClientConfig.KeepAliveTimeout,
+		"http-client.keep-alive-timeout",
 		30*time.Second,
 		`
- HTTP dialer Keep-alive duration in seconds`,
+ HTTP dialer keep-alive timeout in seconds.`,
 	)
-
-	var idleConn time.Duration
 	flags.DurationVar(
-		&idleConn,
-		"idle_conn_timeout",
+		&httpClientConfig.IdleConnTimeout,
+		"http-client.idle-conn-timeout",
 		90*time.Second,
 		`
- HTTP transport idle connection duration in seconds`,
+ HTTP transport idle connection timeout in seconds.`,
 	)
-
-	var maxIdleConns int
 	flags.IntVar(
-		&maxIdleConns,
-		"max_idle_conns",
+		&httpClientConfig.MaxIdleConns,
+		"http-client.max-idle-conns",
 		100,
 		`
- HTTP transport maximum number of idle connections allowed`,
+ HTTP transport maximum number of idle connections allowed.`,
 	)
-
-	var disableCompression bool
 	flags.BoolVar(
-		&disableCompression,
-		"disable_compression",
+		&httpClientConfig.DisableCompression,
+		"http-client.disable-compression",
 		false,
 		`
- HTTP transport disable accepting compressed responses when transporting requests`,
+ HTTP transport disable accepting compressed responses.`,
 	)
 
 	var logger log.Logger
@@ -98,12 +92,7 @@ Timeout forwarding incoming HTTP requests to the upstream.`,
 			Protocol:   config.ListenerProtocolHTTP,
 			AccessLog:  accessLogConfig,
 			Timeout:    timeout,
-			HTTPClient: config.ListenerHTTPClientConfig{
-				KeepAliveTimeout:      keepAlive,
-				IdleConnectionTimeout: idleConn,
-				MaxIdleConnections:    maxIdleConns,
-				DisableCompression:    disableCompression,
-			},
+			HTTPClient: httpClientConfig,
 		}}
 
 		var err error

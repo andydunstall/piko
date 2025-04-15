@@ -85,17 +85,17 @@ Examples:
 			if conf.Listeners[i].AccessLog.Level == "" {
 				conf.Listeners[i].AccessLog.Level = "info"
 			}
-			if conf.Listeners[i].HTTPClient.KeepAliveTimeout.Nanoseconds() == 0 {
+			if conf.Listeners[i].HTTPClient.KeepAliveTimeout == 0 {
 				conf.Listeners[i].HTTPClient.KeepAliveTimeout = 30 * time.Second
 			}
-			if conf.Listeners[i].HTTPClient.IdleConnectionTimeout.Nanoseconds() == 0 {
-				conf.Listeners[i].HTTPClient.IdleConnectionTimeout = 90 * time.Second
+			if conf.Listeners[i].HTTPClient.IdleConnTimeout == 0 {
+				conf.Listeners[i].HTTPClient.IdleConnTimeout = 90 * time.Second
 			}
-			if conf.Listeners[i].HTTPClient.MaxIdleConnections == 0 {
-				conf.Listeners[i].HTTPClient.MaxIdleConnections = 100
+			if conf.Listeners[i].HTTPClient.MaxIdleConns == 0 {
+				conf.Listeners[i].HTTPClient.MaxIdleConns = 100
 			}
-			if conf.Listeners[i].HTTPClient.MaxIdleConnections == -1 {
-				conf.Listeners[i].HTTPClient.MaxIdleConnections = 0
+			if conf.Listeners[i].HTTPClient.MaxIdleConns == -1 {
+				conf.Listeners[i].HTTPClient.MaxIdleConns = 0
 			}
 		}
 

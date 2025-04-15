@@ -125,10 +125,10 @@ log:
 			},
 			Timeout: 7 * time.Minute,
 			HTTPClient: ListenerHTTPClientConfig{
-				KeepAliveTimeout:      10 * time.Minute,
-				MaxIdleConnections:    0,
-				IdleConnectionTimeout: 0,
-				DisableCompression:    false,
+				KeepAliveTimeout:   10 * time.Minute,
+				MaxIdleConns:       0,
+				IdleConnTimeout:    0,
+				DisableCompression: false,
 			},
 			TLS: TLSConfig{
 				Cert:               "",
