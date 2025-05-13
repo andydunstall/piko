@@ -43,6 +43,7 @@ func (d *Dialer) Dial(ctx context.Context, endpointID string) (net.Conn, error) 
 		ctx,
 		d.dialURL(endpointID),
 		websocket.WithToken(d.Token),
+		websocket.WithTLSConfig(d.TLSConfig),
 	)
 }
 
