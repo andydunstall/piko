@@ -113,6 +113,7 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 	}
 
 	dialer := &websocket.Dialer{
+		Proxy:            http.ProxyFromEnvironment,
 		HandshakeTimeout: 60 * time.Second,
 	}
 
