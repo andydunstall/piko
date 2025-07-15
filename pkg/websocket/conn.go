@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -51,6 +52,7 @@ type dialOptions struct {
 	token     string
 	tenantID  string
 	tlsConfig *tls.Config
+	proxyURL  *url.URL
 }
 
 type DialOption interface {
@@ -75,6 +77,18 @@ func (o tenantIDOption) apply(opts *dialOptions) {
 
 func WithTenantID(tenantID string) DialOption {
 	return tenantIDOption(tenantID)
+}
+
+type proxyURLOption struct {
+	url *url.URL
+}
+
+func (o proxyURLOption) apply(opts *dialOptions) {
+	opts.proxyURL = o.url
+}
+
+func WithProxyURL(url *url.URL) DialOption {
+	return &proxyURLOption{url: url}
 }
 
 type tlsConfigOption struct {
@@ -106,7 +120,7 @@ func New(wsConn *websocket.Conn) *Conn {
 	}
 }
 
-func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
+func Dial(ctx context.Context, u string, opts ...DialOption) (*Conn, error) {
 	options := dialOptions{}
 	for _, o := range opts {
 		o.apply(&options)
@@ -114,6 +128,11 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 
 	dialer := &websocket.Dialer{
 		HandshakeTimeout: 60 * time.Second,
+	}
+	if options.proxyURL != nil {
+		dialer.Proxy = func(*http.Request) (*url.URL, error) {
+			return options.proxyURL, nil
+		}
 	}
 
 	if options.tlsConfig != nil {
@@ -129,7 +148,7 @@ func Dial(ctx context.Context, url string, opts ...DialOption) (*Conn, error) {
 	}
 
 	wsConn, resp, err := dialer.DialContext(
-		ctx, url, header,
+		ctx, u, header,
 	)
 	if err == nil {
 		return New(wsConn), nil

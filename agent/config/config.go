@@ -265,6 +265,10 @@ type ConnectConfig struct {
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 
 	TLS TLSConfig `json:"tls" yaml:"tls"`
+
+	// ProxyURL is the proxy URL to proxy the request from the agent to the
+	// Piko server (optional).
+	ProxyURL string `json:"proxy_url" yaml:"proxy_url"`
 }
 
 func (c *ConnectConfig) Validate() error {
@@ -273,6 +277,11 @@ func (c *ConnectConfig) Validate() error {
 	}
 	if _, err := url.Parse(c.URL); err != nil {
 		return fmt.Errorf("invalid url: %w", err)
+	}
+	if c.ProxyURL != "" {
+		if _, err := url.Parse(c.ProxyURL); err != nil {
+			return fmt.Errorf("invalid proxy url: %w", err)
+		}
 	}
 	if c.Timeout == 0 {
 		return fmt.Errorf("missing timeout")
@@ -306,7 +315,7 @@ Token is a token to authenticate with the Piko server.`,
 		"connect.tenant-id",
 		c.TenantID,
 		`
-Tenant ID of the agent.
+Tenant ID of the agent (optional).
 
 Tenants can be used to configure different authentication mechanisms and keys
 for different upstream services.`,
@@ -323,6 +332,14 @@ reconnect.`,
 	)
 
 	c.TLS.RegisterFlags(fs, "connect")
+
+	fs.StringVar(
+		&c.ProxyURL,
+		"connect.proxy-url",
+		c.ProxyURL,
+		`
+The proxy URL to proxy the request from the agent to the Piko server (optional).`,
+	)
 }
 
 type ServerConfig struct {
