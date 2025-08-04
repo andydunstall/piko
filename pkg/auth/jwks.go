@@ -9,6 +9,7 @@ import (
 
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/spf13/pflag"
 )
 
 type JWKS struct {
@@ -74,4 +75,24 @@ func (j *JWKS) loadRemote(ctx context.Context) (*LoadedJWKS, error) {
 	return &LoadedJWKS{
 		KeyFunc: kFunc.Keyfunc,
 	}, nil
+}
+
+func (j *JWKS) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	prefix += ".jwks."
+
+	fs.StringVar(
+		&j.Endpoint,
+		prefix+"endpoint",
+		j.Endpoint,
+		`
+Endpoint to load the JWK Set from. Accepts remote endpoints or local paths`,
+	)
+
+	fs.DurationVar(
+		&j.CacheTTL,
+		prefix+"cache-ttl",
+		j.CacheTTL,
+		`
+Frequency to refresh the JWK Set from the remote endpoint.`,
+	)
 }

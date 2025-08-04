@@ -126,7 +126,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	var proxyVerifier *auth.MultiTenantVerifier
 	if conf.Proxy.Auth.Enabled() {
-		verifierConf, err := conf.Proxy.Auth.Load()
+		verifierConf, err := conf.Proxy.Auth.Load(s.rebalanceCtx)
 		if err != nil {
 			return nil, fmt.Errorf("proxy: load auth: %w", err)
 		}

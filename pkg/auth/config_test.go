@@ -13,7 +13,7 @@ func TestConfig_Load(t *testing.T) {
 		}
 		assert.True(t, config.Enabled())
 
-		loaded, err := config.Load()
+		loaded, err := config.Load(t.Context())
 		assert.NoError(t, err)
 
 		assert.Equal(t, []byte("my-secret-key"), loaded.HMACSecretKey)
@@ -34,7 +34,7 @@ QSYlFuShWrHPtiLmUdPoP6CV2mML1tk+l7DIIqXrQhLUKDACeM5roMx0kLhUWB8P
 
 		assert.True(t, config.Enabled())
 
-		loaded, err := config.Load()
+		loaded, err := config.Load(t.Context())
 		assert.NoError(t, err)
 
 		assert.NotNil(t, loaded.RSAPublicKey)
@@ -51,7 +51,7 @@ RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
 
 		assert.True(t, config.Enabled())
 
-		loaded, err := config.Load()
+		loaded, err := config.Load(t.Context())
 		assert.NoError(t, err)
 
 		assert.NotNil(t, loaded.ECDSAPublicKey)
