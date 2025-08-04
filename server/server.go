@@ -151,7 +151,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	var upstreamVerifier *auth.MultiTenantVerifier
 	if conf.Upstream.Auth.Enabled() || len(conf.Upstream.Tenants) > 0 {
-		verifierConf, err := conf.Upstream.Auth.Load()
+		verifierConf, err := conf.Upstream.Auth.Load(s.rebalanceCtx)
 		if err != nil {
 			return nil, fmt.Errorf("upstream: load auth: %w", err)
 		}
@@ -159,7 +159,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 		upstreamTenantVerifiers := make(map[string]auth.Verifier)
 		for _, tenantConf := range conf.Upstream.Tenants {
-			tenantVerifierConf, err := tenantConf.Auth.Load()
+			tenantVerifierConf, err := tenantConf.Auth.Load(s.rebalanceCtx)
 			if err != nil {
 				return nil, fmt.Errorf("upstream: tenant %s: load auth: %w", tenantConf.ID, err)
 			}
@@ -187,7 +187,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	var adminVerifier *auth.MultiTenantVerifier
 	if conf.Admin.Auth.Enabled() {
-		verifierConf, err := conf.Admin.Auth.Load()
+		verifierConf, err := conf.Admin.Auth.Load(s.rebalanceCtx)
 		if err != nil {
 			return nil, fmt.Errorf("admin: load auth: %w", err)
 		}
