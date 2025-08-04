@@ -61,7 +61,7 @@ type LoadedConfig struct {
 //
 // It is enabled when at least one verification key is configured.
 func (c *Config) Enabled() bool {
-	return c.HMACSecretKey != "" || c.RSAPublicKey != "" || c.ECDSAPublicKey != ""
+	return c.HMACSecretKey != "" || c.RSAPublicKey != "" || c.ECDSAPublicKey != "" || c.JWKS.Endpoint != ""
 }
 
 func (c *Config) Load(ctx context.Context) (*LoadedConfig, error) {

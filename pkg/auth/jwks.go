@@ -78,7 +78,7 @@ func (j *JWKS) loadRemote(ctx context.Context) (*LoadedJWKS, error) {
 }
 
 func (j *JWKS) RegisterFlags(fs *pflag.FlagSet, prefix string) {
-	prefix += ".jwks."
+	prefix += "jwks."
 
 	fs.StringVar(
 		&j.Endpoint,

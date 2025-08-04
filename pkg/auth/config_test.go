@@ -56,4 +56,19 @@ RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
 
 		assert.NotNil(t, loaded.ECDSAPublicKey)
 	})
+
+	t.Run("jwks", func(t *testing.T) {
+		config := Config{
+			JWKS: JWKS{
+				Endpoint: "http://localhost/.well-known/jwks.json",
+			},
+		}
+
+		assert.True(t, config.Enabled())
+
+		loaded, err := config.Load(t.Context())
+		assert.NoError(t, err)
+
+		assert.NotNil(t, loaded.JWKS.KeyFunc)
+	})
 }
