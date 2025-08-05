@@ -20,6 +20,9 @@ type JWKS struct {
 
 	// How long to cache the JWKS for before reloading.
 	CacheTTL time.Duration `json:"cache_ttl" yaml:"cache_ttl"`
+
+	// Timeout for loading the JWKS.
+	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 }
 
 // LoadedJWKS provides a ready to use jwt.KeyFunc for token verification.
@@ -67,6 +70,7 @@ func (j *JWKS) loadLocal(path string) (*LoadedJWKS, error) {
 func (j *JWKS) loadRemote(ctx context.Context) (*LoadedJWKS, error) {
 	kFunc, err := keyfunc.NewDefaultOverrideCtx(ctx, []string{j.Endpoint}, keyfunc.Override{
 		RefreshInterval: j.CacheTTL,
+		HTTPTimeout:     j.Timeout,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create key func from remote endpoint: %w", err)
