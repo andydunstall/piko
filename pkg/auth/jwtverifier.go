@@ -24,6 +24,7 @@ type JWTVerifier struct {
 	hmacSecretKey  []byte
 	rsaPublicKey   *rsa.PublicKey
 	ecdsaPublicKey *ecdsa.PublicKey
+	keyFunc        jwt.Keyfunc
 
 	audience string
 	issuer   string
@@ -54,6 +55,10 @@ func NewJWTVerifier(conf *LoadedConfig) *JWTVerifier {
 		v.ecdsaPublicKey = conf.ECDSAPublicKey
 		v.methods = append(v.methods, []string{"ES256", "ES384", "ES512"}...)
 	}
+	if conf.JWKS != nil {
+		v.keyFunc = conf.JWKS.KeyFunc
+	}
+
 	return v
 }
 
@@ -72,7 +77,12 @@ func (v *JWTVerifier) Verify(tokenString string) (*Token, error) {
 	token, err := jwt.ParseWithClaims(
 		tokenString,
 		claims,
-		func(token *jwt.Token) (interface{}, error) {
+		func(token *jwt.Token) (any, error) {
+			// keyFunc (JWKS) takes precedence over the other ways of verification.
+			if v.keyFunc != nil {
+				return v.keyFunc(token)
+			}
+
 			switch token.Method.Alg() {
 			case "HS256":
 				fallthrough

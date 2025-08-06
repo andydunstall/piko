@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/rsa"
 	"fmt"
@@ -38,9 +39,14 @@ type Config struct {
 	//
 	// Piko still verifies the token expiry when the client first connects.
 	DisableDisconnectOnExpiry bool `json:"disable_disconnect_on_expiry" yaml:"disable_disconnect_on_expiry"`
+
+	// JWKS is the JSON Web Key Set to use for verifying JWTs.
+	//
+	// If provided, it will take precedence over the other keys.
+	JWKS JWKSConfig `json:"jwks" yaml:"jwks"`
 }
 
-// LoadedConfig is the same as Config except it parses the RSA and ECDSA keys.
+// LoadedConfig is the same as Config except it parses the RSA, ECDSA keys and JWKS.
 type LoadedConfig struct {
 	HMACSecretKey             []byte
 	RSAPublicKey              *rsa.PublicKey
@@ -48,16 +54,17 @@ type LoadedConfig struct {
 	Audience                  string
 	Issuer                    string
 	DisableDisconnectOnExpiry bool
+	JWKS                      *LoadedJWKS
 }
 
 // Enabled returns whether authentication is enabled.
 //
 // It is enabled when at least one verification key is configured.
 func (c *Config) Enabled() bool {
-	return c.HMACSecretKey != "" || c.RSAPublicKey != "" || c.ECDSAPublicKey != ""
+	return c.HMACSecretKey != "" || c.RSAPublicKey != "" || c.ECDSAPublicKey != "" || c.JWKS.Endpoint != ""
 }
 
-func (c *Config) Load() (*LoadedConfig, error) {
+func (c *Config) Load(ctx context.Context) (*LoadedConfig, error) {
 	config := LoadedConfig{
 		HMACSecretKey:             []byte(c.HMACSecretKey),
 		Audience:                  c.Audience,
@@ -82,6 +89,21 @@ func (c *Config) Load() (*LoadedConfig, error) {
 			return nil, fmt.Errorf("parse ecdsa public key: %w", err)
 		}
 		config.ECDSAPublicKey = ecdsaPublicKey
+	}
+
+	if c.JWKS.Endpoint != "" {
+		loadedJWKS, err := c.JWKS.Load(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("load JWKS configuration: %w", err)
+		}
+
+		config.JWKS = loadedJWKS
+
+		// Avoid accidental misconfiguration by not allowing JWKS to be
+		// set together with other verification keys.
+		if c.HMACSecretKey != "" || c.RSAPublicKey != "" || c.ECDSAPublicKey != "" {
+			return nil, fmt.Errorf("no other verification key can be set when JWKS.Endpoint is set")
+		}
 	}
 
 	return &config, nil
@@ -140,4 +162,6 @@ Disables disconnecting the client when their token expires.
 
 Piko still verifies the token expiry when the client first connects.`,
 	)
+
+	c.JWKS.RegisterFlags(fs, prefix)
 }

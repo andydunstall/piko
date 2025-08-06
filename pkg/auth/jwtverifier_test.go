@@ -1,13 +1,18 @@
 package auth
 
 import (
+	"crypto"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
+	"encoding/base64"
+	"encoding/json"
 	"testing"
 	"time"
 
+	"github.com/MicahParks/keyfunc/v3"
+	"github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -57,7 +62,6 @@ func TestJWTVerifier_HS(t *testing.T) {
 		verifier := NewJWTVerifier(&LoadedConfig{
 			HMACSecretKey: []byte("invalid key"),
 		})
-		assert.NoError(t, err)
 		_, err = verifier.Verify(tokenString)
 		assert.Equal(t, ErrInvalidToken, err)
 	})
@@ -108,7 +112,6 @@ func TestJWTVerifier_RS(t *testing.T) {
 		verifier := NewJWTVerifier(&LoadedConfig{
 			RSAPublicKey: publicKey,
 		})
-		assert.NoError(t, err)
 		_, err = verifier.Verify(tokenString)
 		assert.Equal(t, ErrInvalidToken, err)
 	})
@@ -173,7 +176,71 @@ func TestJWTVerifier_EC(t *testing.T) {
 		verifier := NewJWTVerifier(&LoadedConfig{
 			ECDSAPublicKey: publicKey,
 		})
+		_, err = verifier.Verify(tokenString)
+		assert.Equal(t, ErrInvalidToken, err)
+	})
+}
+
+func TestJWTVerifier_JWKS(t *testing.T) {
+	endpointClaims := JWTClaims{
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		},
+		Piko: PikoClaims{
+			Endpoints: []string{"my-endpoint"},
+		},
+	}
+
+	privateKey, kid, keyFunc := generateTestJWKS(t)
+
+	t.Run("valid", func(t *testing.T) {
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, endpointClaims)
+		token.Header["kid"] = kid
+		tokenString, err := token.SignedString(privateKey)
+
 		assert.NoError(t, err)
+
+		verifier := NewJWTVerifier(&LoadedConfig{
+			JWKS: &LoadedJWKS{
+				KeyFunc: keyFunc,
+			},
+		})
+		parsedToken, err := verifier.Verify(tokenString)
+		require.NoError(t, err)
+
+		assert.Equal(t, []string{"my-endpoint"}, parsedToken.Endpoints)
+		assert.Equal(t, endpointClaims.ExpiresAt.Unix(), parsedToken.Expiry.Unix())
+	})
+
+	t.Run("unknown kid", func(t *testing.T) {
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, endpointClaims)
+		token.Header["kid"] = "unknown"
+		tokenString, err := token.SignedString(privateKey)
+
+		assert.NoError(t, err)
+
+		verifier := NewJWTVerifier(&LoadedConfig{
+			JWKS: &LoadedJWKS{
+				KeyFunc: keyFunc,
+			},
+		})
+		_, err = verifier.Verify(tokenString)
+		assert.Equal(t, ErrInvalidToken, err)
+	})
+
+	t.Run("invalid key", func(t *testing.T) {
+		invalidPrivateKey, _ := generateTestRSAKeys(t)
+
+		token := jwt.NewWithClaims(jwt.SigningMethodRS256, endpointClaims)
+		token.Header["kid"] = kid
+		tokenString, err := token.SignedString(invalidPrivateKey)
+		require.NoError(t, err)
+
+		verifier := NewJWTVerifier(&LoadedConfig{
+			JWKS: &LoadedJWKS{
+				KeyFunc: keyFunc,
+			},
+		})
 		_, err = verifier.Verify(tokenString)
 		assert.Equal(t, ErrInvalidToken, err)
 	})
@@ -303,4 +370,32 @@ func generateTestECDSAKeys(c elliptic.Curve, t *testing.T) (*ecdsa.PrivateKey, *
 	key, err := ecdsa.GenerateKey(c, reader)
 	require.NoError(t, err)
 	return key, &key.PublicKey
+}
+
+func generateTestJWKS(t *testing.T) (*rsa.PrivateKey, string, jwt.Keyfunc) {
+	priv, _ := generateTestRSAKeys(t)
+
+	privJWK := jose.JSONWebKey{
+		Key:       priv,
+		Algorithm: string(jose.RS256),
+		Use:       "sig",
+	}
+
+	thumb, err := privJWK.Thumbprint(crypto.SHA256)
+	require.NoError(t, err)
+	privJWK.KeyID = base64.RawURLEncoding.EncodeToString(thumb)
+
+	pubJWK := privJWK.Public()
+
+	jwks := jose.JSONWebKeySet{
+		Keys: []jose.JSONWebKey{pubJWK},
+	}
+
+	json, err := json.Marshal(jwks)
+	require.NoError(t, err)
+
+	keyFunc, err := keyfunc.NewJWKSetJSON(json)
+	require.NoError(t, err)
+
+	return priv, privJWK.KeyID, keyFunc.Keyfunc
 }
