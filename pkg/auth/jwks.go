@@ -95,6 +95,14 @@ Endpoint to load the JWK Set from. Accepts remote endpoints or local paths`,
 		`
 Frequency to refresh the JWK Set from the remote endpoint.`,
 	)
+
+	fs.DurationVar(
+		&j.Timeout,
+		prefix+"timeout",
+		j.Timeout,
+		`
+Timeout for loading the JWKS from the remote endpoint.`,
+	)
 }
 
 // LoadedJWKS provides a ready to use jwt.KeyFunc for token verification.
