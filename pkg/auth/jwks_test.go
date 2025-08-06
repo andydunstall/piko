@@ -110,7 +110,8 @@ func keyServer(t *testing.T, jwks string) string {
 	})
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(jwks))
+		_, err := w.Write([]byte(jwks))
+		require.NoError(t, err)
 		w.WriteHeader(http.StatusOK)
 	})
 
