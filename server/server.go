@@ -62,6 +62,9 @@ type Server struct {
 	registry *prometheus.Registry
 
 	logger log.Logger
+
+	// stopJWKSRefresher will stop the routine that refreshes the JWKS.
+	stopJWKSRefresher func()
 }
 
 // NewServer creates a server node with the given configuration.
@@ -74,12 +77,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(collectors.NewGoCollector())
 
+	jwksCtx, jwksCancel := context.WithCancel(context.Background())
+
 	s := &Server{
-		fatalCh:  make(chan struct{}),
-		shutdown: atomic.NewBool(false),
-		conf:     conf,
-		registry: registry,
-		logger:   logger,
+		fatalCh:           make(chan struct{}),
+		shutdown:          atomic.NewBool(false),
+		conf:              conf,
+		registry:          registry,
+		logger:            logger,
+		stopJWKSRefresher: jwksCancel,
 	}
 
 	// Proxy listener.
@@ -126,7 +132,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	var proxyVerifier *auth.MultiTenantVerifier
 	if conf.Proxy.Auth.Enabled() {
-		verifierConf, err := conf.Proxy.Auth.Load(s.rebalanceCtx)
+		verifierConf, err := conf.Proxy.Auth.Load(jwksCtx)
 		if err != nil {
 			return nil, fmt.Errorf("proxy: load auth: %w", err)
 		}
@@ -151,7 +157,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	var upstreamVerifier *auth.MultiTenantVerifier
 	if conf.Upstream.Auth.Enabled() || len(conf.Upstream.Tenants) > 0 {
-		verifierConf, err := conf.Upstream.Auth.Load(s.rebalanceCtx)
+		verifierConf, err := conf.Upstream.Auth.Load(jwksCtx)
 		if err != nil {
 			return nil, fmt.Errorf("upstream: load auth: %w", err)
 		}
@@ -159,7 +165,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 		upstreamTenantVerifiers := make(map[string]auth.Verifier)
 		for _, tenantConf := range conf.Upstream.Tenants {
-			tenantVerifierConf, err := tenantConf.Auth.Load(s.rebalanceCtx)
+			tenantVerifierConf, err := tenantConf.Auth.Load(jwksCtx)
 			if err != nil {
 				return nil, fmt.Errorf("upstream: tenant %s: load auth: %w", tenantConf.ID, err)
 			}
@@ -187,7 +193,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	var adminVerifier *auth.MultiTenantVerifier
 	if conf.Admin.Auth.Enabled() {
-		verifierConf, err := conf.Admin.Auth.Load(s.rebalanceCtx)
+		verifierConf, err := conf.Admin.Auth.Load(jwksCtx)
 		if err != nil {
 			return nil, fmt.Errorf("admin: load auth: %w", err)
 		}
@@ -306,6 +312,9 @@ func (s *Server) Shutdown() {
 		context.Background(), s.conf.GracePeriod,
 	)
 	defer cancel()
+
+	// Stop the routine that refreshes the JWKS entries.
+	s.stopJWKSRefresher()
 
 	// Set the ready to false to stop incoming traffic.
 	s.adminServer.SetReady(false)
