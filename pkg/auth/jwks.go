@@ -36,8 +36,10 @@ func (j *JWKSConfig) Load(ctx context.Context) (*LoadedJWKS, error) {
 	switch endpoint.Scheme {
 	case "http", "https":
 		return j.loadRemote(ctx)
-	default:
+	case "file":
 		return j.loadLocal(endpoint.Path)
+	default:
+		return nil, fmt.Errorf("unsupported scheme: %s", endpoint.Scheme)
 	}
 }
 

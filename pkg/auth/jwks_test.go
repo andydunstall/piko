@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -87,6 +88,17 @@ func TestJWKS_Load(t *testing.T) {
 	}
 }
 
+func TestJWKS_Load_UnsupportedScheme(t *testing.T) {
+	jwksConfig := JWKSConfig{
+		Endpoint: "ftp://example.com/jwks.json",
+		CacheTTL: time.Minute,
+	}
+
+	_, err := jwksConfig.Load(t.Context())
+	require.Error(t, err)
+	require.ErrorContains(t, err, "unsupported scheme: ftp")
+}
+
 func keyServer(t *testing.T, jwks string) string {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -130,7 +142,7 @@ func writeKeys(t *testing.T, jwks string) string {
 	filePath := dir + "/jwks.json"
 	require.NoError(t, os.WriteFile(filePath, []byte(jwks), 0644))
 
-	return filePath
+	return fmt.Sprintf("file://%s", filePath)
 }
 
 const (
