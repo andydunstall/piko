@@ -58,12 +58,12 @@ func TestJWKS_Load(t *testing.T) {
 
 	for name, tc := range testCases {
 		t.Run(name, func(t *testing.T) {
-			jwks := JWKS{
+			jwksConfig := JWKSConfig{
 				Endpoint: tc.endpoint,
 				CacheTTL: time.Minute,
 			}
 
-			loadedJWKS, err := jwks.Load(t.Context())
+			loadedJWKS, err := jwksConfig.Load(t.Context())
 			require.NoError(t, err)
 
 			for _, kid := range tc.kidsToCheck {

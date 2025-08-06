@@ -12,7 +12,7 @@ import (
 	"github.com/spf13/pflag"
 )
 
-type JWKS struct {
+type JWKSConfig struct {
 	// Endpoint to load the JWKS from.
 	//
 	// Supports schemes http, https or file.
@@ -25,15 +25,9 @@ type JWKS struct {
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 }
 
-// LoadedJWKS provides a ready to use jwt.KeyFunc for token verification.
-type LoadedJWKS struct {
-	// KeyFunc is the key function to use for verifying JWTs.
-	KeyFunc jwt.Keyfunc
-}
-
 // Load will ensure that the correct KeyFunc is loaded
 // and available as part of the returned LoadedJWKS pointer.
-func (j *JWKS) Load(ctx context.Context) (*LoadedJWKS, error) {
+func (j *JWKSConfig) Load(ctx context.Context) (*LoadedJWKS, error) {
 	endpoint, err := url.Parse(j.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse JWKS endpoint: %w", err)
@@ -48,7 +42,7 @@ func (j *JWKS) Load(ctx context.Context) (*LoadedJWKS, error) {
 }
 
 // loadLocal will attempt to load the file containing the JWK Set from the local disk.
-func (j *JWKS) loadLocal(path string) (*LoadedJWKS, error) {
+func (j *JWKSConfig) loadLocal(path string) (*LoadedJWKS, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read local JWKS file: %w", err)
@@ -67,7 +61,7 @@ func (j *JWKS) loadLocal(path string) (*LoadedJWKS, error) {
 // loadRemote will load the contents of the JWK Set from a remote endpoint.
 // It will also ensure that the endpoint is scanned from time to time (`CacheTTL`)
 // to ensure new tokens are visible.
-func (j *JWKS) loadRemote(ctx context.Context) (*LoadedJWKS, error) {
+func (j *JWKSConfig) loadRemote(ctx context.Context) (*LoadedJWKS, error) {
 	kFunc, err := keyfunc.NewDefaultOverrideCtx(ctx, []string{j.Endpoint}, keyfunc.Override{
 		RefreshInterval: j.CacheTTL,
 		HTTPTimeout:     j.Timeout,
@@ -81,7 +75,7 @@ func (j *JWKS) loadRemote(ctx context.Context) (*LoadedJWKS, error) {
 	}, nil
 }
 
-func (j *JWKS) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+func (j *JWKSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
 	prefix += "jwks."
 
 	fs.StringVar(
@@ -99,4 +93,10 @@ Endpoint to load the JWK Set from. Accepts remote endpoints or local paths`,
 		`
 Frequency to refresh the JWK Set from the remote endpoint.`,
 	)
+}
+
+// LoadedJWKS provides a ready to use jwt.KeyFunc for token verification.
+type LoadedJWKS struct {
+	// KeyFunc is the key function to use for verifying JWTs.
+	KeyFunc jwt.Keyfunc
 }

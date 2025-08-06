@@ -59,7 +59,7 @@ RIQzNasYSoRQHQ/6S6Ps8tpMcT+KvIIC8W/e9k0W7Cm72M1P9jU7SLf/vg==
 
 	t.Run("jwks", func(t *testing.T) {
 		config := Config{
-			JWKS: JWKS{
+			JWKS: JWKSConfig{
 				Endpoint: "http://localhost/.well-known/jwks.json",
 			},
 		}

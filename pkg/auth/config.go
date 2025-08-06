@@ -43,7 +43,7 @@ type Config struct {
 	// JWKS is the JSON Web Key Set to use for verifying JWTs.
 	//
 	// If provided, it will take precedence over the other keys.
-	JWKS JWKS `json:"jwks" yaml:"jwks"`
+	JWKS JWKSConfig `json:"jwks" yaml:"jwks"`
 }
 
 // LoadedConfig is the same as Config except it parses the RSA, ECDSA keys and JWKS.
