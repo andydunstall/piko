@@ -30,7 +30,7 @@ type JWKSConfig struct {
 func (j *JWKSConfig) Load(ctx context.Context) (*LoadedJWKS, error) {
 	endpoint, err := url.Parse(j.Endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse JWKS endpoint: %w", err)
+		return nil, fmt.Errorf("parse endpoint %q: %w", j.Endpoint, err)
 	}
 
 	switch endpoint.Scheme {
@@ -45,12 +45,12 @@ func (j *JWKSConfig) Load(ctx context.Context) (*LoadedJWKS, error) {
 func (j *JWKSConfig) loadLocal(path string) (*LoadedJWKS, error) {
 	contents, err := os.ReadFile(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to read local JWKS file: %w", err)
+		return nil, fmt.Errorf("read file %q: %w", path, err)
 	}
 
 	kFunc, err := keyfunc.NewJWKSetJSON(contents)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create key func from file contents: %w", err)
+		return nil, fmt.Errorf("parse JWKS: %w", err)
 	}
 
 	return &LoadedJWKS{
@@ -67,7 +67,7 @@ func (j *JWKSConfig) loadRemote(ctx context.Context) (*LoadedJWKS, error) {
 		HTTPTimeout:     j.Timeout,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to create key func from remote endpoint: %w", err)
+		return nil, fmt.Errorf("load JWKS: %w", err)
 	}
 
 	return &LoadedJWKS{

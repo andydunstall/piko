@@ -94,7 +94,7 @@ func (c *Config) Load(ctx context.Context) (*LoadedConfig, error) {
 	if c.JWKS.Endpoint != "" {
 		loadedJWKS, err := c.JWKS.Load(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("could not load JWKS configuration: %w", err)
+			return nil, fmt.Errorf("load JWKS configuration: %w", err)
 		}
 
 		config.JWKS = loadedJWKS
