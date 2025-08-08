@@ -104,7 +104,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          build-args: version=$GH_TAG
+          build-args: version=${{github.ref_name}}
           file: build/Dockerfile
           platforms: linux/arm64,linux/amd64
           push: true
