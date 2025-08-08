@@ -39,12 +39,12 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Configure Docker Tags
-        # https://github.com/docker/metadata-action
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ghcr.io/${{github.actor}}/piko
+     # - name: Configure Docker Tags
+     #   # https://github.com/docker/metadata-action
+     #   id: meta
+     #   uses: docker/metadata-action@v5
+     #   with:
+     #     images: ghcr.io/${{github.actor}}/piko
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -54,4 +54,4 @@ jobs:
           file: build/Dockerfile
           platforms: linux/arm64,linux/amd64
           push: true
-          tags: ${{inputs.version}}  # TODO add 'latest'
+          tags: ghcr.io/andydunstall/piko:${{inputs.version}}  # TODO add 'latest'
