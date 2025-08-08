@@ -2,11 +2,13 @@ name: Create packages
 
 on:
   workflow_dispatch:
-    inputs:
-      version:
-        description: "Package version"
-        type: string
-        required: true
+    # inputs:
+    #   version:
+    #     description: "Package version"
+    #     type: string
+    #     required: true
+  # TODO tmp
+  pull_request:
 
 permissions:
   contents: write
@@ -54,4 +56,5 @@ jobs:
           file: build/Dockerfile
           platforms: linux/arm64,linux/amd64
           # push: true
-          tags: ${{inputs.version}}  # TODO add 'latest'
+          # tags: ${{inputs.version}}  # TODO add 'latest'
+          tags: ignore  # TODO add 'inputs.version,latest'
