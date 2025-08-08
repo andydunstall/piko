@@ -52,6 +52,7 @@ jobs:
           context: .
           build-args: version=${{inputs.version}}
           file: build/Dockerfile
-          platforms: linux/arm64,linux/amd64
+            # TODO platforms: linux/arm64,linux/amd64
+          platforms: linux/amd64
           push: true
           tags: ghcr.io/andydunstall/piko:${{inputs.version}}  # TODO add 'latest'
