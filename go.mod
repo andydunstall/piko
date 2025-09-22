@@ -3,7 +3,7 @@ module github.com/andydunstall/piko
 go 1.24.1
 
 require (
-	github.com/MicahParks/keyfunc/v3 v3.6.1
+	github.com/MicahParks/keyfunc/v3 v3.6.2
 	github.com/andydunstall/yamux v0.1.5
 	github.com/gin-gonic/gin v1.10.1
 	github.com/go-jose/go-jose/v4 v4.1.2
@@ -25,7 +25,7 @@ require (
 )
 
 require (
-	github.com/MicahParks/jwkset v0.8.0 // indirect
+	github.com/MicahParks/jwkset v0.11.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
