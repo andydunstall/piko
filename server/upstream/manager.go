@@ -1,6 +1,7 @@
 package upstream
 
 import (
+	"crypto/tls"
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -83,12 +84,15 @@ type LoadBalancedManager struct {
 	cluster *cluster.State
 
 	metrics *Metrics
+
+	clientTLSConfig *tls.Config
 }
 
-func NewLoadBalancedManager(cluster *cluster.State) *LoadBalancedManager {
+func NewLoadBalancedManager(cluster *cluster.State, proxyClientTLSConfig *tls.Config) *LoadBalancedManager {
 	return &LoadBalancedManager{
-		localUpstreams: make(map[string]*loadBalancer),
-		cluster:        cluster,
+		localUpstreams:  make(map[string]*loadBalancer),
+		cluster:         cluster,
+		clientTLSConfig: proxyClientTLSConfig,
 		usage: &Usage{
 			Requests:  atomic.NewUint64(0),
 			Upstreams: atomic.NewUint64(0),
@@ -118,7 +122,7 @@ func (m *LoadBalancedManager) Select(endpointID string, allowRemote bool) (Upstr
 		"node_id": node.ID,
 	}).Inc()
 	m.usage.Requests.Inc()
-	return NewNodeUpstream(endpointID, node), true
+	return NewNodeUpstream(endpointID, node, m.clientTLSConfig), true
 }
 
 func (m *LoadBalancedManager) AddConn(u Upstream) {
