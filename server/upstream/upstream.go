@@ -1,6 +1,7 @@
 package upstream
 
 import (
+	"crypto/tls"
 	"net"
 
 	"github.com/andydunstall/yamux"
@@ -50,12 +51,14 @@ func (u *ConnUpstream) Forward() bool {
 type NodeUpstream struct {
 	endpointID string
 	node       *cluster.Node
+	tlsConfig  *tls.Config
 }
 
-func NewNodeUpstream(endpointID string, node *cluster.Node) *NodeUpstream {
+func NewNodeUpstream(endpointID string, node *cluster.Node, tlsConfig *tls.Config) *NodeUpstream {
 	return &NodeUpstream{
 		endpointID: endpointID,
 		node:       node,
+		tlsConfig:  tlsConfig,
 	}
 }
 
@@ -64,6 +67,10 @@ func (u *NodeUpstream) EndpointID() string {
 }
 
 func (u *NodeUpstream) Dial() (net.Conn, error) {
+	if u.tlsConfig != nil {
+		return tls.Dial("tcp", u.node.ProxyAddr, u.tlsConfig)
+	}
+
 	return net.Dial("tcp", u.node.ProxyAddr)
 }
 
