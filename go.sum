@@ -1,7 +1,7 @@
 github.com/MicahParks/jwkset v0.11.0 h1:yc0zG+jCvZpWgFDFmvs8/8jqqVBG9oyIbmBtmjOhoyQ=
 github.com/MicahParks/jwkset v0.11.0/go.mod h1:U2oRhRaLgDCLjtpGL2GseNKGmZtLs/3O7p+OZaL5vo0=
-github.com/MicahParks/keyfunc/v3 v3.6.2 h1:82rre60MKw4r117ew5/T4m1AphgkpCOYry0RPbFUY3w=
-github.com/MicahParks/keyfunc/v3 v3.6.2/go.mod h1:z66bkCviwqfg2YUp+Jcc/xRE9IXLcMq6DrgV/+Htru0=
+github.com/MicahParks/keyfunc/v3 v3.7.0 h1:pdafUNyq+p3ZlvjJX1HWFP7MA3+cLpDtg69U3kITJGM=
+github.com/MicahParks/keyfunc/v3 v3.7.0/go.mod h1:z66bkCviwqfg2YUp+Jcc/xRE9IXLcMq6DrgV/+Htru0=
 github.com/andydunstall/yamux v0.1.5 h1:IM0aZukwckStCEnFy/3xGmV81eAXyRKTdSAjQo5oI+Y=
 github.com/andydunstall/yamux v0.1.5/go.mod h1:v4C9l2I4bhYdww+IVgjO0o5rVzxXbx2nneuFDHvyM28=
 github.com/beorn7/perks v1.0.1 h1:VlbKKnNfV8bJzeqoa4cOKqO6bYr3WgKZxO8Z16+hsOM=
