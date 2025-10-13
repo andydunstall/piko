@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"net"
 	"strings"
@@ -118,6 +119,11 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	// Cluster.
 
+	proxyTLSConfig, err := conf.Proxy.TLS.Load()
+	if err != nil {
+		return nil, fmt.Errorf("proxy tls: %w", err)
+	}
+
 	s.clusterState = cluster.NewState(&cluster.Node{
 		ID:        conf.Cluster.NodeID,
 		ProxyAddr: conf.Proxy.AdvertiseAddr,
@@ -125,7 +131,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	}, logger)
 	s.clusterState.Metrics().Register(registry)
 
-	upstreams := upstream.NewLoadBalancedManager(s.clusterState)
+	var clientTLSConfig *tls.Config
+	if proxyTLSConfig != nil {
+		clientTLSConfig, err = conf.Proxy.ClientTLS.Load()
+		if err != nil {
+			return nil, fmt.Errorf("proxy client tls: %w", err)
+		}
+	}
+
+	upstreams := upstream.NewLoadBalancedManager(s.clusterState, clientTLSConfig)
 	upstreams.Metrics().Register(registry)
 
 	// Proxy server.
@@ -139,10 +153,6 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		proxyVerifier = auth.NewMultiTenantVerifier(
 			auth.NewJWTVerifier(verifierConf), nil,
 		)
-	}
-	proxyTLSConfig, err := conf.Proxy.TLS.Load()
-	if err != nil {
-		return nil, fmt.Errorf("proxy tls: %w", err)
 	}
 	s.proxyServer = proxy.NewServer(
 		upstreams,
