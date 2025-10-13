@@ -3,7 +3,7 @@ module github.com/andydunstall/piko
 go 1.24.1
 
 require (
-	github.com/MicahParks/keyfunc/v3 v3.6.2
+	github.com/MicahParks/keyfunc/v3 v3.7.0
 	github.com/andydunstall/yamux v0.1.5
 	github.com/gin-gonic/gin v1.11.0
 	github.com/go-jose/go-jose/v4 v4.1.3
