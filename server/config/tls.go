@@ -124,8 +124,7 @@ func (c *ClientTLSConfig) Load() (*tls.Config, error) {
 		tlsConfig.RootCAs = caCertPool
 	}
 
-	if c.Cert == "" && c.Key == "" {
-
+	if c.Cert != "" && c.Key != "" {
 		cert, err := tls.LoadX509KeyPair(c.Cert, c.Key)
 		if err != nil {
 			return nil, fmt.Errorf("load key pair: %w", err)
