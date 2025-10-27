@@ -13,6 +13,8 @@ type TLSConfig struct {
 	Cert      string `json:"cert" yaml:"cert"`
 	Key       string `json:"key" yaml:"key"`
 	ClientCAs string `json:"client_cas" yaml:"client_cas"`
+
+	Client ClientTLSConfig `json:"client" yaml:"client"`
 }
 
 func (c *TLSConfig) Validate() error {
@@ -58,6 +60,8 @@ verify the client certificates.
 
 When set the client must set a valid certificate during the TLS handshake.`,
 	)
+
+	c.Client.RegisterFlags(fs, prefix[:len(prefix)-1])
 }
 
 func (c *TLSConfig) Load() (*tls.Config, error) {

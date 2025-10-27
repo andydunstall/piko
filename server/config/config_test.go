@@ -57,11 +57,11 @@ proxy:
   tls:
     cert: /piko/cert.pem
     key: /piko/key.pem
-
-  client_tls:
-    cert: /piko/cert2.pem
-    key: /piko/key2.pem
-    cas: /piko/ca.pem
+    
+    client:
+      cert: /piko/cert2.pem
+      key: /piko/key2.pem
+      cas: /piko/ca.pem
 
 upstream:
   bind_addr: 10.15.104.25:8001
@@ -175,11 +175,11 @@ grace_period: 2m
 			TLS: TLSConfig{
 				Cert: "/piko/cert.pem",
 				Key:  "/piko/key.pem",
-			},
-			ClientTLS: ClientTLSConfig{
-				Cert: "/piko/cert2.pem",
-				Key:  "/piko/key2.pem",
-				CAs:  "/piko/ca.pem",
+				Client: ClientTLSConfig{
+					Cert: "/piko/cert2.pem",
+					Key:  "/piko/key2.pem",
+					CAs:  "/piko/ca.pem",
+				},
 			},
 		},
 		Upstream: UpstreamConfig{
@@ -360,10 +360,10 @@ func TestConfig_LoadFlags(t *testing.T) {
 			TLS: TLSConfig{
 				Cert: "/piko/cert.pem",
 				Key:  "/piko/key.pem",
-			},
-			ClientTLS: ClientTLSConfig{
-				CAs:        "/piko/ca.pem",
-				SkipVerify: true,
+				Client: ClientTLSConfig{
+					CAs:        "/piko/ca.pem",
+					SkipVerify: true,
+				},
 			},
 		},
 		Upstream: UpstreamConfig{

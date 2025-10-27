@@ -133,7 +133,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 
 	var clientTLSConfig *tls.Config
 	if proxyTLSConfig != nil {
-		clientTLSConfig, err = conf.Proxy.ClientTLS.Load()
+		clientTLSConfig, err = conf.Proxy.TLS.Client.Load()
 		if err != nil {
 			return nil, fmt.Errorf("proxy client tls: %w", err)
 		}

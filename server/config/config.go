@@ -214,8 +214,6 @@ type ProxyConfig struct {
 	HTTP HTTPConfig `json:"http" yaml:"http"`
 
 	TLS TLSConfig `json:"tls" yaml:"tls"`
-
-	ClientTLS ClientTLSConfig `json:"client_tls" yaml:"client_tls"`
 }
 
 func (c *ProxyConfig) Validate() error {
@@ -276,8 +274,6 @@ Timeout when forwarding incoming requests to the upstream.`,
 	c.Auth.RegisterFlags(fs, "proxy")
 
 	c.TLS.RegisterFlags(fs, "proxy")
-
-	c.ClientTLS.RegisterFlags(fs, "proxy.tls")
 }
 
 type UpstreamConfig struct {
