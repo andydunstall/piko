@@ -98,58 +98,45 @@ func (c *TLSConfig) enabled() bool {
 }
 
 type ClientTLSConfig struct {
-	Cert       string `json:"cert" yaml:"cert"`
-	Key        string `json:"key" yaml:"key"`
-	CAs        string `json:"cas" yaml:"cas"`
-	SkipVerify bool   `json:"skip_verify" yaml:"skip_verify"`
+	// Cert contains a path to the PEM encoded certificate to present to
+	// the server (optional).
+	Cert string `json:"cert" yaml:"cert"`
+
+	// Key contains a path to the PEM encoded private key (optional).
+	Key string `json:"key" yaml:"key"`
+
+	// RootCAs contains a path to root certificate authorities to validate
+	// the TLS connection between the Piko nodes.
+	//
+	// Defaults to using the host root CAs.
+	RootCAs string `json:"root_cas" yaml:"root_cas"`
+
+	// InsecureSkipVerify configures the client to accept any certificate
+	// presented by the server and any host name in that certificate.
+	//
+	// See https://pkg.go.dev/crypto/tls#Config.
+	InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
 }
 
-func (c *ClientTLSConfig) Load() (*tls.Config, error) {
-	tlsConfig := &tls.Config{
-		InsecureSkipVerify: c.SkipVerify,
+func (c *ClientTLSConfig) Validate() error {
+	if c.Cert != "" && c.Key == "" {
+		return fmt.Errorf("missing key")
 	}
 
-	if c.CAs != "" {
-		caCertPool, err := x509.SystemCertPool()
-		if err != nil {
-			caCertPool = x509.NewCertPool()
-		}
-
-		caCert, err := os.ReadFile(c.CAs)
-		if err != nil {
-			return nil, fmt.Errorf("open cas: %s: %w", c.CAs, err)
-		}
-
-		ok := caCertPool.AppendCertsFromPEM(caCert)
-		if !ok {
-			return nil, fmt.Errorf("parse cas: %s: %w", c.CAs, err)
-		}
-
-		tlsConfig.RootCAs = caCertPool
-	}
-
-	if c.Cert != "" && c.Key != "" {
-		cert, err := tls.LoadX509KeyPair(c.Cert, c.Key)
-		if err != nil {
-			return nil, fmt.Errorf("load key pair: %w", err)
-		}
-		tlsConfig.Certificates = []tls.Certificate{cert}
-	}
-
-	return tlsConfig, nil
+	_, err := c.Load()
+	return err
 }
 
 func (c *ClientTLSConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
-	prefix += ".client."
-
+	prefix = prefix + ".client."
 	fs.StringVar(
 		&c.Cert,
 		prefix+"cert",
 		c.Cert,
 		`
-Path to the PEM encoded certificate file.
+Path to the PEM encoded certificate file to present to the server.
 
-Used for communication between Piko servers if mTLS is expected`,
+Used for node-to-node communication between Piko servers if mTLS is expected.`,
 	)
 	fs.StringVar(
 		&c.Key,
@@ -158,22 +145,53 @@ Used for communication between Piko servers if mTLS is expected`,
 		`
 Path to the PEM encoded key file.`,
 	)
-	fs.StringVar(
-		&c.CAs,
-		prefix+"cas",
-		c.CAs,
-		`
-A path to a certificate PEM file containing certificiate authorities to
-verify the server certificates.
 
-Required when the server is using non-public certificates and not skip-verify.`,
+	fs.StringVar(
+		&c.RootCAs,
+		prefix+"root-cas",
+		c.RootCAs,
+		`
+A path to a certificate PEM file containing root certificiate authorities to
+validate the TLS connection to the Piko server.
+
+Defaults to using the host root CAs.`,
 	)
 
 	fs.BoolVar(
-		&c.SkipVerify,
-		prefix+"skip-verify",
-		c.SkipVerify,
+		&c.InsecureSkipVerify,
+		prefix+"insecure-skip-verify",
+		c.InsecureSkipVerify,
 		`
-Skip certificate verification between Piko servers.`,
+Configures the client to accept any certificate presented by the server and any
+host name in that certificate.`,
 	)
+}
+
+func (c *ClientTLSConfig) Load() (*tls.Config, error) {
+	tlsConfig := &tls.Config{}
+
+	if c.Cert != "" {
+		cert, err := tls.LoadX509KeyPair(c.Cert, c.Key)
+		if err != nil {
+			return nil, fmt.Errorf("load key pair: %w", err)
+		}
+		tlsConfig.Certificates = []tls.Certificate{cert}
+	}
+
+	if c.RootCAs != "" {
+		caCert, err := os.ReadFile(c.RootCAs)
+		if err != nil {
+			return nil, fmt.Errorf("open root cas: %s: %w", c.RootCAs, err)
+		}
+		caCertPool := x509.NewCertPool()
+		ok := caCertPool.AppendCertsFromPEM(caCert)
+		if !ok {
+			return nil, fmt.Errorf("parse root cas: %s: %w", c.RootCAs, err)
+		}
+		tlsConfig.RootCAs = caCertPool
+	}
+
+	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
+
+	return tlsConfig, nil
 }

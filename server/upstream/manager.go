@@ -85,14 +85,14 @@ type LoadBalancedManager struct {
 
 	metrics *Metrics
 
-	clientTLSConfig *tls.Config
+	tlsConfig *tls.Config
 }
 
 func NewLoadBalancedManager(cluster *cluster.State, proxyClientTLSConfig *tls.Config) *LoadBalancedManager {
 	return &LoadBalancedManager{
-		localUpstreams:  make(map[string]*loadBalancer),
-		cluster:         cluster,
-		clientTLSConfig: proxyClientTLSConfig,
+		localUpstreams: make(map[string]*loadBalancer),
+		cluster:        cluster,
+		tlsConfig:      proxyClientTLSConfig,
 		usage: &Usage{
 			Requests:  atomic.NewUint64(0),
 			Upstreams: atomic.NewUint64(0),
@@ -122,7 +122,7 @@ func (m *LoadBalancedManager) Select(endpointID string, allowRemote bool) (Upstr
 		"node_id": node.ID,
 	}).Inc()
 	m.usage.Requests.Inc()
-	return NewNodeUpstream(endpointID, node, m.clientTLSConfig), true
+	return NewNodeUpstream(endpointID, node, m.tlsConfig), true
 }
 
 func (m *LoadBalancedManager) AddConn(u Upstream) {

@@ -61,7 +61,7 @@ proxy:
     client:
       cert: /piko/cert2.pem
       key: /piko/key2.pem
-      cas: /piko/ca.pem
+      root_cas: /piko/ca.pem
 
 upstream:
   bind_addr: 10.15.104.25:8001
@@ -176,9 +176,9 @@ grace_period: 2m
 				Cert: "/piko/cert.pem",
 				Key:  "/piko/key.pem",
 				Client: ClientTLSConfig{
-					Cert: "/piko/cert2.pem",
-					Key:  "/piko/key2.pem",
-					CAs:  "/piko/ca.pem",
+					Cert:    "/piko/cert2.pem",
+					Key:     "/piko/key2.pem",
+					RootCAs: "/piko/ca.pem",
 				},
 			},
 		},
@@ -284,8 +284,8 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--proxy.auth.issuer", "my-issuer",
 		"--proxy.tls.cert", "/piko/cert.pem",
 		"--proxy.tls.key", "/piko/key.pem",
-		"--proxy.tls.client.cas", "/piko/ca.pem",
-		"--proxy.tls.client.skip-verify",
+		"--proxy.tls.client.root-cas", "/piko/ca.pem",
+		"--proxy.tls.client.insecure-skip-verify",
 		"--upstream.bind-addr", "10.15.104.25:8001",
 		"--upstream.advertise-addr", "1.2.3.4:8001",
 		"--upstream.rebalance.threshold", "0.2",
@@ -361,8 +361,8 @@ func TestConfig_LoadFlags(t *testing.T) {
 				Cert: "/piko/cert.pem",
 				Key:  "/piko/key.pem",
 				Client: ClientTLSConfig{
-					CAs:        "/piko/ca.pem",
-					SkipVerify: true,
+					RootCAs:            "/piko/ca.pem",
+					InsecureSkipVerify: true,
 				},
 			},
 		},

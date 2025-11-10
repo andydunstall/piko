@@ -131,15 +131,15 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	}, logger)
 	s.clusterState.Metrics().Register(registry)
 
-	var clientTLSConfig *tls.Config
+	var tlsConfig *tls.Config
 	if proxyTLSConfig != nil {
-		clientTLSConfig, err = conf.Proxy.TLS.Client.Load()
+		tlsConfig, err = conf.Proxy.TLS.Client.Load()
 		if err != nil {
 			return nil, fmt.Errorf("proxy client tls: %w", err)
 		}
 	}
 
-	upstreams := upstream.NewLoadBalancedManager(s.clusterState, clientTLSConfig)
+	upstreams := upstream.NewLoadBalancedManager(s.clusterState, tlsConfig)
 	upstreams.Metrics().Register(registry)
 
 	// Proxy server.
