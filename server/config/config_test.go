@@ -62,6 +62,7 @@ proxy:
       cert: /piko/cert2.pem
       key: /piko/key2.pem
       root_cas: /piko/ca.pem
+      server_name: piko.example.com
 
 upstream:
   bind_addr: 10.15.104.25:8001
@@ -176,9 +177,10 @@ grace_period: 2m
 				Cert: "/piko/cert.pem",
 				Key:  "/piko/key.pem",
 				Client: ClientTLSConfig{
-					Cert:    "/piko/cert2.pem",
-					Key:     "/piko/key2.pem",
-					RootCAs: "/piko/ca.pem",
+					Cert:       "/piko/cert2.pem",
+					Key:        "/piko/key2.pem",
+					RootCAs:    "/piko/ca.pem",
+					ServerName: "piko.example.com",
 				},
 			},
 		},

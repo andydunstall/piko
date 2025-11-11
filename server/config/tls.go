@@ -116,6 +116,13 @@ type ClientTLSConfig struct {
 	//
 	// See https://pkg.go.dev/crypto/tls#Config.
 	InsecureSkipVerify bool `json:"insecure_skip_verify" yaml:"insecure_skip_verify"`
+
+	// ServerName is used to verify the hostname on the returned certificate.
+	// If given, this hostname overrides the hostname used when dialing the
+	// connection.
+	//
+	// See https://pkg.go.dev/crypto/tls#Config.
+	ServerName string `json:"server_name" yaml:"server_name"`
 }
 
 func (c *ClientTLSConfig) Validate() error {
@@ -165,6 +172,18 @@ Defaults to using the host root CAs.`,
 Configures the client to accept any certificate presented by the server and any
 host name in that certificate.`,
 	)
+
+	fs.StringVar(
+		&c.ServerName,
+		prefix+"server-name",
+		c.ServerName,
+		`
+Server name to use for certificate verification. This overrides the hostname used
+when dialing (e.g., when connecting to nodes by IP address but the certificate
+is issued for a hostname).
+
+If not set, the hostname from the dial address is used for verification.`,
+	)
 }
 
 func (c *ClientTLSConfig) Load() (*tls.Config, error) {
@@ -192,6 +211,10 @@ func (c *ClientTLSConfig) Load() (*tls.Config, error) {
 	}
 
 	tlsConfig.InsecureSkipVerify = c.InsecureSkipVerify
+
+	if c.ServerName != "" {
+		tlsConfig.ServerName = c.ServerName
+	}
 
 	return tlsConfig, nil
 }
