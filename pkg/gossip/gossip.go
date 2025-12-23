@@ -13,7 +13,7 @@ import (
 	"go.uber.org/atomic"
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 const (

@@ -5,8 +5,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/cluster"
+	"github.com/dragonflydb/piko/pkg/log"
+	"github.com/dragonflydb/piko/server/cluster"
 )
 
 type upsert struct {

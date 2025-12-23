@@ -2,7 +2,7 @@ apiVersion: v2
 name: piko
 description: Piko proxy
 
-home: https://github.com/andydunstall/piko
+home: https://github.com/dragonflydb/piko
 
 version: 0.1.0
 

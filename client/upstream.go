@@ -11,8 +11,8 @@ import (
 	"github.com/andydunstall/yamux"
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/pkg/backoff"
-	"github.com/andydunstall/piko/pkg/websocket"
+	"github.com/dragonflydb/piko/pkg/backoff"
+	"github.com/dragonflydb/piko/pkg/websocket"
 )
 
 var (

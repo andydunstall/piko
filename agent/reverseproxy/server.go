@@ -10,9 +10,9 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/andydunstall/piko/agent/config"
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/middleware"
+	"github.com/dragonflydb/piko/agent/config"
+	"github.com/dragonflydb/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/middleware"
 )
 
 type Server struct {

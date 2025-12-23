@@ -52,7 +52,7 @@ though isn't too strict.
 
 Format Piko with `make fmt` and run linters with `make lint`.
 
-Group imports using `goimports -w -local github.com/andydunstall/piko .`, or
+Group imports using `goimports -w -local github.com/dragonflydb/piko .`, or
 `make import`.
 
 ## Commits

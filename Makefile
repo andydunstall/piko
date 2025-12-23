@@ -7,7 +7,7 @@ all: piko
 .PHONY: piko
 piko:
 	mkdir -p bin
-	go build -ldflags="-X github.com/andydunstall/piko/pkg/build.Version=$(VERSION)" -o bin/piko main.go
+	go build -ldflags="-X github.com/dragonflydb/piko/pkg/build.Version=$(VERSION)" -o bin/piko main.go
 
 .PHONY: inline-test
 inline-test:
@@ -37,7 +37,7 @@ lint:
 
 .PHONY: import
 import:
-	goimports -w -local github.com/andydunstall/piko .
+	goimports -w -local github.com/dragonflydb/piko .
 
 .PHONY: coverage
 coverage:

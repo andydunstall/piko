@@ -12,8 +12,8 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/upstream"
+	"github.com/dragonflydb/piko/pkg/log"
+	"github.com/dragonflydb/piko/server/upstream"
 )
 
 type contextKey int

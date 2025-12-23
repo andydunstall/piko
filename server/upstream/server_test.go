@@ -11,11 +11,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/andydunstall/piko/pkg/auth"
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/testutil"
-	"github.com/andydunstall/piko/pkg/websocket"
-	"github.com/andydunstall/piko/server/config"
+	"github.com/dragonflydb/piko/pkg/auth"
+	"github.com/dragonflydb/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/testutil"
+	"github.com/dragonflydb/piko/pkg/websocket"
+	"github.com/dragonflydb/piko/server/config"
 )
 
 type fakeManager struct {

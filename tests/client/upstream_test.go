@@ -15,8 +15,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/andydunstall/piko/client"
-	"github.com/andydunstall/piko/pikotest/cluster"
+	"github.com/dragonflydb/piko/client"
+	"github.com/dragonflydb/piko/pikotest/cluster"
 )
 
 // TestUpstream_ListenAndForward tests forwarding incoming connections to a

@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 func TestState_LocalNode(t *testing.T) {

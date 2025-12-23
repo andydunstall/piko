@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/pflag"
 
-	"github.com/andydunstall/piko/pkg/auth"
-	"github.com/andydunstall/piko/pkg/gossip"
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/auth"
+	"github.com/dragonflydb/piko/pkg/gossip"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 type RebalanceConfig struct {

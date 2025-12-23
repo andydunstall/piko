@@ -3,7 +3,7 @@ package test
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/andydunstall/piko/cli/test/cluster"
+	"github.com/dragonflydb/piko/cli/test/cluster"
 )
 
 func NewCommand() *cobra.Command {

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/andydunstall/piko/pkg/gossip"
+	"github.com/dragonflydb/piko/pkg/gossip"
 )
 
 type Gossip struct {

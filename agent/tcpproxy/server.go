@@ -8,8 +8,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/agent/config"
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/agent/config"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 type Server struct {

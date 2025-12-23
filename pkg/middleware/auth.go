@@ -8,8 +8,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/pkg/auth"
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/auth"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 const (

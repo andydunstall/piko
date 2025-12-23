@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 func TestServer_AdminRoutes(t *testing.T) {

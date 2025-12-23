@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	piko "github.com/andydunstall/piko/client"
+	piko "github.com/dragonflydb/piko/client"
 )
 
 // ExampleUpstream listens on endpoint 'my-endpoint' and uses the listener in

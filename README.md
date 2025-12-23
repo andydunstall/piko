@@ -41,7 +41,7 @@ upstream services must be discoverable and have an exposed port that's
 accessible from the proxy.
 
 Whereas with Piko, your upstreams open outbound-only connections to the
-[Piko server](https://github.com/andydunstall/piko/wiki/Server) and specify
+[Piko server](https://github.com/dragonflydb/piko/wiki/Server) and specify
 what endpoint they are listening on. Piko then forwards incoming traffic to the
 correct upstream via its outbound connection.
 
@@ -59,7 +59,7 @@ No static configuration is required to configure endpoints, upstreams can
 listen on any endpoint they choose.
 
 You can open an upstream listener using the
-[Piko agent](https://github.com/andydunstall/piko/wiki/Agent), which supports
+[Piko agent](https://github.com/dragonflydb/piko/wiki/Agent), which supports
 both HTTP and TCP upstreams. Such as to listen on endpoint `my-endpoint` and
 forward traffic to `localhost:3000`:
 ```
@@ -70,7 +70,7 @@ $ piko agent http my-endpoint 3000
 $ piko agent tcp my-endpoint 3000
 ```
 
-You can also use the [Go SDK](https://github.com/andydunstall/piko/wiki/Go-SDK)
+You can also use the [Go SDK](https://github.com/dragonflydb/piko/wiki/Go-SDK)
 to listen directly from your application using a standard `net.Listener`.
 
 <p align="center">
@@ -96,8 +96,8 @@ can send requests to endpoint `foo` using header `x-piko-endpoint: foo`.
 ### TCP
 
 Piko supports proxying TCP traffic, though unlike HTTP it requires using either
-[Piko forward](https://github.com/andydunstall/piko/wiki/Forward) or the
-[Go SDK](https://github.com/andydunstall/piko/wiki/Go-SDK) to map the desired
+[Piko forward](https://github.com/dragonflydb/piko/wiki/Forward) or the
+[Go SDK](https://github.com/dragonflydb/piko/wiki/Go-SDK) to map the desired
 local TCP port to the target endpoint.
 
 Piko forward listens on a local TCP port and forwards connections to the
@@ -114,7 +114,7 @@ connecting with raw TCP, which is why you must first connect to Piko forward
 instead of connecting directly to the Piko server. Piko forward can also
 authenticate with the server and forward connections via TLS.
 
-You can also use the [Go SDK](https://github.com/andydunstall/piko/wiki/Go-SDK)
+You can also use the [Go SDK](https://github.com/dragonflydb/piko/wiki/Go-SDK)
 to open a `net.Conn` that's connected to the configured endpoint.
 
 ## Design Goals
@@ -132,7 +132,7 @@ forwards the traffic to the upstream via its outbound-only connection to the
 server. If node N fails or is deprovisioned, the upstream listener will
 reconnect to another node and the cluster propagates the new routing
 information to the other nodes in the cluster. See
-[How Piko Works](https://github.com/andydunstall/piko/wiki/How-Piko-Works)
+[How Piko Works](https://github.com/dragonflydb/piko/wiki/How-Piko-Works)
 for details.
 
 Piko also has a Prometheus endpoint, access logging, and status API so you can
@@ -148,25 +148,25 @@ Upstream services and downstream clients may connect to any node in the cluster
 via the load balancer, then the cluster manages routing traffic to the
 appropriate upstream.
 
-See [Kubernetes](https://github.com/andydunstall/piko/wiki/Server-Kubernetes)
+See [Kubernetes](https://github.com/dragonflydb/piko/wiki/Server-Kubernetes)
 for details.
 
 ## Getting Started
 
-See [Getting Started](https://github.com/andydunstall/piko/wiki/Getting-Started).
+See [Getting Started](https://github.com/dragonflydb/piko/wiki/Getting-Started).
 
 ## How Piko Works
 
-See [How Piko Works](https://github.com/andydunstall/piko/wiki/How-Piko-Works).
+See [How Piko Works](https://github.com/dragonflydb/piko/wiki/How-Piko-Works).
 
 ## Support
 
-Use [GitHub Discussions](https://github.com/andydunstall/piko/discussions) to
+Use [GitHub Discussions](https://github.com/dragonflydb/piko/discussions) to
 ask questions, get help, or suggest ideas.
 
 ## Docs
 
-See [Wiki](https://github.com/andydunstall/piko/wiki/).
+See [Wiki](https://github.com/dragonflydb/piko/wiki/).
 
 ## Contributing
 

@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	pikoconfig "github.com/andydunstall/piko/pkg/config"
-	"github.com/andydunstall/piko/pkg/log"
+	pikoconfig "github.com/dragonflydb/piko/pkg/config"
+	"github.com/dragonflydb/piko/pkg/log"
 	"github.com/stretchr/testify/assert"
 )
 

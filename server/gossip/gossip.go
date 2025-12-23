@@ -7,10 +7,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/pkg/backoff"
-	"github.com/andydunstall/piko/pkg/gossip"
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/server/cluster"
+	"github.com/dragonflydb/piko/pkg/backoff"
+	"github.com/dragonflydb/piko/pkg/gossip"
+	"github.com/dragonflydb/piko/pkg/log"
+	"github.com/dragonflydb/piko/server/cluster"
 )
 
 // Gossip is responsible for maintaining this nodes local State

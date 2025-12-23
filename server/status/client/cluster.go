@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/andydunstall/piko/server/cluster"
+	"github.com/dragonflydb/piko/server/cluster"
 )
 
 type Cluster struct {

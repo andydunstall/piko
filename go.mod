@@ -1,4 +1,4 @@
-module github.com/andydunstall/piko
+module github.com/dragonflydb/piko
 
 go 1.24.1
 

@@ -15,11 +15,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/andydunstall/piko/pkg/auth"
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/middleware"
-	"github.com/andydunstall/piko/server/cluster"
-	"github.com/andydunstall/piko/server/status"
+	"github.com/dragonflydb/piko/pkg/auth"
+	"github.com/dragonflydb/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/middleware"
+	"github.com/dragonflydb/piko/server/cluster"
+	"github.com/dragonflydb/piko/server/status"
 )
 
 // Server is the admin HTTP server, which exposes endpoints for metrics, health

@@ -4,3 +4,6 @@ piko
 bin/
 
 coverage.out
+
+.idea
+vendor/

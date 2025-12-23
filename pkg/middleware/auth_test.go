@@ -11,8 +11,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/andydunstall/piko/pkg/auth"
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/auth"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 type fakeVerifier struct {

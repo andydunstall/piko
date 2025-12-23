@@ -22,9 +22,9 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/andydunstall/piko/client"
-	"github.com/andydunstall/piko/pikotest/cluster"
-	"github.com/andydunstall/piko/pkg/auth"
+	"github.com/dragonflydb/piko/client"
+	"github.com/dragonflydb/piko/pikotest/cluster"
+	"github.com/dragonflydb/piko/pkg/auth"
 )
 
 type errorMessage struct {

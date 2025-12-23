@@ -5,8 +5,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/pikotest/cluster/config"
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/pikotest/cluster/config"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 type Manager struct {

@@ -6,7 +6,7 @@ import (
 	"net"
 	"net/url"
 
-	"github.com/andydunstall/piko/pkg/websocket"
+	"github.com/dragonflydb/piko/pkg/websocket"
 )
 
 // Dialer manages opening connections to upstream endpoints.

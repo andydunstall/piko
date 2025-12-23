@@ -6,7 +6,7 @@ import (
 
 	"github.com/andydunstall/yamux"
 
-	"github.com/andydunstall/piko/server/cluster"
+	"github.com/dragonflydb/piko/server/cluster"
 )
 
 // Upstream represents an upstream for a given endpoint.

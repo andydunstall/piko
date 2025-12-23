@@ -7,8 +7,8 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/agent/config"
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/agent/config"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 func newStartCommand(conf *config.Config) *cobra.Command {

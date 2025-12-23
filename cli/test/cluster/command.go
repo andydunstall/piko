@@ -11,12 +11,12 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/pikotest/cluster"
-	"github.com/andydunstall/piko/pikotest/cluster/config"
-	"github.com/andydunstall/piko/pikotest/cluster/proxy"
-	"github.com/andydunstall/piko/pkg/build"
-	pikoconfig "github.com/andydunstall/piko/pkg/config"
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/pikotest/cluster"
+	"github.com/dragonflydb/piko/pikotest/cluster/config"
+	"github.com/dragonflydb/piko/pikotest/cluster/proxy"
+	"github.com/dragonflydb/piko/pkg/build"
+	pikoconfig "github.com/dragonflydb/piko/pkg/config"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 func NewCommand() *cobra.Command {

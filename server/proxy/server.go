@@ -13,11 +13,11 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	"github.com/andydunstall/piko/pkg/auth"
-	"github.com/andydunstall/piko/pkg/log"
-	"github.com/andydunstall/piko/pkg/middleware"
-	"github.com/andydunstall/piko/server/config"
-	"github.com/andydunstall/piko/server/upstream"
+	"github.com/dragonflydb/piko/pkg/auth"
+	"github.com/dragonflydb/piko/pkg/log"
+	"github.com/dragonflydb/piko/pkg/middleware"
+	"github.com/dragonflydb/piko/server/config"
+	"github.com/dragonflydb/piko/server/upstream"
 )
 
 type Server struct {

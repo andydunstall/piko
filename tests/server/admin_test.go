@@ -11,8 +11,8 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/stretchr/testify/assert"
 
-	cluster "github.com/andydunstall/piko/pikotest/cluster"
-	"github.com/andydunstall/piko/pkg/auth"
+	cluster "github.com/dragonflydb/piko/pikotest/cluster"
+	"github.com/dragonflydb/piko/pkg/auth"
 )
 
 // Tests the admin server.

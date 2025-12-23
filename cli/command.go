@@ -3,12 +3,12 @@ package cli
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/andydunstall/piko/cli/agent"
-	"github.com/andydunstall/piko/cli/bench"
-	"github.com/andydunstall/piko/cli/forward"
-	"github.com/andydunstall/piko/cli/server"
-	"github.com/andydunstall/piko/cli/test"
-	"github.com/andydunstall/piko/pkg/build"
+	"github.com/dragonflydb/piko/cli/agent"
+	"github.com/dragonflydb/piko/cli/bench"
+	"github.com/dragonflydb/piko/cli/forward"
+	"github.com/dragonflydb/piko/cli/server"
+	"github.com/dragonflydb/piko/cli/test"
+	"github.com/dragonflydb/piko/pkg/build"
 )
 
 func NewCommand() *cobra.Command {

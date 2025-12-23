@@ -8,8 +8,8 @@ import (
 	yaml "github.com/goccy/go-yaml"
 	"github.com/spf13/cobra"
 
-	"github.com/andydunstall/piko/pkg/gossip"
-	"github.com/andydunstall/piko/server/status/client"
+	"github.com/dragonflydb/piko/pkg/gossip"
+	"github.com/dragonflydb/piko/server/status/client"
 )
 
 func newGossipCommand(c *client.Client) *cobra.Command {

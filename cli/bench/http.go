@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/andydunstall/piko/bench"
-	"github.com/andydunstall/piko/bench/config"
-	"github.com/andydunstall/piko/pkg/build"
-	"github.com/andydunstall/piko/pkg/log"
+	"github.com/dragonflydb/piko/bench"
+	"github.com/dragonflydb/piko/bench/config"
+	"github.com/dragonflydb/piko/pkg/build"
+	"github.com/dragonflydb/piko/pkg/log"
 )
 
 func newHTTPCommand(conf *config.Config) *cobra.Command {

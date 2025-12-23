@@ -3,7 +3,7 @@ package client_test
 import (
 	"context"
 
-	piko "github.com/andydunstall/piko/client"
+	piko "github.com/dragonflydb/piko/client"
 )
 
 // ExampleDialer opens a connection to endpoint 'my-endpoint' using Piko.
