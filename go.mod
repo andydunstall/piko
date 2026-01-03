@@ -1,6 +1,6 @@
 module github.com/andydunstall/piko
 
-go 1.24.1
+go 1.25.5
 
 require (
 	github.com/MicahParks/keyfunc/v3 v3.7.0
