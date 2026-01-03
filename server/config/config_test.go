@@ -122,9 +122,6 @@ cluster:
     interval: 100ms
     max_packet_size: 1400
 
-usage:
-  disable: true
-
 log:
   level: info
   subsystems:
@@ -249,9 +246,6 @@ grace_period: 2m
 				MaxPacketSize: 1400,
 			},
 		},
-		Usage: UsageConfig{
-			Disable: true,
-		},
 		Log: log.Config{
 			Level: "info",
 			Subsystems: []string{
@@ -317,7 +311,6 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--cluster.gossip.advertise-addr", "1.2.3.4:8003",
 		"--cluster.gossip.interval", "100ms",
 		"--cluster.gossip.max-packet-size", "1400",
-		"--usage.disable",
 		"--log.level", "info",
 		"--log.subsystems", "foo,bar",
 		"--grace-period", "2m",
@@ -418,9 +411,6 @@ func TestConfig_LoadFlags(t *testing.T) {
 				Interval:      time.Millisecond * 100,
 				MaxPacketSize: 1400,
 			},
-		},
-		Usage: UsageConfig{
-			Disable: true,
 		},
 		Log: log.Config{
 			Level: "info",
