@@ -2,11 +2,17 @@ package upstream
 
 import (
 	"crypto/tls"
+	"errors"
 	"net"
 
 	"github.com/andydunstall/yamux"
 
 	"github.com/andydunstall/piko/server/cluster"
+)
+
+var (
+	// ErrGone indicates an upstream is no longer accepting connections.
+	ErrGone = errors.New("gone")
 )
 
 // Upstream represents an upstream for a given endpoint.
@@ -15,6 +21,10 @@ import (
 // another Piko server node.
 type Upstream interface {
 	EndpointID() string
+	// Dial opens a connection the the upstream.
+	//
+	// If the upstream signals it is no longer accepting connections, returns
+	// ErrGone.
 	Dial() (net.Conn, error)
 	// Forward indicates whether the upstream is forwarding traffic to a remote
 	// node rather than a client listener.
@@ -40,7 +50,11 @@ func (u *ConnUpstream) EndpointID() string {
 }
 
 func (u *ConnUpstream) Dial() (net.Conn, error) {
-	return u.sess.OpenStream()
+	c, err := u.sess.OpenStream()
+	if err != nil && errors.Is(err, yamux.ErrRemoteGoAway) {
+		err = ErrGone
+	}
+	return c, err
 }
 
 func (u *ConnUpstream) Forward() bool {

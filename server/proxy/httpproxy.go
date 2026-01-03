@@ -112,8 +112,13 @@ func (p *HTTPProxy) ServeHTTPWithUpstream(
 func (p *HTTPProxy) dialUpstream(ctx context.Context, _, _ string) (net.Conn, error) {
 	// As a bit of a hack to work with http.Transport, we add the upstream
 	// to the dial context.
-	upstream := ctx.Value(upstreamContextKey).(upstream.Upstream)
-	return upstream.Dial()
+	u := ctx.Value(upstreamContextKey).(upstream.Upstream)
+	c, err := u.Dial()
+	if err != nil && errors.Is(err, upstream.ErrGone) {
+		// If the upstream is no longer accepting connections, remove it.
+		p.upstreams.RemoveConn(u)
+	}
+	return c, err
 }
 
 func (p *HTTPProxy) errorHandler(w http.ResponseWriter, _ *http.Request, err error) {

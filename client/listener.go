@@ -24,8 +24,19 @@ func (a *pikoAddr) String() string {
 
 // Listener is a [net.Listener] that accepts incoming connections for
 // Piko endpoints.
+//
+// The listener establishes an outbound connection to the Piko server.
+// Connections to the listener are then multiplexed via this outbound
+// connection.
+//
+// Calling Close stops accepting new connections, without closing the
+// underlying outbound connection, meaning established multiplexed connections
+// are kept open. You can close the underlying connection with Shutdown.
 type Listener interface {
 	net.Listener
+
+	// Shutdown closes the underlying connection to the Piko server.
+	Shutdown() error
 
 	// EndpointID returns the ID of the endpoint this is listening for
 	// connections on.
@@ -75,7 +86,7 @@ func (l *listener) AcceptWithContext(ctx context.Context) (net.Conn, error) {
 			return nil, ctx.Err()
 		}
 
-		if errors.Is(err, yamux.ErrSessionShutdown) {
+		if errors.Is(err, yamux.ErrSessionShutdown) || errors.Is(err, net.ErrClosed) {
 			return nil, ErrClosed
 		}
 
@@ -94,8 +105,22 @@ func (l *listener) Addr() net.Addr {
 func (l *listener) Close() error {
 	// Cancel to stop reconnect attempts.
 	l.closeCancel()
-	// Close the current session.
-	return l.sess.Close()
+	if l.sess != nil {
+		// Stop accepting connections. This notifies the server that this
+		// upstream is no longer accepting connections.
+		return l.sess.GoAway()
+	}
+	return nil
+}
+
+func (l *listener) Shutdown() error {
+	// Cancel to stop reconnect attempts.
+	l.closeCancel()
+	if l.sess != nil {
+		// Close the underlying connection.
+		return l.sess.Close()
+	}
+	return nil
 }
 
 func (l *listener) EndpointID() string {
