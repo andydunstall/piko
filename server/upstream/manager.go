@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/atomic"
 
 	"github.com/andydunstall/piko/server/cluster"
 )
@@ -69,17 +68,10 @@ func (lb *loadBalancer) Next() Upstream {
 	return u
 }
 
-type Usage struct {
-	Requests  *atomic.Uint64
-	Upstreams *atomic.Uint64
-}
-
 type LoadBalancedManager struct {
 	localUpstreams map[string]*loadBalancer
 
 	mu sync.Mutex
-
-	usage *Usage
 
 	cluster *cluster.State
 
@@ -93,11 +85,7 @@ func NewLoadBalancedManager(cluster *cluster.State, proxyClientTLSConfig *tls.Co
 		localUpstreams: make(map[string]*loadBalancer),
 		cluster:        cluster,
 		tlsConfig:      proxyClientTLSConfig,
-		usage: &Usage{
-			Requests:  atomic.NewUint64(0),
-			Upstreams: atomic.NewUint64(0),
-		},
-		metrics: NewMetrics(),
+		metrics:        NewMetrics(),
 	}
 }
 
@@ -121,7 +109,6 @@ func (m *LoadBalancedManager) Select(endpointID string, allowRemote bool) (Upstr
 	m.metrics.RemoteRequestsTotal.With(prometheus.Labels{
 		"node_id": node.ID,
 	}).Inc()
-	m.usage.Requests.Inc()
 	return NewNodeUpstream(endpointID, node, m.tlsConfig), true
 }
 
@@ -142,7 +129,6 @@ func (m *LoadBalancedManager) AddConn(u Upstream) {
 	m.cluster.AddLocalEndpoint(u.EndpointID())
 
 	m.metrics.ConnectedUpstreams.Inc()
-	m.usage.Upstreams.Inc()
 }
 
 func (m *LoadBalancedManager) RemoveConn(u Upstream) {
@@ -173,10 +159,6 @@ func (m *LoadBalancedManager) Endpoints() map[string]int {
 		endpoints[endpointID] = len(lb.upstreams)
 	}
 	return endpoints
-}
-
-func (m *LoadBalancedManager) Usage() *Usage {
-	return m.usage
 }
 
 func (m *LoadBalancedManager) Metrics() *Metrics {

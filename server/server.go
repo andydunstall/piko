@@ -24,7 +24,6 @@ import (
 	"github.com/andydunstall/piko/server/gossip"
 	"github.com/andydunstall/piko/server/proxy"
 	"github.com/andydunstall/piko/server/upstream"
-	"github.com/andydunstall/piko/server/usage"
 )
 
 // Server is a Piko server node.
@@ -44,8 +43,6 @@ type Server struct {
 	adminServer *admin.Server
 
 	gossiper *gossip.Gossip
-
-	reporter *usage.Reporter
 
 	conf *config.Config
 
@@ -225,10 +222,6 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 	s.adminServer.AddStatus("/upstream", upstream.NewStatus(upstreams))
 	s.adminServer.AddStatus("/cluster", cluster.NewStatus(s.clusterState))
 
-	// Usage reporting.
-
-	s.reporter = usage.NewReporter(upstreams.Usage(), logger)
-
 	return s, nil
 }
 
@@ -244,12 +237,6 @@ func (s *Server) Start() error {
 	// Start the admin server. This includes a '/ready' route that will be
 	// false until the server has started.
 	s.startAdminServer()
-
-	// Usage reporting.
-
-	if !s.conf.Usage.Disable {
-		s.startUsageReporting()
-	}
 
 	// Start listening for gossip traffic for other node. This won't actively
 	// attempt to join the cluster yet, though accepts other nodes attempting
@@ -355,8 +342,6 @@ func (s *Server) Shutdown() {
 
 	s.shutdownAdminServer(ctx)
 
-	s.shutdownUsageReporting()
-
 	s.wg.Wait()
 
 	s.logger.Info("shutdown complete")
@@ -452,21 +437,11 @@ func (s *Server) startAdminServer() {
 	})
 }
 
-func (s *Server) startUsageReporting() {
-	s.runGoroutine(func() {
-		s.reporter.Start()
-	})
-}
-
 func (s *Server) shutdownProxyServer(ctx context.Context) {
 	if err := s.proxyServer.Shutdown(ctx); err != nil {
 		s.logger.Error("failed to shutdown proxy server", zap.Error(err))
 	}
 	s.logger.Info("shutdown proxy server")
-}
-
-func (s *Server) shutdownUsageReporting() {
-	s.reporter.Stop()
 }
 
 func (s *Server) shutdownUpstreamServer(ctx context.Context) {

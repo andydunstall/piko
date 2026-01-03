@@ -504,25 +504,6 @@ node to join (excluding itself) but fails to join any members.`,
 	c.Gossip.RegisterFlags(fs, "cluster")
 }
 
-type UsageConfig struct {
-	// Disable indicates whether to disable anonymous usage collection.
-	Disable bool `json:"disable" yaml:"disable"`
-}
-
-func (c *UsageConfig) RegisterFlags(fs *pflag.FlagSet) {
-	fs.BoolVar(
-		&c.Disable,
-		"usage.disable",
-		c.Disable,
-		`
-Whether to disable anonymous usage tracking.
-
-The Piko server periodically sends an anonymous report to help understand how
-Piko is being used. This report includes the Piko version, host OS, host
-architecture, requests processed and upstreams registered.`,
-	)
-}
-
 type Config struct {
 	Proxy ProxyConfig `json:"proxy" yaml:"proxy"`
 
@@ -531,8 +512,6 @@ type Config struct {
 	Admin AdminConfig `json:"admin" yaml:"admin"`
 
 	Cluster ClusterConfig `json:"cluster" yaml:"cluster"`
-
-	Usage UsageConfig `json:"usage" yaml:"usage"`
 
 	Log log.Config `json:"log" yaml:"log"`
 
@@ -623,8 +602,6 @@ func (c *Config) RegisterFlags(fs *pflag.FlagSet) {
 	c.Upstream.RegisterFlags(fs)
 
 	c.Admin.RegisterFlags(fs)
-
-	c.Usage.RegisterFlags(fs)
 
 	c.Log.RegisterFlags(fs)
 
