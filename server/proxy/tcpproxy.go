@@ -1,6 +1,7 @@
 package proxy
 
 import (
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -70,6 +71,10 @@ func (p *TCPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request, endpointID 
 
 	upstreamConn, err := u.Dial()
 	if err != nil {
+		if errors.Is(err, upstream.ErrGone) {
+			// If the upstream is no longer accepting connections, remove it.
+			p.upstreams.RemoveConn(u)
+		}
 		_ = errorResponse(w, http.StatusBadGateway, "upstream unreachable")
 		return
 	}
