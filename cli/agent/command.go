@@ -164,7 +164,7 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 		if err != nil {
 			return fmt.Errorf("listen: %s: %w", listenerConfig.EndpointID, err)
 		}
-		defer ln.Close()
+		defer ln.Shutdown()
 
 		if listenerConfig.Protocol == config.ListenerProtocolHTTP {
 			server := reverseproxy.NewServer(listenerConfig, proxyMetrics, logger)
