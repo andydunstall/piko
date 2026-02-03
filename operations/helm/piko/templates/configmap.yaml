@@ -30,20 +30,18 @@ data:
 {{- end }}
 {{- if and .Values.auth.enabled .Values.auth.proxy.enabled }}
       auth:
-{{- if .Values.auth.rsa.enabled }}
-        rsa_public_key: ${RSA_PUBLIC_KEY}
-{{- end }}
-{{- if .Values.auth.ecdsa.enabled }}
-        ecdsa_public_key: ${ECDSA_PUBLIC_KEY}
-{{- end }}
 {{- if .Values.auth.hmac.enabled }}
         hmac_secret_key: ${HMAC_SECRET_KEY}
 {{- end }}
-{{- if .Values.auth.jwks.enabled }}
+{{- if or .Values.auth.rsa.enabled .Values.auth.ecdsa.enabled .Values.auth.jwks.enabled }}
         jwks:
+{{- if .Values.auth.jwks.enabled }}
           endpoint: {{ .Values.auth.jwks.endpoint | quote }}
-          cache_ttl: {{ .Values.auth.jwks.cacheTTL }}
-          timeout: {{ .Values.auth.jwks.timeout }}
+{{- else }}
+          endpoint: "file:///auth/jwks.json"
+{{- end }}
+          cache_ttl: 1h
+          timeout: 10s
 {{- end }}
 {{- if .Values.auth.proxy.audience }}
         audience: {{ .Values.auth.proxy.audience | quote }}
@@ -75,20 +73,18 @@ data:
 {{- end }}
 {{- if and .Values.auth.enabled .Values.auth.upstream.enabled }}
       auth:
-{{- if .Values.auth.rsa.enabled }}
-        rsa_public_key: ${RSA_PUBLIC_KEY}
-{{- end }}
-{{- if .Values.auth.ecdsa.enabled }}
-        ecdsa_public_key: ${ECDSA_PUBLIC_KEY}
-{{- end }}
 {{- if .Values.auth.hmac.enabled }}
         hmac_secret_key: ${HMAC_SECRET_KEY}
 {{- end }}
-{{- if .Values.auth.jwks.enabled }}
+{{- if or .Values.auth.rsa.enabled .Values.auth.ecdsa.enabled .Values.auth.jwks.enabled }}
         jwks:
+{{- if .Values.auth.jwks.enabled }}
           endpoint: {{ .Values.auth.jwks.endpoint | quote }}
-          cache_ttl: {{ .Values.auth.jwks.cacheTTL }}
-          timeout: {{ .Values.auth.jwks.timeout }}
+{{- else }}
+          endpoint: "file:///auth/jwks.json"
+{{- end }}
+          cache_ttl: 1h
+          timeout: 10s
 {{- end }}
 {{- if .Values.auth.upstream.audience }}
         audience: {{ .Values.auth.upstream.audience | quote }}
@@ -112,20 +108,18 @@ data:
 {{- end }}
 {{- if and .Values.auth.enabled .Values.auth.admin.enabled }}
       auth:
-{{- if .Values.auth.rsa.enabled }}
-        rsa_public_key: ${RSA_PUBLIC_KEY}
-{{- end }}
-{{- if .Values.auth.ecdsa.enabled }}
-        ecdsa_public_key: ${ECDSA_PUBLIC_KEY}
-{{- end }}
 {{- if .Values.auth.hmac.enabled }}
         hmac_secret_key: ${HMAC_SECRET_KEY}
 {{- end }}
-{{- if .Values.auth.jwks.enabled }}
+{{- if or .Values.auth.rsa.enabled .Values.auth.ecdsa.enabled .Values.auth.jwks.enabled }}
         jwks:
+{{- if .Values.auth.jwks.enabled }}
           endpoint: {{ .Values.auth.jwks.endpoint | quote }}
-          cache_ttl: {{ .Values.auth.jwks.cacheTTL }}
-          timeout: {{ .Values.auth.jwks.timeout }}
+{{- else }}
+          endpoint: "file:///auth/jwks.json"
+{{- end }}
+          cache_ttl: 1h
+          timeout: 10s
 {{- end }}
 {{- if .Values.auth.admin.audience }}
         audience: {{ .Values.auth.admin.audience | quote }}
