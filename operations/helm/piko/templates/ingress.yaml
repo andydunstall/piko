@@ -1,0 +1,134 @@
+{{- if .Values.ingress.enabled }}
+{{- if .Values.ingress.proxy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "piko.fullname" . }}-proxy
+  labels:
+    {{- include "piko.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.tls.enabled }}
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.proxy.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.proxy.host | quote }}
+        {{- range .Values.ingress.proxy.additionalHosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .Values.ingress.proxy.tls.secretName | default (printf "%s-tls" (include "piko.fullname" .)) }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.proxy.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "piko.fullname" . }}-lb
+                port:
+                  name: proxy
+    {{- range .Values.ingress.proxy.additionalHosts }}
+    - host: {{ . | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "piko.fullname" $ }}-lb
+                port:
+                  name: proxy
+    {{- end }}
+{{- end }}
+{{- if .Values.ingress.upstream.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "piko.fullname" . }}-upstream
+  labels:
+    {{- include "piko.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.tls.enabled }}
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    # Upstream connections use WebSockets, ensure proper timeouts
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.upstream.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.upstream.host | quote }}
+      secretName: {{ .Values.ingress.upstream.tls.secretName | default (printf "%s-tls" (include "piko.fullname" .)) }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.upstream.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "piko.fullname" . }}-lb
+                port:
+                  name: upstream
+{{- end }}
+{{- if .Values.ingress.admin.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "piko.fullname" . }}-admin
+  labels:
+    {{- include "piko.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.tls.enabled }}
+    nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- with .Values.ingress.admin.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.admin.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.admin.host | quote }}
+      secretName: {{ .Values.ingress.admin.tls.secretName | default (printf "%s-tls" (include "piko.fullname" .)) }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.admin.host | quote }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "piko.fullname" . }}-lb
+                port:
+                  name: admin
+{{- end }}
+{{- end }}

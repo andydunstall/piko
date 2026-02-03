@@ -1,41 +1,373 @@
-replicaCount: 1
+# =============================================================================
+# Piko Helm Chart - Production Values
+# =============================================================================
+
+replicaCount: 3
 
 image:
   repository: ghcr.io/andydunstall/piko
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
+  # -- Overrides the image tag whose default is the chart appVersion.
   tag: ""
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+
+# -- Override the chart name
+nameOverride: ""
+
+# -- Override the full release name
+fullnameOverride: ""
 
 serviceAccount:
   # -- Specifies whether a service account should be created
   create: true
+  # -- Automatically mount a ServiceAccount's API credentials
+  automount: false
   # -- Annotations to add to the service account
   annotations: {}
   # -- The name of the service account to use.
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-podAnnotations: {}
+# -- Annotations to add to pods
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8002"
+  prometheus.io/path: "/metrics"
+
+# -- Labels to add to pods
 podLabels: {}
 
+# -- Pod security context
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# -- Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# =============================================================================
+# Server Configuration
+# =============================================================================
 server:
   # -- Specifies the proxy port to listen on. The proxy port listens for
   # requests that are forwarded to upstream services.
   proxyPort: 8000
+
   # -- Specifies the upstream port to listen on. The upstream port listens
-  # for connections from upstream service.
+  # for connections from upstream services.
   upstreamPort: 8001
+
   # -- Specifies the admin port to listen on. The admin port exposes an API for
   # metrics and observability.
   adminPort: 8002
+
   # -- Specifies the gossip port for inter-node traffic.
   gossipPort: 8003
 
-terminationGracePeriodSeconds: 60
+  # -- Proxy timeout for forwarding requests to upstreams
+  proxyTimeout: 30s
 
+  # -- Grace period for shutdown
+  gracePeriod: 60s
+
+  # -- Log level (debug, info, warn, error)
+  logLevel: info
+
+  # -- Access log configuration
+  accessLog:
+    level: info
+    disable: false
+
+  # -- Rebalance configuration for upstream connections
+  rebalance:
+    # -- Threshold indicating when to rebalance (0 to disable)
+    threshold: 0.2
+    # -- Percent of connections to drop per second when rebalancing
+    shedRate: 0.005
+    # -- Minimum connections before considering rebalancing
+    minConns: 50
+
+# =============================================================================
+# TLS Configuration
+# =============================================================================
+tls:
+  # -- Enable TLS for all server endpoints
+  enabled: true
+
+  # -- Use cert-manager to generate certificates
+  certManager:
+    enabled: true
+    # -- Name of the ClusterIssuer or Issuer to use
+    issuerName: "letsencrypt-prod"
+    # -- Type of issuer (ClusterIssuer or Issuer)
+    issuerKind: "ClusterIssuer"
+    # -- Duration of the certificate
+    duration: 2160h  # 90 days
+    # -- When to renew before expiry
+    renewBefore: 360h  # 15 days
+
+  # -- Name of existing TLS secret (if not using cert-manager)
+  existingSecret: ""
+
+  # -- Additional DNS names for the certificate
+  additionalDnsNames: []
+
+  # -- mTLS configuration for client certificate verification
+  mtls:
+    # -- Enable mTLS (require client certificates)
+    enabled: false
+    # -- Name of secret containing CA certificate for client verification
+    clientCASecret: ""
+
+# =============================================================================
+# Authentication Configuration
+# =============================================================================
+auth:
+  # -- Enable JWT authentication
+  enabled: true
+
+  # -- JWT issuer claim to verify
+  issuer: ""
+
+  # -- Disable disconnecting clients when their token expires
+  # (token is still verified on initial connection)
+  disableDisconnectOnExpiry: false
+
+  # -- Proxy authentication (for clients accessing services)
+  proxy:
+    # -- Enable auth for proxy requests
+    enabled: true
+    # -- JWT audience claim to verify
+    audience: "piko-proxy"
+
+  # -- Upstream authentication (for services connecting to Piko)
+  upstream:
+    # -- Enable auth for upstream connections
+    enabled: true
+    # -- JWT audience claim to verify
+    audience: "piko-upstream"
+
+  # -- Admin API authentication
+  admin:
+    # -- Enable auth for admin API
+    enabled: true
+    # -- JWT audience claim to verify
+    audience: "piko-admin"
+
+  # -- HMAC secret key authentication
+  hmac:
+    # -- Enable HMAC authentication
+    enabled: false
+    # -- Name of existing secret containing HMAC key
+    # Secret must have key 'hmac-secret'
+    existingSecret: ""
+
+  # -- RSA public key authentication (recommended)
+  rsa:
+    # -- Enable RSA authentication
+    enabled: true
+    # -- Name of existing secret containing RSA public key
+    # Secret must have key 'rsa-public-key' with PEM encoded public key
+    existingSecret: "piko-jwt-rsa-public-key"
+
+  # -- ECDSA public key authentication
+  ecdsa:
+    # -- Enable ECDSA authentication
+    enabled: false
+    # -- Name of existing secret containing ECDSA public key
+    # Secret must have key 'ecdsa-public-key' with PEM encoded public key
+    existingSecret: ""
+
+  # -- JWKS (JSON Web Key Set) authentication
+  jwks:
+    # -- Enable JWKS authentication
+    enabled: false
+    # -- JWKS endpoint URL (https:// or file://)
+    endpoint: ""
+    # -- Cache TTL for JWKS
+    cacheTTL: 1h
+    # -- Timeout for fetching JWKS
+    timeout: 10s
+
+# =============================================================================
+# Ingress Configuration
+# =============================================================================
+ingress:
+  # -- Enable ingress for proxy endpoint
+  enabled: true
+
+  # -- Ingress class name
+  className: "nginx"
+
+  # -- Annotations for the ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Enable WebSocket support for upstream connections
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$request_uri"
+
+  # -- Proxy ingress configuration (for clients accessing services)
+  proxy:
+    # -- Enable proxy ingress
+    enabled: true
+    # -- Hostname for proxy endpoint (supports wildcards for endpoint routing)
+    # Example: "*.piko.example.com" routes my-endpoint.piko.example.com to endpoint "my-endpoint"
+    host: "piko.example.com"
+    # -- Additional hosts
+    additionalHosts: []
+    # -- TLS configuration
+    tls:
+      enabled: true
+      # -- Secret name for TLS (auto-generated if using cert-manager)
+      secretName: ""
+
+  # -- Upstream ingress configuration (for services connecting to Piko)
+  upstream:
+    # -- Enable upstream ingress
+    enabled: true
+    # -- Hostname for upstream endpoint
+    host: "upstream.piko.example.com"
+    # -- TLS configuration
+    tls:
+      enabled: true
+      secretName: ""
+
+  # -- Admin ingress configuration (optional, for external access to admin API)
+  admin:
+    # -- Enable admin ingress
+    enabled: false
+    # -- Hostname for admin endpoint
+    host: "admin.piko.example.com"
+    # -- TLS configuration
+    tls:
+      enabled: true
+      secretName: ""
+    # -- Additional annotations (e.g., for IP whitelisting)
+    annotations:
+      nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8"
+
+# =============================================================================
+# Service Configuration
+# =============================================================================
+service:
+  # -- Service type for external access (in addition to headless service)
+  type: ClusterIP
+
+  # -- Annotations for the service
+  annotations: {}
+
+  # -- LoadBalancer IP (if service.type is LoadBalancer)
+  loadBalancerIP: ""
+
+  # -- LoadBalancer source ranges (if service.type is LoadBalancer)
+  loadBalancerSourceRanges: []
+
+# =============================================================================
+# Resources
+# =============================================================================
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# =============================================================================
+# Probes
+# =============================================================================
+# -- Liveness probe configuration
+livenessProbe:
+  httpGet:
+    path: /health
+    port: admin
+    scheme: HTTPS
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+# -- Readiness probe configuration
 readinessProbe:
   httpGet:
     path: /ready
     port: admin
+    scheme: HTTPS
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
 
-affinity: {}
+# -- Termination grace period
+terminationGracePeriodSeconds: 60
+
+# =============================================================================
+# Scheduling
+# =============================================================================
+# -- Node selector
+nodeSelector: {}
+
+# -- Tolerations
+tolerations: []
+
+# -- Affinity rules
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: piko
+          topologyKey: kubernetes.io/hostname
+
+# -- Topology spread constraints
+topologySpreadConstraints: []
+
+# =============================================================================
+# Pod Disruption Budget
+# =============================================================================
+podDisruptionBudget:
+  # -- Enable PodDisruptionBudget
+  enabled: true
+  # -- Minimum available pods
+  minAvailable: 1
+  # -- Maximum unavailable pods (alternative to minAvailable)
+  # maxUnavailable: 1
+
+# =============================================================================
+# Network Policy
+# =============================================================================
+networkPolicy:
+  # -- Enable NetworkPolicy
+  enabled: false
+  # -- Additional ingress rules
+  additionalIngressRules: []
+  # -- Additional egress rules
+  additionalEgressRules: []
+
+# =============================================================================
+# Extra configuration
+# =============================================================================
+# -- Extra environment variables
+extraEnv: []
+
+# -- Extra volume mounts
+extraVolumeMounts: []
+
+# -- Extra volumes
+extraVolumes: []
+
+# -- Extra init containers
+extraInitContainers: []

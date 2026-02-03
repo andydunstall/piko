@@ -1,3 +1,4 @@
+# Headless service for StatefulSet DNS discovery
 apiVersion: v1
 kind: Service
 metadata:
@@ -5,16 +6,60 @@ metadata:
   labels:
     {{- include "piko.labels" . | nindent 4 }}
 spec:
-  ports:
-  - port: {{ .Values.server.proxyPort }}
-    name: proxy
-    protocol: TCP
-  - port: {{ .Values.server.upstreamPort }}
-    name: upstream
-    protocol: TCP
-  - port: {{ .Values.server.adminPort }}
-    name: admin
-    protocol: TCP
+  type: ClusterIP
   clusterIP: None
+  ports:
+    - port: {{ .Values.server.proxyPort }}
+      targetPort: proxy
+      name: proxy
+      protocol: TCP
+    - port: {{ .Values.server.upstreamPort }}
+      targetPort: upstream
+      name: upstream
+      protocol: TCP
+    - port: {{ .Values.server.adminPort }}
+      targetPort: admin
+      name: admin
+      protocol: TCP
+    - port: {{ .Values.server.gossipPort }}
+      targetPort: gossip
+      name: gossip
+      protocol: TCP
+  selector:
+    {{- include "piko.selectorLabels" . | nindent 4 }}
+---
+# ClusterIP service for load balancing
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "piko.fullname" . }}-lb
+  labels:
+    {{- include "piko.labels" . | nindent 4 }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  {{- if and (eq .Values.service.type "LoadBalancer") .Values.service.loadBalancerIP }}
+  loadBalancerIP: {{ .Values.service.loadBalancerIP }}
+  {{- end }}
+  {{- if and (eq .Values.service.type "LoadBalancer") .Values.service.loadBalancerSourceRanges }}
+  loadBalancerSourceRanges:
+    {{- toYaml .Values.service.loadBalancerSourceRanges | nindent 4 }}
+  {{- end }}
+  ports:
+    - port: {{ .Values.server.proxyPort }}
+      targetPort: proxy
+      name: proxy
+      protocol: TCP
+    - port: {{ .Values.server.upstreamPort }}
+      targetPort: upstream
+      name: upstream
+      protocol: TCP
+    - port: {{ .Values.server.adminPort }}
+      targetPort: admin
+      name: admin
+      protocol: TCP
   selector:
     {{- include "piko.selectorLabels" . | nindent 4 }}

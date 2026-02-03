@@ -1,0 +1,58 @@
+{{- if and .Values.tls.enabled .Values.tls.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "piko.fullname" . }}-tls
+  labels:
+    {{- include "piko.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "piko.fullname" . }}-tls
+  duration: {{ .Values.tls.certManager.duration }}
+  renewBefore: {{ .Values.tls.certManager.renewBefore }}
+  subject:
+    organizations:
+      - piko
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    {{- $dnsNames := list }}
+    {{- if and .Values.ingress.enabled .Values.ingress.proxy.enabled }}
+    {{- $dnsNames = append $dnsNames .Values.ingress.proxy.host }}
+    {{- /* Skip wildcards - they require DNS-01 challenge */}}
+    {{- range .Values.ingress.proxy.additionalHosts }}
+    {{- if not (hasPrefix "*." .) }}
+    {{- $dnsNames = append $dnsNames . }}
+    {{- end }}
+    {{- end }}
+    {{- end }}
+    {{- /* Only add upstream/admin hosts if NOT covered by a wildcard */}}
+    {{- $hasWildcard := false }}
+    {{- range $dnsNames }}
+    {{- if hasPrefix "*." . }}
+    {{- $hasWildcard = true }}
+    {{- end }}
+    {{- end }}
+    {{- if and .Values.ingress.enabled .Values.ingress.upstream.enabled }}
+    {{- if not $hasWildcard }}
+    {{- $dnsNames = append $dnsNames .Values.ingress.upstream.host }}
+    {{- end }}
+    {{- end }}
+    {{- if and .Values.ingress.enabled .Values.ingress.admin.enabled }}
+    {{- if not $hasWildcard }}
+    {{- $dnsNames = append $dnsNames .Values.ingress.admin.host }}
+    {{- end }}
+    {{- end }}
+    {{- range .Values.tls.additionalDnsNames }}
+    {{- $dnsNames = append $dnsNames . }}
+    {{- end }}
+    {{- range $dnsNames | uniq }}
+    - {{ . | quote }}
+    {{- end }}
+  issuerRef:
+    name: {{ .Values.tls.certManager.issuerName }}
+    kind: {{ .Values.tls.certManager.issuerKind }}
+{{- end }}

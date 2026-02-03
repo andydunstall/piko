@@ -10,51 +10,142 @@ spec:
     matchLabels:
       {{- include "piko.selectorLabels" . | nindent 6 }}
   serviceName: {{ include "piko.fullname" . }}
+  podManagementPolicy: Parallel
+  updateStrategy:
+    type: RollingUpdate
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "piko.labels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ include "piko.serviceAccountName" . }}
       terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
+      {{- with .Values.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.extraInitContainers }}
+      initContainers:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
-      - name: piko
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
-        imagePullPolicy: "{{ .Values.image.pullPolicy }}"
-        ports:
-          - containerPort: {{ .Values.server.proxyPort }}
-            name: proxy
-          - containerPort: {{ .Values.server.upstreamPort }}
-            name: upstream
-          - containerPort: {{ .Values.server.adminPort }}
-            name: admin
-          - containerPort: {{ .Values.server.gossipPort }}
-            name: gossip
-        readinessProbe:
-          {{- toYaml .Values.readinessProbe | nindent 12 }}
-        args:
-          - server
-          - --config.path
-          - /config/server.yaml
-          - --config.expand-env
-        env:
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-        volumeMounts:
-          - name: config
-            mountPath: "/config"
-            readOnly: true
+        - name: piko
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - containerPort: {{ .Values.server.proxyPort }}
+              name: proxy
+              protocol: TCP
+            - containerPort: {{ .Values.server.upstreamPort }}
+              name: upstream
+              protocol: TCP
+            - containerPort: {{ .Values.server.adminPort }}
+              name: admin
+              protocol: TCP
+            - containerPort: {{ .Values.server.gossipPort }}
+              name: gossip
+              protocol: TCP
+          args:
+            - server
+            - --config.path
+            - /config/server.yaml
+            - --config.expand-env
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            {{- if and .Values.auth.enabled .Values.auth.rsa.enabled .Values.auth.rsa.existingSecret }}
+            - name: RSA_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.rsa.existingSecret }}
+                  key: rsa-public-key
+            {{- end }}
+            {{- if and .Values.auth.enabled .Values.auth.ecdsa.enabled .Values.auth.ecdsa.existingSecret }}
+            - name: ECDSA_PUBLIC_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.ecdsa.existingSecret }}
+                  key: ecdsa-public-key
+            {{- end }}
+            {{- if and .Values.auth.enabled .Values.auth.hmac.enabled .Values.auth.hmac.existingSecret }}
+            - name: HMAC_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.auth.hmac.existingSecret }}
+                  key: hmac-secret
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            {{- if .Values.tls.enabled }}
+            - name: tls
+              mountPath: /tls
+              readOnly: true
+            {{- end }}
+            {{- if and .Values.tls.enabled .Values.tls.mtls.enabled .Values.tls.mtls.clientCASecret }}
+            - name: client-ca
+              mountPath: /tls/client-ca
+              readOnly: true
+            {{- end }}
+            {{- with .Values.extraVolumeMounts }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       {{- with .Values.affinity }}
       affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
@@ -62,6 +153,22 @@ spec:
           configMap:
             name: {{ include "piko.fullname" . }}
             items:
-            - key: "server.yaml"
-              path: "server.yaml"
-
+              - key: server.yaml
+                path: server.yaml
+        {{- if .Values.tls.enabled }}
+        - name: tls
+          secret:
+            {{- if .Values.tls.existingSecret }}
+            secretName: {{ .Values.tls.existingSecret }}
+            {{- else }}
+            secretName: {{ include "piko.fullname" . }}-tls
+            {{- end }}
+        {{- end }}
+        {{- if and .Values.tls.enabled .Values.tls.mtls.enabled .Values.tls.mtls.clientCASecret }}
+        - name: client-ca
+          secret:
+            secretName: {{ .Values.tls.mtls.clientCASecret }}
+        {{- end }}
+        {{- with .Values.extraVolumes }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
