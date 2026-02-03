@@ -1,0 +1,125 @@
+# =============================================================================
+# Piko Helm Chart - Example Production Values
+# =============================================================================
+#
+# USAGE:
+#   1. Copy this file: cp values-example.yaml my-values.yaml
+#   2. Update the domains below to your actual domains
+#   3. Create the JWT secret (see DEPLOYMENT.md)
+#   4. Deploy: helm upgrade --install piko ./piko -n piko -f my-values.yaml
+#
+# =============================================================================
+
+# Number of Piko replicas (3 recommended for HA)
+replicaCount: 3
+
+# =============================================================================
+# TLS - Using your existing cert-manager ClusterIssuer
+# =============================================================================
+tls:
+  enabled: true
+  certManager:
+    enabled: true
+    issuerName: "letsencrypt-prod"  # <-- Your ClusterIssuer name
+    issuerKind: "ClusterIssuer"
+    duration: 2160h    # 90 days
+    renewBefore: 360h  # 15 days before expiry
+
+# =============================================================================
+# JWT Authentication
+# =============================================================================
+auth:
+  enabled: true
+  
+  # Optional: Validate JWT issuer claim
+  # issuer: "https://your-company.com"
+  
+  # RSA public key for verifying JWTs
+  rsa:
+    enabled: true
+    # Secret must exist with key 'rsa-public-key' containing PEM public key
+    # Create with: kubectl create secret generic piko-jwt-rsa-public-key \
+    #                --from-file=rsa-public-key=jwt-public.pem -n piko
+    existingSecret: "piko-jwt-rsa-public-key"
+  
+  # Proxy auth (for clients accessing services via Piko)
+  proxy:
+    enabled: true
+    audience: "piko-proxy"
+  
+  # Upstream auth (for services connecting to Piko)
+  upstream:
+    enabled: true
+    audience: "piko-upstream"
+  
+  # Admin API auth
+  admin:
+    enabled: true
+    audience: "piko-admin"
+
+# =============================================================================
+# Ingress - UPDATE THESE DOMAINS
+# =============================================================================
+ingress:
+  enabled: true
+  className: "nginx"  # Change if using different ingress controller
+  
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  
+  # Proxy endpoint (for clients accessing services)
+  proxy:
+    enabled: true
+    host: "piko.example.com"  # <-- CHANGE THIS to your domain
+    # For wildcard routing (e.g., my-service.piko.example.com):
+    # additionalHosts:
+    #   - "*.piko.example.com"
+    tls:
+      enabled: true
+  
+  # Upstream endpoint (for services connecting to Piko)
+  upstream:
+    enabled: true
+    host: "upstream.piko.example.com"  # <-- CHANGE THIS to your domain
+    tls:
+      enabled: true
+  
+  # Admin endpoint (optional, disabled by default)
+  admin:
+    enabled: false
+    host: "admin.piko.example.com"  # <-- CHANGE THIS to your domain
+    tls:
+      enabled: true
+    annotations:
+      # Restrict admin access to internal IPs
+      nginx.ingress.kubernetes.io/whitelist-source-range: "10.0.0.0/8"
+
+# =============================================================================
+# Resources
+# =============================================================================
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# =============================================================================
+# High Availability
+# =============================================================================
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: piko
+          topologyKey: kubernetes.io/hostname
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1

@@ -1,0 +1,54 @@
+{{- if and .Values.tls.enabled .Values.tls.certManager.enabled }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "piko.fullname" . }}-tls
+  labels:
+    {{- include "piko.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "piko.fullname" . }}-tls
+  duration: {{ .Values.tls.certManager.duration }}
+  renewBefore: {{ .Values.tls.certManager.renewBefore }}
+  subject:
+    organizations:
+      - piko
+  privateKey:
+    algorithm: RSA
+    size: 2048
+  usages:
+    - server auth
+    - client auth
+  dnsNames:
+    # Service DNS names
+    - {{ include "piko.fullname" . }}
+    - {{ include "piko.fullname" . }}.{{ .Release.Namespace }}
+    - {{ include "piko.fullname" . }}.{{ .Release.Namespace }}.svc
+    - {{ include "piko.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+    - "*.{{ include "piko.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local"
+    # Load balancer service
+    - {{ include "piko.fullname" . }}-lb
+    - {{ include "piko.fullname" . }}-lb.{{ .Release.Namespace }}
+    - {{ include "piko.fullname" . }}-lb.{{ .Release.Namespace }}.svc
+    - {{ include "piko.fullname" . }}-lb.{{ .Release.Namespace }}.svc.cluster.local
+    {{- if and .Values.ingress.enabled .Values.ingress.proxy.enabled }}
+    # Proxy ingress host
+    - {{ .Values.ingress.proxy.host }}
+    {{- range .Values.ingress.proxy.additionalHosts }}
+    - {{ . }}
+    {{- end }}
+    {{- end }}
+    {{- if and .Values.ingress.enabled .Values.ingress.upstream.enabled }}
+    # Upstream ingress host
+    - {{ .Values.ingress.upstream.host }}
+    {{- end }}
+    {{- if and .Values.ingress.enabled .Values.ingress.admin.enabled }}
+    # Admin ingress host
+    - {{ .Values.ingress.admin.host }}
+    {{- end }}
+    {{- with .Values.tls.additionalDnsNames }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  issuerRef:
+    name: {{ .Values.tls.certManager.issuerName }}
+    kind: {{ .Values.tls.certManager.issuerKind }}
+{{- end }}

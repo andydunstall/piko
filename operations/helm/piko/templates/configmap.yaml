@@ -10,3 +10,133 @@ data:
       node_id_prefix: ${POD_NAME}-
       join:
         - {{ include "piko.fullname" . }}
+      join_timeout: 60s
+      abort_if_join_fails: true
+      gossip:
+        bind_addr: ":{{ .Values.server.gossipPort }}"
+        interval: 100ms
+        max_packet_size: 1400
+
+    proxy:
+      bind_addr: ":{{ .Values.server.proxyPort }}"
+      timeout: {{ .Values.server.proxyTimeout }}
+{{- if .Values.tls.enabled }}
+      tls:
+        cert: /tls/tls.crt
+        key: /tls/tls.key
+{{- if .Values.tls.mtls.enabled }}
+        client_cas: /tls/client-ca/ca.crt
+{{- end }}
+{{- end }}
+{{- if and .Values.auth.enabled .Values.auth.proxy.enabled }}
+      auth:
+{{- if .Values.auth.rsa.enabled }}
+        rsa_public_key: ${RSA_PUBLIC_KEY}
+{{- end }}
+{{- if .Values.auth.ecdsa.enabled }}
+        ecdsa_public_key: ${ECDSA_PUBLIC_KEY}
+{{- end }}
+{{- if .Values.auth.hmac.enabled }}
+        hmac_secret_key: ${HMAC_SECRET_KEY}
+{{- end }}
+{{- if .Values.auth.jwks.enabled }}
+        jwks:
+          endpoint: {{ .Values.auth.jwks.endpoint | quote }}
+          cache_ttl: {{ .Values.auth.jwks.cacheTTL }}
+          timeout: {{ .Values.auth.jwks.timeout }}
+{{- end }}
+{{- if .Values.auth.proxy.audience }}
+        audience: {{ .Values.auth.proxy.audience | quote }}
+{{- end }}
+{{- if .Values.auth.issuer }}
+        issuer: {{ .Values.auth.issuer | quote }}
+{{- end }}
+        disable_disconnect_on_expiry: {{ .Values.auth.disableDisconnectOnExpiry }}
+{{- end }}
+      access_log:
+        level: {{ .Values.server.accessLog.level }}
+        disable: {{ .Values.server.accessLog.disable }}
+      http:
+        read_timeout: 10s
+        read_header_timeout: 10s
+        write_timeout: 10s
+        idle_timeout: 5m
+        max_header_bytes: 1048576
+
+    upstream:
+      bind_addr: ":{{ .Values.server.upstreamPort }}"
+{{- if .Values.tls.enabled }}
+      tls:
+        cert: /tls/tls.crt
+        key: /tls/tls.key
+{{- if .Values.tls.mtls.enabled }}
+        client_cas: /tls/client-ca/ca.crt
+{{- end }}
+{{- end }}
+{{- if and .Values.auth.enabled .Values.auth.upstream.enabled }}
+      auth:
+{{- if .Values.auth.rsa.enabled }}
+        rsa_public_key: ${RSA_PUBLIC_KEY}
+{{- end }}
+{{- if .Values.auth.ecdsa.enabled }}
+        ecdsa_public_key: ${ECDSA_PUBLIC_KEY}
+{{- end }}
+{{- if .Values.auth.hmac.enabled }}
+        hmac_secret_key: ${HMAC_SECRET_KEY}
+{{- end }}
+{{- if .Values.auth.jwks.enabled }}
+        jwks:
+          endpoint: {{ .Values.auth.jwks.endpoint | quote }}
+          cache_ttl: {{ .Values.auth.jwks.cacheTTL }}
+          timeout: {{ .Values.auth.jwks.timeout }}
+{{- end }}
+{{- if .Values.auth.upstream.audience }}
+        audience: {{ .Values.auth.upstream.audience | quote }}
+{{- end }}
+{{- if .Values.auth.issuer }}
+        issuer: {{ .Values.auth.issuer | quote }}
+{{- end }}
+        disable_disconnect_on_expiry: {{ .Values.auth.disableDisconnectOnExpiry }}
+{{- end }}
+      rebalance:
+        threshold: {{ .Values.server.rebalance.threshold }}
+        shed_rate: {{ .Values.server.rebalance.shedRate }}
+        min_conns: {{ .Values.server.rebalance.minConns }}
+
+    admin:
+      bind_addr: ":{{ .Values.server.adminPort }}"
+{{- if .Values.tls.enabled }}
+      tls:
+        cert: /tls/tls.crt
+        key: /tls/tls.key
+{{- end }}
+{{- if and .Values.auth.enabled .Values.auth.admin.enabled }}
+      auth:
+{{- if .Values.auth.rsa.enabled }}
+        rsa_public_key: ${RSA_PUBLIC_KEY}
+{{- end }}
+{{- if .Values.auth.ecdsa.enabled }}
+        ecdsa_public_key: ${ECDSA_PUBLIC_KEY}
+{{- end }}
+{{- if .Values.auth.hmac.enabled }}
+        hmac_secret_key: ${HMAC_SECRET_KEY}
+{{- end }}
+{{- if .Values.auth.jwks.enabled }}
+        jwks:
+          endpoint: {{ .Values.auth.jwks.endpoint | quote }}
+          cache_ttl: {{ .Values.auth.jwks.cacheTTL }}
+          timeout: {{ .Values.auth.jwks.timeout }}
+{{- end }}
+{{- if .Values.auth.admin.audience }}
+        audience: {{ .Values.auth.admin.audience | quote }}
+{{- end }}
+{{- if .Values.auth.issuer }}
+        issuer: {{ .Values.auth.issuer | quote }}
+{{- end }}
+        disable_disconnect_on_expiry: {{ .Values.auth.disableDisconnectOnExpiry }}
+{{- end }}
+
+    log:
+      level: {{ .Values.server.logLevel }}
+
+    grace_period: {{ .Values.server.gracePeriod }}
