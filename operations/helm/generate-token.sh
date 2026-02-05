@@ -1,21 +1,28 @@
 #!/bin/bash
 # Generate JWT tokens for Piko authentication
-# Requires: npm install -g jwt-cli  OR use the node script below
+# Usage: ./generate-token.sh <endpoint-name> [hmac-secret]
+#
+# If HMAC_SECRET env var is set, uses that. Otherwise prompts for it.
+# You can also pass it as second argument.
 
-HMAC_SECRET="HCO4vKXDgtqiTGPWb3W8Yxd6XPXs+T8RFPMhZBAuUxY="
 ENDPOINT="${1:-my-service}"
+HMAC_SECRET="${2:-${HMAC_SECRET}}"
 
-# Using Node.js (if available)
+if [ -z "$HMAC_SECRET" ]; then
+    echo "HMAC_SECRET not set. Options:"
+    echo "  1. Set environment variable: export HMAC_SECRET='your-secret'"
+    echo "  2. Pass as argument: ./generate-token.sh $ENDPOINT 'your-secret'"
+    echo "  3. Get from Kubernetes: kubectl get secret piko-jwt-hmac-secret -n piko -o jsonpath='{.data.hmac-secret}' | base64 -d"
+    exit 1
+fi
+
 if command -v node &> /dev/null; then
-    echo "=== Upstream Token (for services connecting to Piko) ==="
     node -e "
 const crypto = require('crypto');
 
 function base64url(str) {
     return Buffer.from(str).toString('base64')
-        .replace(/=/g, '')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_');
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 function sign(payload, secret) {
@@ -26,9 +33,7 @@ function sign(payload, secret) {
         .createHmac('sha256', secret)
         .update(headerB64 + '.' + payloadB64)
         .digest('base64')
-        .replace(/=/g, '')
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_');
+        .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
     return headerB64 + '.' + payloadB64 + '.' + signature;
 }
 
@@ -51,17 +56,16 @@ const proxyToken = sign({
     piko: { endpoints: ['$ENDPOINT'] }
 }, secret);
 
+console.log('=== Upstream Token (for services connecting to Piko) ===');
 console.log('UPSTREAM_TOKEN=' + upstreamToken);
 console.log('');
 console.log('=== Proxy Token (for clients accessing services) ===');
 console.log('PROXY_TOKEN=' + proxyToken);
 "
 else
-    echo "Node.js not found. Install it or use the Python alternative below."
-    echo ""
-    echo "Or use this online tool: https://jwt.io"
-    echo "Header: {\"alg\": \"HS256\", \"typ\": \"JWT\"}"
-    echo "Payload for upstream: {\"aud\": \"piko-upstream\", \"exp\": $(($(date +%s) + 2592000)), \"piko\": {\"endpoints\": [\"$ENDPOINT\"]}}"
-    echo "Payload for proxy: {\"aud\": \"piko-proxy\", \"exp\": $(($(date +%s) + 86400)), \"piko\": {\"endpoints\": [\"$ENDPOINT\"]}}"
-    echo "Secret: $HMAC_SECRET"
+    echo "Error: Node.js is required. Install Node.js or use jwt.io with:"
+    echo "  Header: {\"alg\": \"HS256\", \"typ\": \"JWT\"}"
+    echo "  Payload: {\"aud\": \"piko-upstream\", \"exp\": <timestamp>, \"piko\": {\"endpoints\": [\"$ENDPOINT\"]}}"
+    echo "  Secret: $HMAC_SECRET"
+    exit 1
 fi
