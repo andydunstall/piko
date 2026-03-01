@@ -350,6 +350,68 @@ func TestJWTVerifier_DisableDisconnectOnExpiry(t *testing.T) {
 	assert.True(t, parsedToken.Expiry.IsZero())
 }
 
+func TestJWTVerifier_RequireEndpoints(t *testing.T) {
+	secretKey := generateTestHSKey(t)
+
+	t.Run("endpoints present passes", func(t *testing.T) {
+		claims := JWTClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
+			Piko: PikoClaims{
+				Endpoints: []string{"my-endpoint"},
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := token.SignedString([]byte(secretKey))
+		require.NoError(t, err)
+
+		verifier := NewJWTVerifier(&LoadedConfig{
+			HMACSecretKey:    secretKey,
+			RequireEndpoints: true,
+		})
+		parsedToken, err := verifier.Verify(tokenString)
+		assert.NoError(t, err)
+		assert.Equal(t, []string{"my-endpoint"}, parsedToken.Endpoints)
+	})
+
+	t.Run("endpoints absent rejected when required", func(t *testing.T) {
+		claims := JWTClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := token.SignedString([]byte(secretKey))
+		require.NoError(t, err)
+
+		verifier := NewJWTVerifier(&LoadedConfig{
+			HMACSecretKey:    secretKey,
+			RequireEndpoints: true,
+		})
+		_, err = verifier.Verify(tokenString)
+		assert.Equal(t, ErrInvalidToken, err)
+	})
+
+	t.Run("endpoints absent allowed when not required", func(t *testing.T) {
+		claims := JWTClaims{
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+			},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+		tokenString, err := token.SignedString([]byte(secretKey))
+		require.NoError(t, err)
+
+		verifier := NewJWTVerifier(&LoadedConfig{
+			HMACSecretKey: secretKey,
+		})
+		parsedToken, err := verifier.Verify(tokenString)
+		assert.NoError(t, err)
+		assert.Empty(t, parsedToken.Endpoints)
+	})
+}
+
 func generateTestHSKey(t *testing.T) []byte {
 	b := make([]byte, 10)
 	_, err := rand.Read(b)

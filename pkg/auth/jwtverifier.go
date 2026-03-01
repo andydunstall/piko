@@ -30,6 +30,7 @@ type JWTVerifier struct {
 	issuer   string
 
 	disableDisconnectOnExpiry bool
+	requireEndpoints          bool
 
 	// methods contains the valid JWT methods, which depends on the
 	// verification keys configured.
@@ -41,6 +42,7 @@ func NewJWTVerifier(conf *LoadedConfig) *JWTVerifier {
 		audience:                  conf.Audience,
 		issuer:                    conf.Issuer,
 		disableDisconnectOnExpiry: conf.DisableDisconnectOnExpiry,
+		requireEndpoints:          conf.RequireEndpoints,
 	}
 
 	if len(conf.HMACSecretKey) > 0 {
@@ -115,6 +117,10 @@ func (v *JWTVerifier) Verify(tokenString string) (*Token, error) {
 		return nil, ErrInvalidToken
 	}
 	if !token.Valid {
+		return nil, ErrInvalidToken
+	}
+
+	if v.requireEndpoints && len(claims.Piko.Endpoints) == 0 {
 		return nil, ErrInvalidToken
 	}
 

@@ -40,6 +40,14 @@ type Config struct {
 	// Piko still verifies the token expiry when the client first connects.
 	DisableDisconnectOnExpiry bool `json:"disable_disconnect_on_expiry" yaml:"disable_disconnect_on_expiry"`
 
+	// RequireEndpoints requires that authenticated JWTs include a non-empty
+	// 'piko.endpoints' claim.
+	//
+	// When enabled, tokens without an endpoints claim are rejected. This
+	// prevents clients from gaining access to all endpoints by omitting the
+	// claim.
+	RequireEndpoints bool `json:"require_endpoints" yaml:"require_endpoints"`
+
 	// JWKS is the JSON Web Key Set to use for verifying JWTs.
 	//
 	// If provided, it will take precedence over the other keys.
@@ -54,6 +62,7 @@ type LoadedConfig struct {
 	Audience                  string
 	Issuer                    string
 	DisableDisconnectOnExpiry bool
+	RequireEndpoints          bool
 	JWKS                      *LoadedJWKS
 }
 
@@ -70,6 +79,7 @@ func (c *Config) Load(ctx context.Context) (*LoadedConfig, error) {
 		Audience:                  c.Audience,
 		Issuer:                    c.Issuer,
 		DisableDisconnectOnExpiry: c.DisableDisconnectOnExpiry,
+		RequireEndpoints:          c.RequireEndpoints,
 	}
 
 	if c.RSAPublicKey != "" {
@@ -161,6 +171,16 @@ is ignored.`,
 Disables disconnecting the client when their token expires.
 
 Piko still verifies the token expiry when the client first connects.`,
+	)
+	fs.BoolVar(
+		&c.RequireEndpoints,
+		prefix+"require-endpoints",
+		c.RequireEndpoints,
+		`
+Requires that authenticated JWTs include a non-empty 'piko.endpoints' claim.
+
+When enabled, tokens without an endpoints claim are rejected. This prevents
+clients from gaining access to all endpoints by omitting the claim.`,
 	)
 
 	c.JWKS.RegisterFlags(fs, prefix)
