@@ -248,6 +248,46 @@ func (c *TLSConfig) Load() (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
+// MuxConfig contains tuning for the yamux multiplexer used between
+// the agent and the Piko server.
+type MuxConfig struct {
+	// MaxStreamWindowSize sets the yamux per-stream receive window in
+	// bytes. Throughput per stream is bounded by window/RTT.
+	//
+	// Set to 0 to use the yamux default (256 KiB). Must be >= 256 KiB
+	// when set.
+	MaxStreamWindowSize uint32 `json:"max_stream_window_size" yaml:"max_stream_window_size"`
+}
+
+func (c *MuxConfig) Validate() error {
+	if c.MaxStreamWindowSize != 0 && c.MaxStreamWindowSize < 256*1024 {
+		return fmt.Errorf("max-stream-window-size must be >= 262144")
+	}
+	return nil
+}
+
+func (c *MuxConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	prefix = prefix + ".mux."
+
+	fs.Uint32Var(
+		&c.MaxStreamWindowSize,
+		prefix+"max-stream-window-size",
+		c.MaxStreamWindowSize,
+		`
+The yamux per-stream receive window in bytes used for the connection to
+the Piko server.
+
+Per-stream throughput is bounded by window-size / RTT, so increasing this
+value can improve single-stream throughput on high-RTT links at the cost
+of additional memory per stream.
+
+Both server and agent must agree, as yamux negotiates the smaller of the
+two configured values.
+
+Set to 0 to use the yamux default (256 KiB). Must be >= 262144 when set.`,
+	)
+}
+
 type ConnectConfig struct {
 	// URL is the Piko server URL to connect to.
 	URL string `json:"url" yaml:"url"`
@@ -265,6 +305,8 @@ type ConnectConfig struct {
 	Timeout time.Duration `json:"timeout" yaml:"timeout"`
 
 	TLS TLSConfig `json:"tls" yaml:"tls"`
+
+	Mux MuxConfig `json:"mux" yaml:"mux"`
 
 	// ProxyURL is the proxy URL to proxy the request from the agent to the
 	// Piko server (optional).
@@ -288,6 +330,9 @@ func (c *ConnectConfig) Validate() error {
 	}
 	if err := c.TLS.Validate(); err != nil {
 		return fmt.Errorf("tls: %w", err)
+	}
+	if err := c.Mux.Validate(); err != nil {
+		return fmt.Errorf("mux: %w", err)
 	}
 	return nil
 }
@@ -332,6 +377,8 @@ reconnect.`,
 	)
 
 	c.TLS.RegisterFlags(fs, "connect")
+
+	c.Mux.RegisterFlags(fs, "connect")
 
 	fs.StringVar(
 		&c.ProxyURL,

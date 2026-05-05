@@ -18,6 +18,23 @@ func TestConfig_Default(t *testing.T) {
 	assert.NoError(t, conf.Validate())
 }
 
+func TestMuxConfig_Validate(t *testing.T) {
+	t.Run("zero is allowed (yamux default)", func(t *testing.T) {
+		c := MuxConfig{}
+		assert.NoError(t, c.Validate())
+	})
+
+	t.Run("at minimum 256 KiB is allowed", func(t *testing.T) {
+		c := MuxConfig{MaxStreamWindowSize: 256 * 1024}
+		assert.NoError(t, c.Validate())
+	})
+
+	t.Run("below 256 KiB is rejected", func(t *testing.T) {
+		c := MuxConfig{MaxStreamWindowSize: 1024}
+		assert.Error(t, c.Validate())
+	})
+}
+
 func TestListenerConfig_URL(t *testing.T) {
 	tests := []struct {
 		addr string
@@ -92,6 +109,8 @@ connect:
   url: 'http://localhost:8001'
   timeout: 30s
   token: cyz
+  mux:
+    max_stream_window_size: 4194304
 server:
   enabled: true
   bind_addr: ':5201'
@@ -142,6 +161,9 @@ log:
 			URL:     "http://localhost:8001",
 			Timeout: 30 * time.Second,
 			Token:   "cyz",
+			Mux: MuxConfig{
+				MaxStreamWindowSize: 4 * 1024 * 1024,
+			},
 		},
 		Server: ServerConfig{
 			Enabled:  true,
