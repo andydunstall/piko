@@ -104,6 +104,50 @@ matter.`,
 	)
 }
 
+// MuxConfig contains tuning for the yamux multiplexer used between
+// upstream listeners and the server.
+type MuxConfig struct {
+	// MaxStreamWindowSize sets the yamux per-stream receive window in
+	// bytes. Throughput per stream is bounded by window/RTT.
+	//
+	// Set to 0 to use the yamux default (256 KiB). Must be >= 256 KiB
+	// when set.
+	MaxStreamWindowSize uint32 `json:"max_stream_window_size" yaml:"max_stream_window_size"`
+}
+
+func (c *MuxConfig) Validate() error {
+	if c.MaxStreamWindowSize != 0 && c.MaxStreamWindowSize < 256*1024 {
+		return fmt.Errorf("max-stream-window-size must be >= 262144")
+	}
+	return nil
+}
+
+func (c *MuxConfig) RegisterFlags(fs *pflag.FlagSet, prefix string) {
+	if prefix == "" {
+		prefix = "mux."
+	} else {
+		prefix = prefix + ".mux."
+	}
+
+	fs.Uint32Var(
+		&c.MaxStreamWindowSize,
+		prefix+"max-stream-window-size",
+		c.MaxStreamWindowSize,
+		`
+The yamux per-stream receive window in bytes used between upstream
+listeners and the server.
+
+Per-stream throughput is bounded by window-size / RTT, so increasing this
+value can improve single-stream throughput on high-RTT links at the cost
+of additional memory per stream.
+
+Both server and upstream agent must agree, as yamux negotiates the smaller
+of the two configured values.
+
+Set to 0 to use the yamux default (256 KiB). Must be >= 262144 when set.`,
+	)
+}
+
 // HTTPConfig contains generic configuration for the HTTP servers.
 type HTTPConfig struct {
 	// ReadTimeout is the maximum duration for reading the entire
@@ -287,6 +331,8 @@ type UpstreamConfig struct {
 
 	Rebalance RebalanceConfig `json:"rebalance" yaml:"rebalance"`
 
+	Mux MuxConfig `json:"mux" yaml:"mux"`
+
 	TLS TLSConfig `json:"tls" yaml:"tls"`
 
 	// Tenants contains the list of supported tenants.
@@ -301,6 +347,9 @@ func (c *UpstreamConfig) Validate() error {
 	}
 	if err := c.Rebalance.Validate(); err != nil {
 		return fmt.Errorf("rebalance: %w", err)
+	}
+	if err := c.Mux.Validate(); err != nil {
+		return fmt.Errorf("mux: %w", err)
 	}
 	if err := c.TLS.Validate(); err != nil {
 		return fmt.Errorf("tls: %w", err)
@@ -344,6 +393,8 @@ advertise address of '10.26.104.14:8000'.`,
 	c.Auth.RegisterFlags(fs, "upstream")
 
 	c.Rebalance.RegisterFlags(fs, "upstream")
+
+	c.Mux.RegisterFlags(fs, "upstream")
 
 	c.TLS.RegisterFlags(fs, "upstream")
 }

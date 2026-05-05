@@ -223,6 +223,9 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 	muxConfig := yamux.DefaultConfig()
 	muxConfig.Logger = s.logger.StdLogger(zap.WarnLevel)
 	muxConfig.LogOutput = nil
+	if s.config.Mux.MaxStreamWindowSize != 0 {
+		muxConfig.MaxStreamWindowSize = s.config.Mux.MaxStreamWindowSize
+	}
 	sess, err := yamux.Server(conn, muxConfig)
 	if err != nil {
 		// Will not happen.
