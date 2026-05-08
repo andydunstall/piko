@@ -193,6 +193,7 @@ func NewServer(conf *config.Config, logger log.Logger) (*Server, error) {
 		upstreamTLSConfig,
 		s.clusterState,
 		conf.Upstream,
+		conf.Stream,
 		logger,
 	)
 

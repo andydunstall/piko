@@ -21,19 +21,14 @@ func TestConfig_Default(t *testing.T) {
 	assert.NoError(t, conf.Validate())
 }
 
-func TestMuxConfig_Validate(t *testing.T) {
-	t.Run("zero is allowed (yamux default)", func(t *testing.T) {
-		c := MuxConfig{}
-		assert.NoError(t, c.Validate())
-	})
-
+func TestStreamConfig_Validate(t *testing.T) {
 	t.Run("at minimum 256 KiB is allowed", func(t *testing.T) {
-		c := MuxConfig{MaxStreamWindowSize: 256 * 1024}
+		c := StreamConfig{MaxWindowSize: 256 * 1024}
 		assert.NoError(t, c.Validate())
 	})
 
 	t.Run("below 256 KiB is rejected", func(t *testing.T) {
-		c := MuxConfig{MaxStreamWindowSize: 1024}
+		c := StreamConfig{MaxWindowSize: 1024}
 		assert.Error(t, c.Validate())
 	})
 }
@@ -97,9 +92,6 @@ upstream:
     shed_rate: 0.005
     min_conns: 100
 
-  mux:
-    max_stream_window_size: 4194304
-
   tls:
     cert: /piko/cert.pem
     key: /piko/key.pem
@@ -126,6 +118,9 @@ admin:
   tls:
     cert: /piko/cert.pem
     key: /piko/key.pem
+
+stream:
+  max_window_size: 4194304
 
 cluster:
   node_id: "my-node"
@@ -216,9 +211,6 @@ grace_period: 2m
 				ShedRate:  0.005,
 				MinConns:  100,
 			},
-			Mux: MuxConfig{
-				MaxStreamWindowSize: 4 * 1024 * 1024,
-			},
 			TLS: TLSConfig{
 				Cert: "/piko/cert.pem",
 				Key:  "/piko/key.pem",
@@ -237,6 +229,9 @@ grace_period: 2m
 					},
 				},
 			},
+		},
+		Stream: StreamConfig{
+			MaxWindowSize: 4 * 1024 * 1024,
 		},
 		Admin: AdminConfig{
 			BindAddr:      "10.15.104.25:8002",
@@ -310,7 +305,7 @@ func TestConfig_LoadFlags(t *testing.T) {
 		"--upstream.rebalance.threshold", "0.2",
 		"--upstream.rebalance.shed-rate", "0.005",
 		"--upstream.rebalance.min-conns", "100",
-		"--upstream.mux.max-stream-window-size", "4194304",
+		"--stream.max-window-size", "4194304",
 		"--upstream.auth.hmac-secret-key", "hmac-secret-key",
 		"--upstream.auth.rsa-public-key", "rsa-public-key",
 		"--upstream.auth.ecdsa-public-key", "ecdsa-public-key",
@@ -400,13 +395,13 @@ func TestConfig_LoadFlags(t *testing.T) {
 				ShedRate:  0.005,
 				MinConns:  100,
 			},
-			Mux: MuxConfig{
-				MaxStreamWindowSize: 4 * 1024 * 1024,
-			},
 			TLS: TLSConfig{
 				Cert: "/piko/cert.pem",
 				Key:  "/piko/key.pem",
 			},
+		},
+		Stream: StreamConfig{
+			MaxWindowSize: 4 * 1024 * 1024,
 		},
 		Admin: AdminConfig{
 			BindAddr:      "10.15.104.25:8002",

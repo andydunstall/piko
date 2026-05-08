@@ -68,18 +68,14 @@ type Upstream struct {
 	// Defaults to 15s.
 	MaxReconnectBackoff time.Duration
 
-	// MaxStreamWindowSize sets the yamux per-stream receive window in bytes.
+	// MaxWindowSize is the maximum receive window size in bytes.
 	//
-	// Per-stream throughput is bounded by window-size / RTT, so a larger
-	// window can improve single-stream throughput on high-RTT links at the
-	// cost of additional memory per stream.
+	// This is used for flow control to limit how much unread data can be
+	// in-flight on a stream. Increasing this value can increase the
+	// throughput from the server to the client.
 	//
-	// Both server and upstream must agree, as yamux negotiates the smaller
-	// of the two configured values.
-	//
-	// Defaults to 0, meaning the yamux default (256 KiB). Must be >= 262144
-	// when set.
-	MaxStreamWindowSize uint32
+	// Must be >=256KiB. Defaults to 256KiB.
+	MaxWindowSize uint32
 
 	// Logger is an optional logger to log connection state changes.
 	Logger Logger
@@ -149,8 +145,8 @@ func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Sessi
 			muxConfig := yamux.DefaultConfig()
 			muxConfig.Logger = nil
 			muxConfig.LogOutput = &yamuxLogWriter{logger: u.logger()}
-			if u.MaxStreamWindowSize != 0 {
-				muxConfig.MaxStreamWindowSize = u.MaxStreamWindowSize
+			if u.MaxWindowSize != 0 {
+				muxConfig.MaxStreamWindowSize = u.MaxWindowSize
 			}
 			sess, err := yamux.Client(conn, muxConfig)
 			if err != nil {

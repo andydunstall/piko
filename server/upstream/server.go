@@ -40,7 +40,8 @@ type Server struct {
 
 	cluster *cluster.State
 
-	config config.UpstreamConfig
+	config       config.UpstreamConfig
+	streamConfig config.StreamConfig
 
 	logger log.Logger
 }
@@ -51,6 +52,7 @@ func NewServer(
 	tlsConfig *tls.Config,
 	cluster *cluster.State,
 	config config.UpstreamConfig,
+	streamConfig config.StreamConfig,
 	logger log.Logger,
 ) *Server {
 	logger = logger.WithSubsystem("upstream")
@@ -70,6 +72,7 @@ func NewServer(
 		cancel:            cancel,
 		cluster:           cluster,
 		config:            config,
+		streamConfig:      streamConfig,
 		logger:            logger,
 	}
 
@@ -223,8 +226,8 @@ func (s *Server) upstreamRoute(c *gin.Context) {
 	muxConfig := yamux.DefaultConfig()
 	muxConfig.Logger = s.logger.StdLogger(zap.WarnLevel)
 	muxConfig.LogOutput = nil
-	if s.config.Mux.MaxStreamWindowSize != 0 {
-		muxConfig.MaxStreamWindowSize = s.config.Mux.MaxStreamWindowSize
+	if s.streamConfig.MaxWindowSize != 0 {
+		muxConfig.MaxStreamWindowSize = s.streamConfig.MaxWindowSize
 	}
 	sess, err := yamux.Server(conn, muxConfig)
 	if err != nil {

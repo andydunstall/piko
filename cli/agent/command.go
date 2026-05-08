@@ -139,13 +139,13 @@ func runAgent(conf *config.Config, logger log.Logger) error {
 		proxyURL = connectProxyURL
 	}
 	upstream := &client.Upstream{
-		URL:                 connectURL,
-		Token:               conf.Connect.Token,
-		TenantID:            conf.Connect.TenantID,
-		TLSConfig:           connectTLSConfig,
-		ProxyURL:            proxyURL,
-		MaxStreamWindowSize: conf.Connect.Mux.MaxStreamWindowSize,
-		Logger:              logger.WithSubsystem("client"),
+		URL:           connectURL,
+		Token:         conf.Connect.Token,
+		TenantID:      conf.Connect.TenantID,
+		TLSConfig:     connectTLSConfig,
+		ProxyURL:      proxyURL,
+		MaxWindowSize: conf.Stream.MaxWindowSize,
+		Logger:        logger.WithSubsystem("client"),
 	}
 
 	registry := prometheus.NewRegistry()
