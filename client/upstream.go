@@ -142,12 +142,14 @@ func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Sessi
 				zap.String("url", url),
 			)
 
+			maxWindowSize := u.MaxWindowSize
+			if maxWindowSize == 0 {
+				maxWindowSize = 256 * 1024
+			}
 			muxConfig := yamux.DefaultConfig()
 			muxConfig.Logger = nil
 			muxConfig.LogOutput = &yamuxLogWriter{logger: u.logger()}
-			if u.MaxWindowSize != 0 {
-				muxConfig.MaxStreamWindowSize = u.MaxWindowSize
-			}
+			muxConfig.MaxStreamWindowSize = maxWindowSize
 			sess, err := yamux.Client(conn, muxConfig)
 			if err != nil {
 				// Will not happen.
