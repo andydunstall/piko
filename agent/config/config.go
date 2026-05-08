@@ -248,6 +248,8 @@ func (c *TLSConfig) Load() (*tls.Config, error) {
 	return tlsConfig, nil
 }
 
+const minStreamWindowSize = 256 * 1024
+
 // StreamConfig configures the streams between the agent and Piko server.
 type StreamConfig struct {
 	// MaxWindowSize is the maximum receive window size in bytes.
@@ -261,8 +263,8 @@ type StreamConfig struct {
 }
 
 func (c *StreamConfig) Validate() error {
-	if c.MaxWindowSize < 256*1024 {
-		return fmt.Errorf("max-window-size must be >= 262144")
+	if c.MaxWindowSize < minStreamWindowSize {
+		return fmt.Errorf("max-window-size must be >= %d", minStreamWindowSize)
 	}
 	return nil
 }
@@ -442,7 +444,7 @@ func Default() *Config {
 			Timeout: time.Second * 30,
 		},
 		Stream: StreamConfig{
-			MaxWindowSize: 256 * 1024,
+			MaxWindowSize: minStreamWindowSize,
 		},
 		Server: ServerConfig{
 			BindAddr: ":5000",

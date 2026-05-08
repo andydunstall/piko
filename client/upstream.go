@@ -15,6 +15,8 @@ import (
 	"github.com/andydunstall/piko/pkg/websocket"
 )
 
+const defaultMaxWindowSize = 256 * 1024
+
 var (
 	ErrClosed = errors.New("closed")
 )
@@ -144,7 +146,7 @@ func (u *Upstream) connect(ctx context.Context, endpointID string) (*yamux.Sessi
 
 			maxWindowSize := u.MaxWindowSize
 			if maxWindowSize == 0 {
-				maxWindowSize = 256 * 1024
+				maxWindowSize = defaultMaxWindowSize
 			}
 			muxConfig := yamux.DefaultConfig()
 			muxConfig.Logger = nil

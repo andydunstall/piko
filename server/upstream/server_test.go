@@ -59,7 +59,7 @@ func TestServer_Register(t *testing.T) {
 
 		manager := newFakeManager()
 
-		s := NewServer(manager, nil, nil, nil, config.UpstreamConfig{}, config.StreamConfig{}, log.NewNopLogger())
+		s := NewServer(manager, nil, nil, nil, config.UpstreamConfig{}, config.StreamConfig{MaxWindowSize: 256 * 1024}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -88,7 +88,7 @@ func TestServer_Register(t *testing.T) {
 
 		manager := newFakeManager()
 
-		s := NewServer(manager, nil, nil, nil, config.UpstreamConfig{}, config.StreamConfig{}, log.NewNopLogger())
+		s := NewServer(manager, nil, nil, nil, config.UpstreamConfig{}, config.StreamConfig{MaxWindowSize: 256 * 1024}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -129,7 +129,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}, nil)
 
-		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{}, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{MaxWindowSize: 256 * 1024}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -168,7 +168,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}, nil)
 
-		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{}, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{MaxWindowSize: 256 * 1024}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -207,7 +207,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}, nil)
 
-		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{}, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{MaxWindowSize: 256 * 1024}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -238,7 +238,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}, nil)
 
-		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{}, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{MaxWindowSize: 256 * 1024}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -273,7 +273,7 @@ func TestServer_Authentication(t *testing.T) {
 			},
 		}, nil)
 
-		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{}, log.NewNopLogger())
+		s := NewServer(manager, verifier, nil, nil, config.UpstreamConfig{}, config.StreamConfig{MaxWindowSize: 256 * 1024}, log.NewNopLogger())
 		go func() {
 			require.NoError(t, s.Serve(ln))
 		}()
@@ -300,7 +300,7 @@ func TestServer_TLS(t *testing.T) {
 
 	manager := newFakeManager()
 
-	s := NewServer(manager, nil, tlsConfig, nil, config.UpstreamConfig{}, config.StreamConfig{}, log.NewNopLogger())
+	s := NewServer(manager, nil, tlsConfig, nil, config.UpstreamConfig{}, config.StreamConfig{MaxWindowSize: 256 * 1024}, log.NewNopLogger())
 	go func() {
 		require.NoError(t, s.Serve(ln))
 	}()

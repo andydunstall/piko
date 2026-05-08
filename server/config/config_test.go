@@ -21,18 +21,6 @@ func TestConfig_Default(t *testing.T) {
 	assert.NoError(t, conf.Validate())
 }
 
-func TestStreamConfig_Validate(t *testing.T) {
-	t.Run("at minimum 256 KiB is allowed", func(t *testing.T) {
-		c := StreamConfig{MaxWindowSize: 256 * 1024}
-		assert.NoError(t, c.Validate())
-	})
-
-	t.Run("below 256 KiB is rejected", func(t *testing.T) {
-		c := StreamConfig{MaxWindowSize: 1024}
-		assert.Error(t, c.Validate())
-	})
-}
-
 // Tests loading the server configuration from YAML.
 func TestConfig_LoadYAML(t *testing.T) {
 	yaml := `

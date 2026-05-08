@@ -104,6 +104,8 @@ matter.`,
 	)
 }
 
+const minStreamWindowSize = 256 * 1024
+
 // StreamConfig configures the streams between the Piko server and upstream
 // listeners.
 type StreamConfig struct {
@@ -118,8 +120,8 @@ type StreamConfig struct {
 }
 
 func (c *StreamConfig) Validate() error {
-	if c.MaxWindowSize < 256*1024 {
-		return fmt.Errorf("max-window-size must be >= 262144")
+	if c.MaxWindowSize < minStreamWindowSize {
+		return fmt.Errorf("max-window-size must be >= %d", minStreamWindowSize)
 	}
 	return nil
 }
@@ -586,7 +588,7 @@ func Default() *Config {
 			},
 		},
 		Stream: StreamConfig{
-			MaxWindowSize: 256 * 1024,
+			MaxWindowSize: minStreamWindowSize,
 		},
 		Admin: AdminConfig{
 			BindAddr: ":8002",
