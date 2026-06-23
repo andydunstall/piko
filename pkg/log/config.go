@@ -41,7 +41,7 @@ The available levels are 'debug', 'info', 'warn' and 'error'.`,
 		"log.subsystems",
 		c.Subsystems,
 		`
-Each log has a 'subsystem' field where the log occured.
+Each log has a 'subsystem' field where the log occurred.
 
 '--log.subsystems' enables all log levels for those given subsystems. This
 can be useful to debug a particular subsystem without having to enable all
