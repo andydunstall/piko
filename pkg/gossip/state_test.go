@@ -337,6 +337,61 @@ func TestClusterState_Digest(t *testing.T) {
 	}, stateDigest)
 }
 
+func TestClusterState_Digest_OmitsUnreachable(t *testing.T) {
+	suspicionLevels := map[string]float64{
+		"node-2": 5.0,
+		"node-3": 25.0,
+	}
+	clusterState := newClusterState(
+		"node-1", "1.1.1.1", &fakeFailureDetector{suspicionLevels}, newMetrics(), newNopWatcher(),
+	)
+	clusterState.UpsertLocal("k1", "v1")
+
+	clusterState.ApplyDelta(delta{
+		{
+			ID:   "node-2",
+			Addr: "2.2.2.2",
+			Entries: []Entry{
+				{"k1", "v1", 4, false, false},
+			},
+		},
+		{
+			ID:   "node-3",
+			Addr: "3.3.3.3",
+			Entries: []Entry{
+				{"k1", "v1", 8, false, false},
+			},
+		},
+	})
+
+	// node-3 is considered unreachable so must be omitted from the digest,
+	// otherwise peers that have already expired node-3 would rediscover it.
+	clusterState.UpdateLiveness(20.0)
+
+	stateDigest := clusterState.Digest()
+	sort.Slice(stateDigest, func(i, j int) bool {
+		return stateDigest[i].ID < stateDigest[j].ID
+	})
+	assert.Equal(t, digest{
+		{"node-1", "1.1.1.1", 1, false},
+		{"node-2", "2.2.2.2", 4, false},
+	}, stateDigest)
+
+	// Once node-3 is reachable again it is included in the digest.
+	suspicionLevels["node-3"] = 5.0
+	clusterState.UpdateLiveness(20.0)
+
+	stateDigest = clusterState.Digest()
+	sort.Slice(stateDigest, func(i, j int) bool {
+		return stateDigest[i].ID < stateDigest[j].ID
+	})
+	assert.Equal(t, digest{
+		{"node-1", "1.1.1.1", 1, false},
+		{"node-2", "2.2.2.2", 4, false},
+		{"node-3", "3.3.3.3", 8, false},
+	}, stateDigest)
+}
+
 func TestClusterState_Delta(t *testing.T) {
 	clusterState := newClusterState(
 		"node-1", "1.1.1.1", &fakeFailureDetector{}, newMetrics(), newNopWatcher(),
@@ -429,6 +484,108 @@ func TestClusterState_Delta(t *testing.T) {
 			Entries: []Entry{
 				{"k2", "v2", 5, false, false},
 				{"k3", "v3", 8, false, false},
+			},
+		},
+	}, stateDelta)
+}
+
+func TestClusterState_Delta_OmitsUnreachable(t *testing.T) {
+	clusterState := newClusterState(
+		"node-1", "1.1.1.1", &fakeFailureDetector{
+			map[string]float64{
+				"node-2": 5.0,
+				"node-3": 25.0,
+			},
+		}, newMetrics(), newNopWatcher(),
+	)
+	clusterState.UpsertLocal("k1", "v1")
+
+	clusterState.ApplyDelta(delta{
+		{
+			ID:   "node-2",
+			Addr: "2.2.2.2",
+			Entries: []Entry{
+				{"k1", "v1", 4, false, false},
+			},
+		},
+		{
+			ID:   "node-3",
+			Addr: "3.3.3.3",
+			Entries: []Entry{
+				{"k1", "v1", 8, false, false},
+			},
+		},
+	})
+
+	// Mark node-3 as unreachable.
+	clusterState.UpdateLiveness(20.0)
+
+	// A full delta (used to bootstrap joining nodes) must not include the
+	// unreachable node-3, so the joining node doesn't learn about a failed
+	// node.
+	stateDelta := clusterState.Delta(digest{}, true)
+	sort.Slice(stateDelta, func(i, j int) bool {
+		return stateDelta[i].ID < stateDelta[j].ID
+	})
+	assert.Equal(t, delta{
+		{
+			ID:   "node-1",
+			Addr: "1.1.1.1",
+			Entries: []Entry{
+				{"k1", "v1", 1, false, false},
+			},
+		},
+		{
+			ID:   "node-2",
+			Addr: "2.2.2.2",
+			Entries: []Entry{
+				{"k1", "v1", 4, false, false},
+			},
+		},
+	}, stateDelta)
+
+	// If the sender explicitly includes node-3 in its digest, it still
+	// considers node-3 healthy, so we must still respond with the state we
+	// have for it.
+	stateDelta = clusterState.Delta(digest{
+		{"node-3", "3.3.3.3", 0, false},
+	}, true)
+	sort.Slice(stateDelta, func(i, j int) bool {
+		return stateDelta[i].ID < stateDelta[j].ID
+	})
+	assert.Equal(t, delta{
+		{
+			ID:   "node-1",
+			Addr: "1.1.1.1",
+			Entries: []Entry{
+				{"k1", "v1", 1, false, false},
+			},
+		},
+		{
+			ID:   "node-2",
+			Addr: "2.2.2.2",
+			Entries: []Entry{
+				{"k1", "v1", 4, false, false},
+			},
+		},
+		{
+			ID:   "node-3",
+			Addr: "3.3.3.3",
+			Entries: []Entry{
+				{"k1", "v1", 8, false, false},
+			},
+		},
+	}, stateDelta)
+
+	stateDelta = clusterState.Delta(digest{
+		{"node-3", "3.3.3.3", 0, false},
+	}, false)
+	assert.Equal(t, delta{
+		{
+			ID:   "node-3",
+			Addr: "3.3.3.3",
+			Entries: []Entry{
+				{"k1", "v1", 8, false, false},
 			},
 		},
 	}, stateDelta)
