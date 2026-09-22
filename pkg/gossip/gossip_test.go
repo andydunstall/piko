@@ -179,6 +179,78 @@ func TestGossip_NodeUnreachable(t *testing.T) {
 	})
 }
 
+func TestGossip_NodeUnreachable_NotResurrected(t *testing.T) {
+	node1Watcher := &livenessWatcher{
+		Ch: make(chan livenessEvent, 10),
+	}
+	defer node1Watcher.Close()
+	node1 := testNodeWithWatcher("node-1", node1Watcher, t)
+	defer node1.Close()
+
+	node2Watcher := &livenessWatcher{
+		Ch: make(chan livenessEvent, 10),
+	}
+	defer node2Watcher.Close()
+	node2 := testNodeWithWatcher("node-2", node2Watcher, t)
+	defer node2.Close()
+
+	node3 := testNode("node-3", t)
+	defer node3.Close()
+
+	_, err := node2.Join([]string{node1.LocalNode().Addr})
+	require.NoError(t, err)
+	_, err = node3.Join([]string{node1.LocalNode().Addr})
+	require.NoError(t, err)
+
+	// Wait for node-2 to discover node-3 via gossip.
+	require.Eventually(t, func() bool {
+		_, ok := node2.Node("node-3")
+		return ok
+	}, time.Second*5, time.Millisecond*10)
+
+	// Fail node-3 without leaving gracefully.
+	node3.Close()
+
+	// Wait for both node-1 and node-2 to consider node-3 unreachable.
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	for _, w := range []*livenessWatcher{node1Watcher, node2Watcher} {
+		event, err := w.Next(ctx)
+		require.NoError(t, err)
+		assert.Equal(t, livenessEvent{
+			NodeID:      "node-3",
+			Unreachable: true,
+		}, event)
+	}
+
+	// Wait for a few gossip rounds so any digests built before node-3 was
+	// marked unreachable have been delivered (in practice the expiry is a
+	// minute after the node is marked unreachable, so in-flight packets are
+	// never an issue).
+	<-time.After(testConfig().Interval * 10)
+
+	// Expire node-3 on both nodes (rather than waiting for the expiry
+	// timeout).
+	node1.state.RemoveExpiredAt(time.Now().Add(nodeExpiry * 2))
+	node2.state.RemoveExpiredAt(time.Now().Add(nodeExpiry * 2))
+
+	_, ok := node1.Node("node-3")
+	require.False(t, ok)
+	_, ok = node2.Node("node-3")
+	require.False(t, ok)
+
+	// Keep gossiping for a while and verify node-3 is never rediscovered.
+	require.Never(t, func() bool {
+		if _, ok := node1.Node("node-3"); ok {
+			return true
+		}
+		if _, ok := node2.Node("node-3"); ok {
+			return true
+		}
+		return false
+	}, time.Second, time.Millisecond*10)
+}
+
 type updateEvent struct {
 	NodeID string
 	Key    string

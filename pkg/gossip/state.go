@@ -379,6 +379,9 @@ func (s *clusterState) Digest() digest {
 
 	var digest digest
 	for _, state := range s.nodes {
+		if state.Unreachable {
+			continue
+		}
 		digest = append(digest, digestEntry{
 			ID:      state.ID,
 			Addr:    state.Addr,
@@ -419,9 +422,15 @@ func (s *clusterState) Delta(digest digest, fullDigest bool) delta {
 	// If we know we have a full digest from the client, we can add infer
 	// that the client doesn't know about any nodes not included in their
 	// digest.
+	//
+	// Nodes we consider unreachable are omitted, unless the sender explicitly
+	// requested them in the digest above.
 	if fullDigest {
-		for id := range s.nodes {
+		for id, state := range s.nodes {
 			if _, ok := digestNodes[id]; ok {
+				continue
+			}
+			if state.Unreachable {
 				continue
 			}
 			delta = append(delta, s.deltaEntry(id, 0))
