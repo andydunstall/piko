@@ -229,17 +229,33 @@ func TestGossip_NodeUnreachable_NotResurrected(t *testing.T) {
 	// never an issue).
 	<-time.After(testConfig().Interval * 10)
 
-	// Expire node-3 on both nodes (rather than waiting for the expiry
-	// timeout).
+	// Expire node-3 on node-1 only (rather than waiting for the expiry
+	// timeout). node-2 still knows about node-3 but considers it unreachable.
+	//
+	// This is the scenario from the issue: node-1 expires node-3 first, and
+	// node-2, which still has node-3 in its state, must not reintroduce it
+	// to node-1 by gossiping about it.
 	node1.state.RemoveExpiredAt(time.Now().Add(nodeExpiry * 2))
-	node2.state.RemoveExpiredAt(time.Now().Add(nodeExpiry * 2))
 
 	_, ok := node1.Node("node-3")
 	require.False(t, ok)
+	node3State, ok := node2.Node("node-3")
+	require.True(t, ok)
+	require.True(t, node3State.Unreachable)
+
+	// Keep gossiping for a while (node-2 gossips with node-1 every interval)
+	// and verify node-1 never rediscovers node-3.
+	require.Never(t, func() bool {
+		_, ok := node1.Node("node-3")
+		return ok
+	}, time.Second, time.Millisecond*10)
+
+	// Expire node-3 on node-2 and verify neither node rediscovers it.
+	node2.state.RemoveExpiredAt(time.Now().Add(nodeExpiry * 2))
+
 	_, ok = node2.Node("node-3")
 	require.False(t, ok)
 
-	// Keep gossiping for a while and verify node-3 is never rediscovered.
 	require.Never(t, func() bool {
 		if _, ok := node1.Node("node-3"); ok {
 			return true
