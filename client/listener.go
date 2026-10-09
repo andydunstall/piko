@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 
@@ -86,7 +85,12 @@ func (l *listener) AcceptWithContext(ctx context.Context) (net.Conn, error) {
 			return nil, ctx.Err()
 		}
 
-		if errors.Is(err, yamux.ErrSessionShutdown) || errors.Is(err, net.ErrClosed) {
+		// Close and Shutdown cancel closeCtx before tearing down the
+		// session, so this reports whether the listener was closed by the
+		// caller. The session reports the same error whether it was closed
+		// locally or by the server, so matching on that error instead gave
+		// up on reconnecting whenever the server hung up.
+		if l.closeCtx.Err() != nil {
 			return nil, ErrClosed
 		}
 
