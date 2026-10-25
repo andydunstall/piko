@@ -2,7 +2,6 @@ package client
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net"
 
@@ -86,13 +85,17 @@ func (l *listener) AcceptWithContext(ctx context.Context) (net.Conn, error) {
 			return nil, ctx.Err()
 		}
 
-		if errors.Is(err, yamux.ErrSessionShutdown) || errors.Is(err, net.ErrClosed) {
+		// Only return ErrClosed if the listener itself was closed, otherwise reconnect.
+		if l.closeCtx.Err() != nil {
 			return nil, ErrClosed
 		}
 
 		l.logger.Warn("disconnected; reconnecting", zap.Error(err))
 
 		if err := l.connect(l.closeCtx); err != nil {
+			if l.closeCtx.Err() != nil {
+				return nil, ErrClosed
+			}
 			return nil, fmt.Errorf("connect: %w", err)
 		}
 	}
